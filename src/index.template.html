@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7f5f0">
+<meta name="offline-library-version" content="@@APP_VERSION@@">
+<title>我的私人图书馆</title>
+<style>@@CSS@@</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><div class="logo">书</div><span data-i18n="我的私人图书馆">我的私人图书馆</span></div>
+    <div class="top-actions"><button class="iconbtn" id="langBtn" data-i18n-title="界面语言" aria-label="界面语言">中</button><button class="iconbtn" id="historyBtn" data-i18n-title="阅读历史" aria-label="阅读历史"><svg class="history-clock" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6.1"/><path d="M20.6 3.4v4.8h-4.8"/><path d="M12 7.6V12l3.1 1.9"/></svg></button><button class="iconbtn" id="moreBtn" data-i18n-title="更多" aria-label="更多">⚙</button></div>
+  </header>
+  <main id="home">
+    <div class="eyebrow">PERSONAL LIBRARY</div>
+    <h1 id="libraryTitle">首页</h1>
+    <div class="sub" id="librarySubtitle">今日经文、收藏和最近导入。</div>
+    <div id="sectionDashboard" class="section-dashboard" aria-live="polite"></div>
+    <div class="content-lang-bar" id="contentLangBar"></div>
+    <div class="library-nav" id="libraryTabs">
+      <button class="active" data-tab="publications" data-i18n="分类">分类</button>
+      <button data-tab="favorites" data-i18n="收藏">收藏</button>
+    </div>
+    <div class="toolbar" id="importToolbar" style="margin:12px 0">
+      <button class="btn" id="importBtn">＋ <span data-i18n="导入 PUB">导入 PUB</span></button>
+      <button class="btn secondary" id="backupBtn" data-i18n="导出备份">导出备份</button>
+      <button class="btn ghost" id="restoreBtn" data-i18n="恢复备份">恢复备份</button>
+      <input id="fileInput" type="file" accept=".jwpub,.pub,application/octet-stream" multiple hidden>
+      <input id="backupInput" type="file" accept=".json,application/json" hidden>
+      <input id="languagePackInput" type="file" accept=".json,application/json" hidden>
+    </div>
+    <div class="crumbs" id="breadcrumbs" style="display:none"></div>
+    <div class="library-heading"><h2 id="listHeading">按类型浏览</h2><span class="sub" id="count"></span><button class="section-help-btn" id="librarySearchBtn" data-i18n-title="搜索" title="搜索" aria-label="搜索" style="display:none"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.2 4.2"/></svg></button></div>
+    <div class="category-grid" id="categories"></div>
+    <div class="grid" id="books"></div>
+    <div class="empty" id="empty">这里还没有出版物。<br>点击「导入 PUB」，选择 iPhone「文件」中的 .pub 文件。</div>
+    
+  </main>
+  <div class="note-dock" id="noteDock"><button type="button" id="noteDockOpen"></button></div>
+  <nav class="bottom-nav" id="bottomNav" aria-label="主导航">
+    <div class="rail-head"><div class="logo">书</div><span class="rail-brand" data-i18n="我的私人图书馆">我的私人图书馆</span></div>
+    <div class="rail-links">
+      <button data-primary="home" class="active"><span class="nav-icon">⌂</span><span data-i18n="首页">首页</span></button>
+      <button data-primary="bible"><span class="nav-icon">▤</span><span data-i18n="圣经">圣经</span></button>
+      <button data-primary="library"><span class="nav-icon">▦</span><span data-i18n="多媒体图书馆">多媒体图书馆</span></button>
+      <button data-primary="meetings"><span class="nav-icon">◫</span><span data-i18n="聚会">聚会</span></button>
+      <button data-primary="study"><span class="nav-icon">✎</span><span data-i18n="个人研读">个人研读</span></button>
+    </div>
+    <button type="button" class="rail-toggle" id="sidebarToggle" title="收起栏目" aria-label="收起栏目" aria-pressed="false"><span class="rail-toggle-icon">«</span><span class="rail-toggle-label">收起栏目</span></button>
+  </nav>
+</div>
+
+<section id="reader">
+  <div class="reader-head">
+    <button class="iconbtn" id="backBtn">‹</button>
+    <button class="iconbtn" id="sideNavBtn" title="收起栏目" aria-label="收起栏目" aria-pressed="false">☰</button>
+    <button class="iconbtn" id="tocBtn" title="隐藏目录" aria-label="目录" aria-pressed="false">☷</button><button class="iconbtn" id="chapterNotesBtn" data-i18n-title="本章笔记" title="本章笔记" aria-label="本章笔记">✎</button>
+    <div class="reader-title" id="readerTitle">出版物</div>
+    <button class="iconbtn" id="readerLangBtn" data-i18n-title="语言版本" title="语言版本" aria-label="语言版本" style="display:none">语</button><button class="iconbtn" id="readerSearchBtn" data-i18n-title="搜索" title="搜索" aria-label="搜索"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.2 4.2"/></svg></button><button class="iconbtn" id="pronunciationBtn" data-pinyin-toggle data-i18n-title="拼音" title="拼音" aria-label="拼音" aria-pressed="false">拼</button>
+    <button class="iconbtn" id="fontDown">A−</button>
+    <button class="iconbtn" id="fontUp">A+</button>
+  </div>
+  <div class="reader-layout">
+    <aside class="desktop-sidebar" id="desktopSidebar" aria-label="阅读器导航">
+      <div class="desktop-sidebar-title">图书馆</div>
+      <button data-reader-primary="home"><span class="nav-icon">⌂</span><span class="side-label" data-i18n="首页">首页</span></button>
+      <button data-reader-primary="bible"><span class="nav-icon">▤</span><span class="side-label" data-i18n="圣经">圣经</span></button>
+      <button data-reader-primary="library"><span class="nav-icon">▦</span><span class="side-label" data-i18n="多媒体图书馆">多媒体图书馆</span></button>
+      <button data-reader-primary="meetings"><span class="nav-icon">◫</span><span class="side-label" data-i18n="聚会">聚会</span></button>
+      <button data-reader-primary="study"><span class="nav-icon">✎</span><span class="side-label" data-i18n="个人研读">个人研读</span></button>
+      <div class="desktop-sidebar-foot">离线阅读</div>
+    </aside>
+    <aside class="desktop-toc" id="desktopToc"><div class="desktop-toc-title">本书目录</div><div id="desktopTocList"></div></aside>
+    <div class="reader-body" id="readerBody"><article id="article"></article></div>
+    <aside class="reader-sidepanel" id="readerSidePanel" aria-label="链接内容">
+      <div class="reader-sidepanel-head"><div class="reader-sidepanel-title" id="readerSidePanelTitle">链接内容</div><button class="link-popover-close" id="readerSidePanelClose" aria-label="关闭">×</button></div>
+      <div class="reader-sidepanel-body link-popover-body" id="readerSidePanelBody"></div>
+    </aside>
+  </div>
+  <div class="bottom-tools">
+    <button class="btn secondary" id="prevBtn">上一节</button>
+    <button class="btn secondary" id="bookmarkBtn">☆ 书签</button>
+    <button class="btn secondary" id="noteBtn">✎ 笔记</button>
+    <button class="btn secondary" id="nextBtn">下一节</button>
+  </div>
+</section>
+  <section class="reader-search" id="readerSearchPanel" role="dialog" aria-modal="false" aria-label="搜索">
+    <div class="reader-search-box">
+      <div class="reader-search-head">
+        <input class="reader-search-input" id="readerSearchInput" data-i18n-placeholder="搜索经文或出版物…" placeholder="搜索经文或出版物…" autocomplete="off">
+        <button class="btn secondary reader-search-run" type="button" id="readerSearchRun" data-i18n="搜索">搜索</button>
+        <button class="iconbtn" type="button" id="readerSearchClose" aria-label="关闭">×</button>
+      </div>
+      <div class="reader-search-scope" id="readerSearchScope"></div>
+      <div class="reader-search-recent" id="readerSearchRecent"></div>
+      <div class="reader-search-results" id="readerSearchResults"></div>
+    </div>
+  </section>
+<section class="link-popover" id="linkPopover" role="dialog" aria-modal="false" aria-label="链接内容">
+  <div class="link-popover-head">
+    <div class="link-popover-title" id="linkPopoverTitle">链接内容</div>
+    <button class="link-popover-close" id="linkPopoverClose" aria-label="关闭">×</button>
+  </div>
+  <div class="link-popover-body" id="linkPopoverBody"></div>
+  <div class="link-popover-hint">轻触框外区域或点 × 关闭</div>
+</section>
+<div class="drawer" id="drawer"><div class="drawer-panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="margin:0" data-i18n="目录">目录</h2><button class="iconbtn" id="closeDrawer">×</button></div><div id="tocList"></div></div></div>
+
+<section class="import-dialog" id="importDialog" role="dialog" aria-modal="true" aria-labelledby="importDialogTitle">
+  <div class="import-dialog-box">
+    <div class="import-dialog-head"><h2 id="importDialogTitle" data-i18n="导入 PUB">导入 PUB</h2><button class="iconbtn" id="importDialogClose" aria-label="关闭">×</button></div>
+    <p class="sub" id="importDialogHint" data-i18n="已导入的文件显示为勾选；未导入的文件请点击勾选后导入。">已导入的文件显示为勾选；未导入的文件请点击勾选后导入。</p>
+    <div class="import-file-list" id="importFileList"></div>
+    <div class="import-dialog-actions">
+      <button class="btn secondary" id="importSelectNew" data-i18n="全选未导入">全选未导入</button>
+      <button class="btn" id="importConfirm" data-i18n="导入选中">导入选中</button>
+      <button class="btn ghost" id="importCancel" data-i18n="取消">取消</button>
+    </div>
+  </div>
+</section>
+
+
+<div id="contextActions" class="context-actions" role="toolbar" aria-label="内容操作">
+  <span class="ctx-colors">
+    <button type="button" class="ctx-color" data-context-color="#ffe58a" style="background:#ffe58a" aria-label="黄色高亮"></button>
+    <button type="button" class="ctx-color" data-context-color="#b7e4c7" style="background:#b7e4c7" aria-label="绿色高亮"></button>
+    <button type="button" class="ctx-color" data-context-color="#bcd9f2" style="background:#bcd9f2" aria-label="蓝色高亮"></button>
+    <button type="button" class="ctx-color" data-context-color="#f7c6d9" style="background:#f7c6d9" aria-label="粉色高亮"></button>
+  </span>
+  <button type="button" class="ctx-action" data-context-act="info" data-i18n-title="经文信息" title="经文信息" aria-label="经文信息"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5c2.8-.8 5.1-.2 8 1.4v13c-2.9-1.6-5.2-2.2-8-1.4Z"/><path d="M20 5.5c-2.8-.8-5.1-.2-8 1.4v13c2.9-1.6 5.2-2.2 8-1.4Z"/></svg></button>
+  <button type="button" class="ctx-action" data-context-act="note" data-i18n-title="笔记" title="笔记" aria-label="笔记"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 4.5h13v10.2l-4.8 4.8H5.5Z"/><path d="M18.5 14.7h-4.8v4.8"/><path d="M12 8.4v4.8M9.6 10.8h4.8"/></svg></button>
+  <button type="button" class="ctx-action" data-context-act="copy" data-i18n-title="复制" title="复制" aria-label="复制"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 8.5V4.5A1.5 1.5 0 0 1 10.5 3H17l4 4v9a1.5 1.5 0 0 1-1.5 1.5H18"/><path d="M17 3v4.5h4"/><path d="M3 9.5A1.5 1.5 0 0 1 4.5 8h9l4 4v8A1.5 1.5 0 0 1 16 21.5H4.5A1.5 1.5 0 0 1 3 20Z"/><path d="M13.5 8v4.5H18"/></svg></button>
+  <button type="button" class="ctx-action" data-context-act="erase" data-i18n-title="清除颜色" title="清除颜色" aria-label="清除颜色"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7h15"/><path d="M9.5 7V4.5h5V7"/><path d="M6.5 7l.8 11.8a1.7 1.7 0 0 0 1.7 1.6h6a1.7 1.7 0 0 0 1.7-1.6L17.5 7"/><path d="M10 11v5.5M14 11v5.5"/></svg></button>
+</div>
+<section class="annotation-editor" id="annotationEditor" role="dialog" aria-modal="true">
+  <div class="annotation-box">
+    <div class="annotation-head"><h2 data-i18n="笔记">笔记</h2><button class="iconbtn" id="annotationClose" aria-label="关闭">×</button></div>
+    <div class="annotation-quote" id="annotationQuote"></div>
+    <input class="note-input" id="annotationTitle" data-i18n-placeholder="标题" placeholder="标题">
+    <textarea class="note-textarea" id="annotationText" data-i18n-placeholder="写批注…" placeholder="写批注…"></textarea>
+    <div class="sub" data-i18n="标签">标签</div>
+    <div class="study-tagbar editor-tags" id="annotationTags"></div>
+    <div class="section-card-actions"><button class="btn" id="annotationSave" data-i18n="保存">保存</button><button class="btn ghost" id="annotationDelete" data-i18n="删除">删除</button></div>
+  </div>
+</section>
+<section class="annotations-panel" id="annotationsPanel" role="dialog" aria-modal="true">
+  <div class="annotations-head"><h2 id="annotationsTitle">本章笔记</h2><button class="iconbtn" id="annotationsClose" aria-label="关闭">×</button></div>
+  <div class="annotations-list" id="annotationsList"></div>
+</section>
+
+
+<section class="annotations-panel history-panel" id="historyPanel" role="dialog" aria-modal="true">
+  <div class="annotations-head"><h2 data-i18n="阅读历史">阅读历史</h2><button class="iconbtn" id="historyClose" aria-label="关闭">×</button></div>
+  <div class="annotations-list" id="historyList"></div>
+</section>
+
+<div class="modal" id="modal"><div class="modalbox"><h2 id="modalTitle" data-i18n="提示">提示</h2><div id="modalText" class="status"></div><div class="toolbar"><button class="btn" id="modalOk" data-i18n="知道了">知道了</button></div></div></div>
+
+<script>window.__CATEGORY_CONFIG__=@@CATEGORIES_JSON@@;</script>
+<!-- JSZip embedded for Sitecase single-file compatibility -->
+<script>@@VENDOR_JSZIP@@</script>
+<!-- pako embedded for offline zlib decompression -->
+<script>@@VENDOR_PAKO@@</script>
+<!-- sql.js 1.15.0 inline build; recovered from the uploaded PDF and runtime-validated -->
+<script>@@VENDOR_SQLITE@@</script>
+<script>@@APP_JS@@</script>
+</body>
+</html>
