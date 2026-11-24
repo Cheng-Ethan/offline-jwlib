@@ -452,7 +452,7 @@ body.section-mode main{max-width:none;padding-left:clamp(16px,3vw,44px);padding-
 .context-actions.mode-highlight [data-context-act="note"],
 .context-actions.mode-highlight [data-context-act="copy"],
 .context-actions.mode-highlight [data-context-act="erase"]{display:grid}
-@media(pointer:coarse){.context-actions.mode-selection{top:auto!important;bottom:calc(72px + env(safe-area-inset-bottom));left:50%!important;transform:translateX(-50%);max-width:calc(100vw - 20px)}}
+@media(pointer:coarse){.context-actions.mode-selection{max-width:calc(100vw - 20px)}}
 .publication-content .hl.context-highlight-active{outline:2px solid #7d9087;outline-offset:1px}
 
 /* Desktop app rail: the primary sections move from the bottom bar to a

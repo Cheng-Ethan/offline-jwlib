@@ -274,7 +274,7 @@ async function findTodayDaily(books){
   if(preferred){const at=candidates.findIndex(b=>String(b.id)===preferred);if(at>0)candidates.unshift(candidates.splice(at,1)[0])}
   for(const b of candidates){
     const list=b.dailyDocs;
-    let doc=list.find(x=>{const a=Number(x.dateOffset),z=Number(x.lastDateOffset??x.dateOffset);return a>19000101&&key>=a&&key<=z});
+    let doc=list.find(x=>Number(x.dateKey)===key)||list.find(x=>{const a=Number(x.dateOffset),z=Number(x.lastDateOffset??x.dateOffset);return a>19000101&&key>=a&&key<=z});
     if(!doc){
       const y=Number(b.year)||today.getFullYear();
       const off=Math.floor((Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())-Date.UTC(y,0,1))/86400000);
@@ -540,9 +540,9 @@ $('librarySubtitle').textContent=t('今日经文、收藏和最近导入。');
     card.setAttribute('role','link');card.tabIndex=0;
     const open=()=>openDocInBook(daily.book,daily.doc.id);
     card.onclick=open;card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}};
-    const t=document.createElement('div');t.className='daily-title';t.textContent=(summary.date||dateLabel).replace(/(日)(星期)/,'$1 $2');
+    const title=document.createElement('div');title.className='daily-title';title.textContent=(summary.date||dateLabel).replace(/(日)(星期)/,'$1 $2');
     const p=document.createElement('p');p.className='daily-text';p.textContent=summary.verse||t('点击阅读今天的经文。');
-    card.append(t,p);dailyPanel.appendChild(card);
+    card.append(title,p);dailyPanel.appendChild(card);
   }else{
     const e=document.createElement('div');e.className='section-empty';e.innerHTML='<strong>'+t('今天没有可用的每日经文')+'</strong><p>'+t('请导入包含今天日期的每日经文 PUB（例如当年度的“天天查考圣经”）。')+'</p>';dailyPanel.appendChild(e);
   }

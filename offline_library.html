@@ -460,7 +460,7 @@ body.section-mode main{max-width:none;padding-left:clamp(16px,3vw,44px);padding-
 .context-actions.mode-highlight [data-context-act="note"],
 .context-actions.mode-highlight [data-context-act="copy"],
 .context-actions.mode-highlight [data-context-act="erase"]{display:grid}
-@media(pointer:coarse){.context-actions.mode-selection{top:auto!important;bottom:calc(72px + env(safe-area-inset-bottom));left:50%!important;transform:translateX(-50%);max-width:calc(100vw - 20px)}}
+@media(pointer:coarse){.context-actions.mode-selection{max-width:calc(100vw - 20px)}}
 .publication-content .hl.context-highlight-active{outline:2px solid #7d9087;outline-offset:1px}
 
 /* Desktop app rail: the primary sections move from the bottom bar to a
@@ -679,7 +679,7 @@ body.section-mode main{max-width:none;padding-left:clamp(16px,3vw,44px);padding-
 
 
 <div id="contextActions" class="context-actions" role="toolbar" aria-label="内容操作" data-i18n-aria-label="内容操作">
-  <button type="button" class="ctx-action ctx-color-toggle" data-context-act="color" aria-expanded="false" data-i18n-title="高亮颜色" title="高亮颜色" aria-label="高亮颜色" data-i18n-aria-label="高亮颜色"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="8.4" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="7.8" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.6" cy="10" r="1.1" fill="currentColor" stroke="none"/><path d="M12 20.5c1.6 0 2.2-1 2.2-2.1 0-.9-.7-1.6-.7-2.3 0-.9.7-1.6 1.6-1.6h1.3"/></svg></button>
+  <button type="button" class="ctx-action ctx-color-toggle" data-context-act="color" aria-expanded="false" data-i18n-title="高亮颜色" title="高亮颜色" aria-label="高亮颜色" data-i18n-aria-label="高亮颜色"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5" fill="#fff" stroke="currentColor" stroke-width="1.8"/><circle cx="8.3" cy="9.7" r="1.55" fill="#d9a92b" stroke="none"/><circle cx="12" cy="7.7" r="1.55" fill="#4f9e72" stroke="none"/><circle cx="15.7" cy="9.7" r="1.55" fill="#4a86b8" stroke="none"/><circle cx="9.7" cy="13.4" r="1.55" fill="#cc6d92" stroke="none"/><path d="M12 20.5c1.6 0 2.2-1 2.2-2.1 0-.9-.7-1.6-.7-2.3 0-.9.7-1.6 1.6-1.6h1.3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
   <span class="ctx-colors">
     <button type="button" class="ctx-color" data-context-color="#ffe58a" style="background:var(--hl-yellow)" aria-label="黄色高亮" data-i18n-aria-label="黄色高亮"></button>
     <button type="button" class="ctx-color" data-context-color="#b7e4c7" style="background:var(--hl-green)" aria-label="绿色高亮" data-i18n-aria-label="绿色高亮"></button>
@@ -3218,7 +3218,7 @@ async function findTodayDaily(books){
   if(preferred){const at=candidates.findIndex(b=>String(b.id)===preferred);if(at>0)candidates.unshift(candidates.splice(at,1)[0])}
   for(const b of candidates){
     const list=b.dailyDocs;
-    let doc=list.find(x=>{const a=Number(x.dateOffset),z=Number(x.lastDateOffset??x.dateOffset);return a>19000101&&key>=a&&key<=z});
+    let doc=list.find(x=>Number(x.dateKey)===key)||list.find(x=>{const a=Number(x.dateOffset),z=Number(x.lastDateOffset??x.dateOffset);return a>19000101&&key>=a&&key<=z});
     if(!doc){
       const y=Number(b.year)||today.getFullYear();
       const off=Math.floor((Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())-Date.UTC(y,0,1))/86400000);
@@ -3484,9 +3484,9 @@ $('librarySubtitle').textContent=t('今日经文、收藏和最近导入。');
     card.setAttribute('role','link');card.tabIndex=0;
     const open=()=>openDocInBook(daily.book,daily.doc.id);
     card.onclick=open;card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}};
-    const t=document.createElement('div');t.className='daily-title';t.textContent=(summary.date||dateLabel).replace(/(日)(星期)/,'$1 $2');
+    const title=document.createElement('div');title.className='daily-title';title.textContent=(summary.date||dateLabel).replace(/(日)(星期)/,'$1 $2');
     const p=document.createElement('p');p.className='daily-text';p.textContent=summary.verse||t('点击阅读今天的经文。');
-    card.append(t,p);dailyPanel.appendChild(card);
+    card.append(title,p);dailyPanel.appendChild(card);
   }else{
     const e=document.createElement('div');e.className='section-empty';e.innerHTML='<strong>'+t('今天没有可用的每日经文')+'</strong><p>'+t('请导入包含今天日期的每日经文 PUB（例如当年度的“天天查考圣经”）。')+'</p>';dailyPanel.appendChild(e);
   }
@@ -4624,7 +4624,7 @@ function bibleRangeTitle(data,range){
 }
 const HL_SELECTOR='[data-pid],p,h1,h2,h3,h4,li,blockquote,.bible-verse';
 let hlPendingRange=null,hlToolbarTimer=null,hlActiveId=null,annotationState=null;
-let contextActionState=null,verseActionState=null,verseActionTarget=null;
+let contextActionState=null,verseActionState=null,verseActionTarget=null,contextToolbarRect=null;
 let readerSearchRunId=0,readerSearchTimer=null;
 let readerSearchBook=null,readerSearchKind='publications',readerSearchTab='library',readerSearchReturn=null;
 const bibleSearchCache=new Map();
@@ -5027,7 +5027,7 @@ function hideContextActions(){
   if(verseActionTarget&&verseActionTarget.classList)verseActionTarget.classList.remove('verse-action-active');
   const content=hlRoot();if(content)content.classList.remove('context-spotlight');
   document.querySelectorAll('.hl.context-highlight-active').forEach(el=>el.classList.remove('context-highlight-active'));
-  contextActionState=null;verseActionTarget=null;verseActionState=null;hlPendingRange=null;hlActiveId=null;
+  contextActionState=null;verseActionTarget=null;verseActionState=null;hlPendingRange=null;hlActiveId=null;contextToolbarRect=null;
 }
 function hideVerseActions(){hideContextActions()}
 function hideHighlightToolbar(){hideContextActions()}
@@ -5062,6 +5062,7 @@ function showContextActions(state,rect){
     hlPendingRange=state.range;
   }
   if(!rect)rect={left:window.innerWidth/2,top:window.innerHeight/2,bottom:window.innerHeight/2,width:0,height:0};
+  contextToolbarRect=rect;
   placeSelectionToolbar(bar,rect);
 }
 function scheduleHighlightToolbar(){
@@ -5719,7 +5720,7 @@ $('contextActions').querySelectorAll('[data-context-act]').forEach(btn=>btn.oncl
   e.stopPropagation();
   const state=contextActionState;if(!state)return;
   const act=btn.getAttribute('data-context-act');
-  if(act==='color'){const bar=$('contextActions');if(bar){const open=bar.classList.toggle('colors-open');btn.setAttribute('aria-expanded',open?'true':'false')}return}
+  if(act==='color'){const bar=$('contextActions');if(bar){const open=bar.classList.toggle('colors-open');btn.setAttribute('aria-expanded',open?'true':'false');if(contextToolbarRect)placeSelectionToolbar(bar,contextToolbarRect)}return}
   if(act==='info'&&state.kind==='verse'){
     const ctx=state.ctx;hideContextActions();await showBibleVerseRefs(ctx.el);return;
   }

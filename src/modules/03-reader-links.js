@@ -536,7 +536,7 @@ function bibleRangeTitle(data,range){
 }
 const HL_SELECTOR='[data-pid],p,h1,h2,h3,h4,li,blockquote,.bible-verse';
 let hlPendingRange=null,hlToolbarTimer=null,hlActiveId=null,annotationState=null;
-let contextActionState=null,verseActionState=null,verseActionTarget=null;
+let contextActionState=null,verseActionState=null,verseActionTarget=null,contextToolbarRect=null;
 let readerSearchRunId=0,readerSearchTimer=null;
 let readerSearchBook=null,readerSearchKind='publications',readerSearchTab='library',readerSearchReturn=null;
 const bibleSearchCache=new Map();
@@ -939,7 +939,7 @@ function hideContextActions(){
   if(verseActionTarget&&verseActionTarget.classList)verseActionTarget.classList.remove('verse-action-active');
   const content=hlRoot();if(content)content.classList.remove('context-spotlight');
   document.querySelectorAll('.hl.context-highlight-active').forEach(el=>el.classList.remove('context-highlight-active'));
-  contextActionState=null;verseActionTarget=null;verseActionState=null;hlPendingRange=null;hlActiveId=null;
+  contextActionState=null;verseActionTarget=null;verseActionState=null;hlPendingRange=null;hlActiveId=null;contextToolbarRect=null;
 }
 function hideVerseActions(){hideContextActions()}
 function hideHighlightToolbar(){hideContextActions()}
@@ -974,6 +974,7 @@ function showContextActions(state,rect){
     hlPendingRange=state.range;
   }
   if(!rect)rect={left:window.innerWidth/2,top:window.innerHeight/2,bottom:window.innerHeight/2,width:0,height:0};
+  contextToolbarRect=rect;
   placeSelectionToolbar(bar,rect);
 }
 function scheduleHighlightToolbar(){
@@ -1631,7 +1632,7 @@ $('contextActions').querySelectorAll('[data-context-act]').forEach(btn=>btn.oncl
   e.stopPropagation();
   const state=contextActionState;if(!state)return;
   const act=btn.getAttribute('data-context-act');
-  if(act==='color'){const bar=$('contextActions');if(bar){const open=bar.classList.toggle('colors-open');btn.setAttribute('aria-expanded',open?'true':'false')}return}
+  if(act==='color'){const bar=$('contextActions');if(bar){const open=bar.classList.toggle('colors-open');btn.setAttribute('aria-expanded',open?'true':'false');if(contextToolbarRect)placeSelectionToolbar(bar,contextToolbarRect)}return}
   if(act==='info'&&state.kind==='verse'){
     const ctx=state.ctx;hideContextActions();await showBibleVerseRefs(ctx.el);return;
   }
