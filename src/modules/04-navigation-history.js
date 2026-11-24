@@ -27,7 +27,7 @@ async function importFiles(files,opts={}){
    b=await parseJwpub(f,msg=>{$('importBtn').textContent=`${i+1}/${files.length}：${msg}`;try{if($('modal').style.display==='flex')$('modalText').textContent=`${i+1}/${files.length}：${msg}`}catch(e){}});
    b.originalFilename=f.name;
    const old=await getBookMeta(b.id)||await reqP(tx('books').get(b.id));
-   if(old&&!overwriteNames.has(f.name)&&!confirm(`《${b.displayTitle||b.title}》已经导入。\n是否用这个文件覆盖正文和图片？\n笔记、标签、划线、书签和阅读历史会保留。`)){
+   if(old&&!overwriteNames.has(f.name)&&!(await askConfirm(t('导入 PUB'),`《${b.displayTitle||b.title}》已经导入。是否用这个文件覆盖正文和图片？笔记、标签、划线、书签和阅读历史会保留。`))){
      skipped.push(`${b.displayTitle||b.title}（${f.name}）`);continue;
    }
    try{await saveBook(b)}catch(saveErr){
@@ -40,7 +40,7 @@ async function importFiles(files,opts={}){
   finally{b=null;}
   await new Promise(r=>setTimeout(r,1000));
  }
- $('importBtn').innerHTML='＋ <span>'+t('导入 PUB')+'</span>';
+ $('importBtn').innerHTML='<span class="btn-icon">'+svgIcon('plus',18)+'</span><span data-i18n="导入 PUB">'+t('导入 PUB')+'</span>';
  await renderBooks();
  say(t('批量导入完成'),`${t('成功')} ${ok.length}，${t('失败')} ${bad.length}${skipped.length?`，${t('跳过')} ${skipped.length}`:''}。\n\n${t('成功')}：\n${ok.join('\n')||t('无')}\n\n${t('失败')}：\n${bad.join('\n')||t('无')}${skipped.length?`\n\n${t('跳过')}：\n${skipped.join('\n')}`:''}`);
 }
@@ -60,9 +60,10 @@ async function openImportDialog(files){
  });
  let newCount=0;files.forEach(f=>{if(!existing.has(f.name))newCount++});
  $('importDialogHint').textContent=(newCount?t('未导入的文件默认勾选；'):'')+`${t('已导入')} ${files.length-newCount} ${t('本')}，`+t('默认不勾选；如需覆盖重新解析，请勾选对应文件。');
- $('importDialog').style.display='flex';
+ rememberPanelFocus($('importDialog'));$('importDialog').style.display='flex';
+ setTimeout(()=>{const cb=$('importFileList')&&$('importFileList').querySelector('input');focusSafely(cb||$('importDialogClose'))},0);
 }
-function closeImportDialog(){ $('importDialog').style.display='none';importStagingFiles=[]; }
+function closeImportDialog(){const p=$('importDialog');p.style.display='none';importStagingFiles=[];restorePanelFocus(p)}
 $('importDialogClose').onclick=closeImportDialog;
 $('importCancel').onclick=closeImportDialog;
 $('importSelectNew').onclick=()=>{document.querySelectorAll('#importFileList input:not([data-imported="1"])').forEach(cb=>cb.checked=true)};
@@ -70,7 +71,7 @@ $('importConfirm').onclick=async()=>{
  const chosen=[...document.querySelectorAll('#importFileList input:checked')].map(cb=>({file:importStagingFiles[Number(cb.dataset.index)],overwrite:cb.dataset.imported==='1'})).filter(x=>x.file);
  if(!chosen.length){say(t('导入 PUB'),t('请在列表中勾选需要导入的 PUB。'));return}
  const overwrite=chosen.filter(x=>x.overwrite);
- if(overwrite.length&&!confirm(`将覆盖重新导入 ${overwrite.length} 本已存在的出版物。\n正文和图片会被替换；笔记、标签、划线、书签和阅读历史会保留。\n\n是否继续？`))return;
+ if(overwrite.length&&!(await askConfirm(t('导入 PUB'),`将覆盖重新导入 ${overwrite.length} 本已存在的出版物。正文和图片会被替换；笔记、标签、划线、书签和阅读历史会保留。`)))return;
  const overwriteNames=new Set(overwrite.map(x=>x.file.name));
  closeImportDialog();
  await importFiles(chosen.map(x=>x.file),{overwriteNames});
@@ -130,7 +131,7 @@ try{tocHidden=localStorage.getItem('offlineLibraryTocHidden')==='1'}catch(e){}
 function applySidebarState(){
   document.body.classList.toggle('sidebar-collapsed',sidebarCollapsed);
   const btn=$('sidebarToggle');
-  if(btn){btn.setAttribute('aria-pressed',sidebarCollapsed?'true':'false');const icon=btn.querySelector('.rail-toggle-icon');if(icon)icon.textContent=sidebarCollapsed?'»':'«';const label=btn.querySelector('.rail-toggle-label');if(label)label.textContent=t(sidebarCollapsed?'展开栏目':'收起栏目');btn.title=t(sidebarCollapsed?'展开栏目':'收起栏目');btn.setAttribute('aria-label',btn.title)}
+  if(btn){btn.setAttribute('aria-pressed',sidebarCollapsed?'true':'false');const label=btn.querySelector('.rail-toggle-label');if(label)label.textContent=t(sidebarCollapsed?'展开栏目':'收起栏目');btn.title=t(sidebarCollapsed?'展开栏目':'收起栏目');btn.setAttribute('aria-label',btn.title)}
   const rbtn=$('sideNavBtn');
   if(rbtn){rbtn.setAttribute('aria-pressed',sidebarCollapsed?'true':'false');rbtn.title=t(sidebarCollapsed?'展开栏目':'收起栏目');rbtn.setAttribute('aria-label',rbtn.title)}
 }
@@ -140,18 +141,33 @@ function applyTocState(){
   const b=$('tocBtn');if(b){b.setAttribute('aria-pressed',tocHidden?'true':'false');b.title=t(tocHidden?'显示目录':'隐藏目录');b.setAttribute('aria-label',b.title)}
 }
 function toggleDesktopToc(){
-  if(window.innerWidth<1100){$('drawer').style.display='block';return}
+  if(window.innerWidth<1100){rememberPanelFocus($('drawer'));$('drawer').style.display='block';setTimeout(()=>focusSafely($('closeDrawer')),0);return}
   tocHidden=!tocHidden;try{localStorage.setItem('offlineLibraryTocHidden',tocHidden?'1':'0')}catch(e){}
   applyTocState();
 }
 applySidebarState();applyTocState();
 const _sidebarToggle=$('sidebarToggle');if(_sidebarToggle)_sidebarToggle.onclick=toggleSidebarCollapsed;
 const _sideNavBtn=$('sideNavBtn');if(_sideNavBtn)_sideNavBtn.onclick=toggleSidebarCollapsed;
-$('tocBtn').onclick=toggleDesktopToc;$('closeDrawer').onclick=()=>$('drawer').style.display='none';$('drawer').onclick=e=>{if(e.target===$('drawer'))$('drawer').style.display='none'};
+function closeDrawer(){const d=$('drawer');d.style.display='none';restorePanelFocus(d)}
+$('tocBtn').onclick=toggleDesktopToc;$('closeDrawer').onclick=closeDrawer;$('drawer').onclick=e=>{if(e.target===$('drawer'))closeDrawer()};
 function bibleChapterMax(bookNum){
   const data=currentBook&&currentBook.bibleData;
   if(data&&data.chapters){let max=0;for(const k of Object.keys(data.chapters)){const p=k.split(':');if(Number(p[0])===Number(bookNum))max=Math.max(max,Number(p[1])||0)}if(max)return max}
   return Number(currentBook&&currentBook.bookChapters&&currentBook.bookChapters[bookNum]||1)||1;
+}
+function syncPager(){
+  const p=$('prevBtn'),n=$('nextBtn');if(!p||!n)return;
+  if(!currentBook){p.disabled=true;n.disabled=true;return}
+  if(bibleMode){
+    const d=currentBook.docs[currentIndex],m=/^bible-(\d+)-(\d+)$/.exec(String(d&&d.id));
+    if(!m){p.disabled=true;n.disabled=true;return}
+    const b=Number(m[1]),c=Number(m[2]);
+    p.disabled=(b<=1&&c<=1);
+    n.disabled=(b>=66&&c>=bibleChapterMax(b));
+    return;
+  }
+  p.disabled=currentIndex<=0;
+  n.disabled=currentIndex>=currentBook.docs.length-1;
 }
 function readerNext(){
   if(!currentBook)return;
@@ -175,6 +191,20 @@ function readerPrev(){
 }
 $('prevBtn').onclick=readerPrev;
 $('nextBtn').onclick=readerNext;
+document.addEventListener('keydown',e=>{
+  if(e.defaultPrevented||e.metaKey||e.ctrlKey||e.altKey)return;
+  if($('reader').style.display!=='block')return;
+  if($('modal').style.display==='flex')return;
+  if($('confirmModal').style.display==='flex')return;
+  if($('noteEditor'))return;
+  if($('annotationEditor').classList.contains('show')||$('annotationsPanel').classList.contains('show')||$('historyPanel').classList.contains('show'))return;
+  if($('linkPopover').style.display==='block'||$('drawer').style.display==='block')return;
+  const panel=$('readerSearchPanel');if(panel&&panel.classList.contains('show'))return;
+  const tag=(e.target&&e.target.tagName||'').toLowerCase();
+  if(tag==='input'||tag==='textarea'||tag==='select'||(e.target&&e.target.isContentEditable))return;
+  if(e.key==='ArrowLeft'){e.preventDefault();readerPrev()}
+  else if(e.key==='ArrowRight'){e.preventDefault();readerNext()}
+});
 let swipeStart=null,swipeCooldown=0;
 $('readerBody').addEventListener('touchstart',e=>{
   if(e.touches.length!==1){swipeStart=null;return}
@@ -197,5 +227,5 @@ $('readerBody').addEventListener('touchend',e=>{
 },{passive:true});
 $('fontDown').onclick=()=>{fontSize=Math.max(15,fontSize-1);$('article').style.fontSize=fontSize+'px'};
 $('fontUp').onclick=()=>{fontSize=Math.min(27,fontSize+1);$('article').style.fontSize=fontSize+'px'};
-$('bookmarkBtn').onclick=async()=>{if(bibleMode||currentIndex<0)return;const d=currentBook.docs[currentIndex],id=`${currentBook.id}:${d.id}`,old=await getOne('bookmarks',id);if(old){await reqP(tx('bookmarks','readwrite').delete(id));$('bookmarkBtn').textContent='☆ 书签'}else{await saveOne('bookmarks',{id,bookId:currentBook.id,docId:d.id,title:d.title,createdAt:Date.now()});$('bookmarkBtn').textContent='★ 已书签'}};
-$('noteBtn').onclick=async()=>{if(bibleMode||currentIndex<0)return;const d=currentBook.docs[currentIndex],text=prompt('为本节添加个人笔记：');if(text&&text.trim()){await saveOne('notes',{id:`${currentBook.id}:${d.id}:${Date.now()}`,bookId:currentBook.id,docId:d.id,title:d.title,text:text.trim(),createdAt:Date.now()});say('笔记已保存','笔记保存在此设备。请定期导出备份。')}};
+$('bookmarkBtn').onclick=async()=>{if(bibleMode||currentIndex<0)return;const d=currentBook.docs[currentIndex],id=`${currentBook.id}:${d.id}`,old=await getOne('bookmarks',id);if(old){await reqP(tx('bookmarks','readwrite').delete(id));renderBookmarkButton(false)}else{await saveOne('bookmarks',{id,bookId:currentBook.id,docId:d.id,title:d.title,createdAt:Date.now()});renderBookmarkButton(true)}};
+$('noteBtn').onclick=()=>{if(bibleMode||currentIndex<0)return;openChapterNotes()};

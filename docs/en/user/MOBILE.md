@@ -10,10 +10,10 @@ On a phone you are not opening a "web app" — you are opening **one local HTML 
 
 Sitecase can import a local HTML file as a project and is the closest match to the target environment.
 
-1. Export a full backup from the old project: **More → Backup library**.
+1. Export a full backup from the old project: **More → Backup & restore → Backup library**.
 2. Copy `offline_library.html` to the phone (Files app / AirDrop / cloud drive).
 3. Create a new project in Sitecase and import that HTML.
-4. Open the new project and use **More → Restore full library** with the backup.
+4. Open the new project and use **More → Backup & restore → Restore library** with the backup.
 5. Verify TOC, article text, images, notes, bookmarks and history.
 6. Delete the old project only after verification.
 

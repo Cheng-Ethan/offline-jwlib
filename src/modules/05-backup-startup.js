@@ -118,7 +118,7 @@ async function backupNotes(){
 async function backupLibrary(){
   try{
     const metas=await allBooks();const est=metas.reduce((n,m)=>n+Number(m.estimatedSize||0),0);
-    if(est>150*1048576&&!confirm(`此设备上的资料约 ${Math.round(est/1048576)} MB，导出完整备份可能较慢或失败。继续吗？`))return;
+    if(est>150*1048576&&!(await askConfirm(t('备份整个图书馆'),`此设备上的资料约 ${Math.round(est/1048576)} MB，导出完整备份可能较慢或失败。`,'继续')))return;
     let done=0,lastPaint=0,bookCount=0;
     const paint=(label,force)=>{
       const now=Date.now();
@@ -263,18 +263,18 @@ $('backupInput').onchange=async e=>{
       logDiag('info','恢复笔记备份',{format:d.format,notes:notes.length,tags:tags.length,highlights:highlights.length});
       return;
     }
-    if(!confirm('恢复整个图书馆会按出版物 ID 覆盖/合并此设备上的记录，并导入笔记、标签、划线、书签和阅读历史。\n\n继续吗？'))return;
-    say('正在恢复图书馆','正在读取备份文件…');await tick();
+    if(!(await askConfirm(t('恢复整个图书馆'),'恢复整个图书馆会按出版物 ID 覆盖/合并此设备上的记录，并导入笔记、标签、划线、书签和阅读历史。','继续')))return;
+    say('正在恢复图书馆','正在读取备份文件…',true);await tick();
     let idMap=new Map(),bookCount=0,readBytes=0;
     const result=await streamLibraryBackup(f,{
       onFormat:(format)=>{restoreFormat=format;if(format==='offline-library-notes-v1')throw new Error('这是笔记备份，请使用“恢复笔记”。');if(!libraryFormats.includes(format))throw new Error('备份文件格式不正确')},
-      onProgress:(bytes)=>{readBytes=bytes;say('正在恢复图书馆',`正在读取备份…\n${fmtMb(bytes)} / ${fmtMb(f.size)}`)},
+      onProgress:(bytes)=>{readBytes=bytes;say('正在恢复图书馆',`正在读取备份…\n${fmtMb(bytes)} / ${fmtMb(f.size)}`,true)},
       onBook:async(book)=>{
         const full=await unpackValue(book);
         const map=buildRestoreIdMap([full]);map.forEach((v,k)=>idMap.set(k,v));
         if(!full.categoryPath)full.categoryPath=classifyPublication(full);
         await persistBook(full);bookCount++;
-        say('正在恢复图书馆',`正在读取备份…\n已恢复 ${bookCount} 本 · ${fmtMb(readBytes)} / ${fmtMb(f.size)}`);
+        say('正在恢复图书馆',`正在读取备份…\n已恢复 ${bookCount} 本 · ${fmtMb(readBytes)} / ${fmtMb(f.size)}`,true);
       }
     });
     let notes=await unpackValue(result.tail.notes||[]),tags=await unpackValue(result.tail.tags||[]),highlights=await unpackValue(result.tail.highlights||[]),marks=await unpackValue(result.tail.bookmarks||[]),history=await unpackValue(result.tail.history||[]),categories=await unpackValue(result.tail.categories||[]);
@@ -293,6 +293,7 @@ $('backupInput').onchange=async e=>{
 };
 function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();const t=setTimeout(()=>URL.revokeObjectURL(u),600000);try{if(t&&t.unref)t.unref()}catch(e){}}
 const APP_UPDATE_NOTES=[
+  '0.14 · 界面一致性/统一图标与菜单/使用说明/无障碍',
   '0.13 · 圣经/出版物全文搜索/最近搜索/搜索结果返回',
   '0.12 · 圣经串珠/经文信息/单节复制/经文笔记',
   '0.11 · 可收起笔记编辑器/撤销重做/栏目位置恢复',

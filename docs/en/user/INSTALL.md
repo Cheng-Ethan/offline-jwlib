@@ -21,7 +21,7 @@ If the browser says "local storage unavailable", try another modern browser with
 
 Use a local-HTML container app such as **Sitecase**:
 
-1. Export a full backup from the old project (**More → Backup library**).
+1. Export a full backup from the old project (**More → Backup & restore → Backup library**).
 2. Import `offline_library.html` as a new project in Sitecase.
 3. Restore the backup with **Restore full library**.
 4. Verify reading, images, notes and history before deleting the old project.

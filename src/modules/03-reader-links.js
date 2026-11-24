@@ -221,9 +221,9 @@ function linkPanelDocked(){return window.innerWidth>=1100}
 function linkPanelTitleEl(){return linkPanelDocked()?$('readerSidePanelTitle'):$('linkPopoverTitle')}
 function linkPanelBodyEl(){return linkPanelDocked()?$('readerSidePanelBody'):$('linkPopoverBody')}
 function linkPanelOpen(){return linkPanelDocked()?document.body.classList.contains('reader-panel-open'):($('linkPopover')&&$('linkPopover').style.display==='block')}
-function closeLinkPopover(){
+function closeLinkPopover(restore=true){
   document.body.classList.remove('reader-panel-open');
-  const pop=$('linkPopover');if(pop)pop.style.display='none';
+  const pop=$('linkPopover');if(pop){pop.style.display='none';if(restore)restorePanelFocus(pop)}
   const popBody=$('linkPopoverBody');if(popBody)popBody.innerHTML='';
   const sideBody=$('readerSidePanelBody');if(sideBody)sideBody.innerHTML='';
 }
@@ -240,19 +240,19 @@ function positionLinkPopover(anchorEl){
 }
 async function showLinkPopover(title,rawHtml,book,anchorEl,anchor=''){
   hideVerseActions();
-  closeLinkPopover();
+  closeLinkPopover(false);
   const docked=linkPanelDocked();
   const map=await docAssetMap(book,String(rawHtml||''));
   const clean=cleanHtml(String(rawHtml||''),map);
-  const titleEl=linkPanelTitleEl();if(titleEl)titleEl.textContent=title||'链接内容';
+  const titleEl=linkPanelTitleEl();if(titleEl)titleEl.textContent=title||t('链接内容');
   const body=linkPanelBodyEl();if(!body)return;
   body.innerHTML='';body.scrollTop=0;
   if(clean.styles){const style=document.createElement('style');style.textContent=clean.styles;body.appendChild(style);}
-  const content=document.createElement('div');content.className='publication-content publication-content-'+readerKind(book);content.innerHTML=clean.body||'<p>没有可显示的内容。</p>';body.appendChild(content);
+  const content=document.createElement('div');content.className='publication-content publication-content-'+readerKind(book);content.innerHTML=clean.body||('<p>'+t('没有可显示的内容。')+'</p>');body.appendChild(content);
   applyFootnoteMarkers(content);
   applyPinyinDom(body);
   if(docked)document.body.classList.add('reader-panel-open');
-  else $('linkPopover').style.display='block';
+  else {rememberPanelFocus($('linkPopover'));$('linkPopover').style.display='block';setTimeout(()=>focusSafely($('linkPopoverClose')),0)}
   requestAnimationFrame(()=>{
     if(!docked)positionLinkPopover(anchorEl);
     if(anchor){
@@ -388,7 +388,8 @@ async function showDoc(anchor=''){
     else if(oldView&&String(oldView.bookId)===String(currentBook.id)&&String(oldView.docId)===String(d.id))sectionViews[viewTab]=oldView;
     else sectionViews[viewTab]={bookId:String(currentBook.id),docId:String(d.id),scrollTop:restore,pid:'',anchorOffset:0};
   }
-  $('bookmarkBtn').textContent=await getOne('bookmarks',`${currentBook.id}:${d.id}`)?'★ 已书签':'☆ 书签';
+  renderBookmarkButton(!!await getOne('bookmarks',`${currentBook.id}:${d.id}`));
+  try{syncPager()}catch(e){}
   if(anchor){const target=findAnchorTarget(anchor);if(target)requestAnimationFrame(()=>target.scrollIntoView({block:'start'}));}
   return true;
 }
@@ -590,7 +591,7 @@ function addNoteMarker(id){
   if(!spans.length)return;
   const last=spans[spans.length-1],host=gutterHost(last);
   if(!host||host.querySelector('.hl-note-mark[data-hl-id="'+CSS.escape(String(id))+'"]'))return;
-  const m=document.createElement('button');m.type='button';m.className='hl-note-mark';m.dataset.hlId=String(id);m.title='笔记';
+  const m=document.createElement('button');m.type='button';m.className='hl-note-mark';m.dataset.hlId=String(id);m.title=t('笔记');
   placeGutterMarker(host,m);
 }
 function addVerseNoteMarker(note){
@@ -726,7 +727,7 @@ async function openReaderSearch(opts={}){
   readerSearchKind=kind==='bible'?'bible':'publications';
   readerSearchBook=book||null;
   readerSearchTab=tab;
-  panel.classList.add('show');
+  rememberPanelFocus(panel);panel.classList.add('show');
   const scope=$('readerSearchScope');if(scope)scope.textContent=readerSearchScopeLabel();
   const results=$('readerSearchResults');if(results)results.innerHTML='';
   const input=$('readerSearchInput');if(input)input.value='';
@@ -741,7 +742,7 @@ async function restoreReaderSearch(state){
 }
 function closeReaderSearch(){
   readerSearchRunId++;if(readerSearchTimer){clearTimeout(readerSearchTimer);readerSearchTimer=null}
-  const panel=$('readerSearchPanel');if(panel)panel.classList.remove('show');
+  const panel=$('readerSearchPanel');if(panel){panel.classList.remove('show');restorePanelFocus(panel)}
 }
 function prepareReaderSearchReturn(q){
   readerSearchReturn={kind:readerSearchKind,query:String(q||''),tab:readerSearchTab,bookId:readerSearchBook&&readerSearchBook.id};
@@ -934,7 +935,7 @@ function versesFromChapterHtml(html){
 }
 function hideContextActions(){
   const bar=$('contextActions');
-  if(bar){bar.classList.remove('show','mode-verse','mode-selection','mode-highlight');bar.querySelectorAll('[data-context-color]').forEach(b=>b.classList.remove('active'))}
+  if(bar){bar.classList.remove('show','mode-verse','mode-selection','mode-highlight','colors-open');const ct=bar.querySelector('.ctx-color-toggle');if(ct)ct.setAttribute('aria-expanded','false');bar.querySelectorAll('[data-context-color]').forEach(b=>b.classList.remove('active'))}
   if(verseActionTarget&&verseActionTarget.classList)verseActionTarget.classList.remove('verse-action-active');
   const content=hlRoot();if(content)content.classList.remove('context-spotlight');
   document.querySelectorAll('.hl.context-highlight-active').forEach(el=>el.classList.remove('context-highlight-active'));
@@ -1004,7 +1005,7 @@ async function updateHighlightColor(id,color){
 }
 async function clearHighlight(id){
   const h=await getOne('highlights',id);if(!h)return;
-  if(h.noteId&&!confirm('清除这个高亮颜色？关联笔记会保留。'))return;
+  if(h.noteId&&!(await askConfirm(t('清除颜色'),'清除这个高亮颜色？关联笔记会保留。')))return;
   try{await reqP(tx('highlights','readwrite').delete(id))}catch(e){}
   const spans=[...document.querySelectorAll('.hl[data-hl-id="'+CSS.escape(String(id))+'"]')];
   for(const span of spans){
@@ -1046,7 +1047,7 @@ async function openAnnotationEditor(highlight,note,draft,extra){
   $('annotationTitle').value=note.title||'';
   $('annotationText').value=note.text||'';
   editorTagPicker($('annotationTags'),annotationState.selectedTags,ids=>{annotationState.selectedTags=new Set(ids)});
-  $('annotationEditor').classList.add('show');
+  rememberPanelFocus($('annotationEditor'));$('annotationEditor').classList.add('show');setTimeout(()=>focusSafely($('annotationTitle')),0);
 }
 async function openHighlightNote(id){
   hideVerseActions();
@@ -1054,7 +1055,7 @@ async function openHighlightNote(id){
   let note=h.noteId?await getOne('notes',h.noteId):null;
   await openAnnotationEditor(h,note,!note);
 }
-function closeAnnotationEditor(){$('annotationEditor').classList.remove('show');annotationState=null;}
+function closeAnnotationEditor(){const p=$('annotationEditor');p.classList.remove('show');annotationState=null;restorePanelFocus(p)}
 async function saveAnnotation(){
   if(!annotationState)return;
   const {highlight,note,selectedTags}=annotationState;
@@ -1072,12 +1073,12 @@ async function deleteAnnotation(){
   if(!annotationState)return;
   const {highlight,note,draft}=annotationState;
   if(draft){closeAnnotationEditor();return}
-  if(!confirm('删除这条笔记？高亮会保留。'))return;
+  if(!(await askConfirm(t('删除'),'删除这条笔记？高亮会保留。')))return;
   try{await deleteNoteCascade(note.id)}catch(e){}
   removeNoteMarker(highlight.id);removeNoteMarker(note.id);
   closeAnnotationEditor();
 }
-function closeAnnotationsPanel(){$('annotationsPanel').classList.remove('show')}
+function closeAnnotationsPanel(){const p=$('annotationsPanel');p.classList.remove('show');restorePanelFocus(p)}
 async function openChapterNotes(){
   if(!currentBook||currentIndex<0)return;
   const d=currentBook.docs[currentIndex];if(!d)return;
@@ -1095,7 +1096,7 @@ async function openChapterNotes(){
       box.appendChild(b);
     });
   }
-  $('annotationsPanel').classList.add('show');
+  rememberPanelFocus($('annotationsPanel'));$('annotationsPanel').classList.add('show');setTimeout(()=>focusSafely($('annotationsClose')),0);
 }
 async function setupAnswerFields(bookId,docId){
   const article=$('article');if(!article)return;
@@ -1317,15 +1318,15 @@ async function openPublicationReference(href,anchorEl){
   return true;
 }
 async function openExtractInReader(book,extract,anchorEl,notice=''){
-  const title=extract.captionText||String(extract.caption||'').replace(/<[^>]+>/g,' ').replace(/[\s\u200b]+/g,' ').trim()||'链接内容';
+  const title=extract.captionText||String(extract.caption||'').replace(/<[^>]+>/g,' ').replace(/[\s\u200b]+/g,' ').trim()||t('链接内容');
   if(!extract.html){
-    await showLinkPopover(title,'<p>这条相关文章的正文没有保存在本机。</p><p>它很可能是在旧版（0.5.1 及更早）导入的；旧版只保存了链接和标题，没有保存 Extract 正文。请重新导入这份 PUB，或从包含正文的备份恢复后再试。</p>',book,anchorEl);
+    await showLinkPopover(title,'<p>'+t('这条相关文章的正文没有保存在本机。')+'</p><p>'+t('它很可能是在旧版（0.5.1 及更早）导入的；旧版只保存了链接和标题，没有保存 Extract 正文。请重新导入这份 PUB，或从包含正文的备份恢复后再试。')+'</p>',book,anchorEl);
     return;
   }
   await showLinkPopover(title,(notice||'')+extract.html,book,anchorEl);
 }
 async function openDocInPopover(book,doc,anchorEl,anchor='',notice=''){
-  await showLinkPopover(doc.title||'文章章节',(notice||'')+doc.html,book,anchorEl,anchor);
+  await showLinkPopover(doc.title||t('文章章节'),(notice||'')+doc.html,book,anchorEl,anchor);
 }
 async function routeBibleChapterLink(href,anchorEl){
   const m=String(href||'').match(/^jwpub:\/\/c\/([A-Za-z0-9_-]+):(\d+)\/(\d+):(\d+)(?:-(\d+):(\d+))?(?:\$p\/([A-Za-z0-9_-]+):(\d+)\/([^#?]*))?/i);
@@ -1382,7 +1383,7 @@ async function routeCommentaryLink(href,anchorEl){
   const aux=await getBookAux(m.id,m.gen);const rows=(aux&&aux.commentaries)||[];if(!rows.length)continue;
   let found=rows.find(x=>nums.includes(Number(x.id))||nums.includes(Number(x.commentaryMepsDocumentId)));
   if(!found&&rows.length===1)found=rows[0];
-  if(found){await showLinkPopover(found.label||'研究注释',languageFallbackNotice(sourceLang,m.lang)+(found.html||'<p>这条注释没有可显示的正文。</p>'),{...m,...(aux||{})},anchorEl);return;}
+  if(found){await showLinkPopover(found.label||t('研究注释'),languageFallbackNotice(sourceLang,m.lang)+(found.html||'<p>'+t('这条注释没有可显示的正文。')+'</p>'),{...m,...(aux||{})},anchorEl);return;}
  }
  for(const m of ordered){
   if(!m.hasExtracts)continue;
@@ -1599,7 +1600,6 @@ $('linkPopoverBody').addEventListener('click',handleLinkPanelClick);
 const _readerSidePanelBody=$('readerSidePanelBody');if(_readerSidePanelBody)_readerSidePanelBody.addEventListener('click',handleLinkPanelClick);
 $('linkPopoverClose').onclick=closeLinkPopover;
 const _readerSidePanelClose=$('readerSidePanelClose');if(_readerSidePanelClose)_readerSidePanelClose.onclick=closeLinkPopover;
-const _chapterNotesBtn=$('chapterNotesBtn');if(_chapterNotesBtn)_chapterNotesBtn.onclick=openChapterNotes;
 $('annotationsClose').onclick=closeAnnotationsPanel;
 $('annotationClose').onclick=closeAnnotationEditor;
 $('annotationSave').onclick=saveAnnotation;
@@ -1631,6 +1631,7 @@ $('contextActions').querySelectorAll('[data-context-act]').forEach(btn=>btn.oncl
   e.stopPropagation();
   const state=contextActionState;if(!state)return;
   const act=btn.getAttribute('data-context-act');
+  if(act==='color'){const bar=$('contextActions');if(bar){const open=bar.classList.toggle('colors-open');btn.setAttribute('aria-expanded',open?'true':'false')}return}
   if(act==='info'&&state.kind==='verse'){
     const ctx=state.ctx;hideContextActions();await showBibleVerseRefs(ctx.el);return;
   }

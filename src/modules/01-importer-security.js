@@ -481,10 +481,10 @@ async function parseJwpub(file,onProgress){
   return {...pub,id:idFor(pub),manifestName:manifest.name||file.name,originalFilename:file.name,commentaries,datedTexts,docs:docs.map(d=>{const {rawHtml,...meta}=d;return {...meta,html:rawHtml??d.html}}),toc,assets,bibleData,extracts,databaseInfo,importReport,importedAt:Date.now(),lastDocId:docs[0].id};
 }
 const CATEGORY_META={
-  bible:{icon:'📖',desc:'圣经译本和参考圣经'},books:{icon:'📚',desc:'完整书籍和学习书籍'},
-  magazines:{icon:'📰',desc:'守望台、警醒！及其他期刊'},
-  'magazines.watchtower':{icon:'📰',desc:'守望台'},'magazines.watchtower.study':{icon:'📰',desc:'守望台研读版'},'magazines.watchtower.public':{icon:'📰',desc:'守望台公众版'},'magazines.awake':{icon:'📰',desc:'警醒！'},'magazines.other':{icon:'📰',desc:'其他杂志'},
-  brochures:{icon:'📄',desc:'册子、小册子和单张'},'brochures.tracts':{icon:'📄',desc:'单张和邀请函'},'brochures.booklets':{icon:'📄',desc:'册子'},
-  meetings:{icon:'🗓️',desc:'聚会工作手册和节目'},reference:{icon:'🔎',desc:'研究指南、索引及工具书'},daily:{icon:'☀️',desc:'每日经文出版物'},songs:{icon:'🎵',desc:'诗歌和歌曲资料'},
-  other:{icon:'📁',desc:'其他出版物'},uncategorized:{icon:'❓',desc:'尚未归类的出版物'}
+  bible:{icon:'book',desc:'圣经译本和参考圣经'},books:{icon:'books',desc:'完整书籍和学习书籍'},
+  magazines:{icon:'magazine',desc:'守望台、警醒！及其他期刊'},
+  'magazines.watchtower':{icon:'magazine',desc:'守望台'},'magazines.watchtower.study':{icon:'magazine',desc:'守望台研读版'},'magazines.watchtower.public':{icon:'magazine',desc:'守望台公众版'},'magazines.awake':{icon:'magazine',desc:'警醒！'},'magazines.other':{icon:'magazine',desc:'其他杂志'},
+  brochures:{icon:'file',desc:'册子、小册子和单张'},'brochures.tracts':{icon:'file',desc:'单张和邀请函'},'brochures.booklets':{icon:'file',desc:'册子'},
+  meetings:{icon:'calendar',desc:'聚会工作手册和节目'},reference:{icon:'search',desc:'研究指南、索引及工具书'},daily:{icon:'sun',desc:'每日经文出版物'},songs:{icon:'music',desc:'诗歌和歌曲资料'},
+  other:{icon:'folder',desc:'其他出版物'},uncategorized:{icon:'help',desc:'尚未归类的出版物'}
 };

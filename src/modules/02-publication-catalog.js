@@ -95,7 +95,7 @@ function estimateBookSize(b){if(Number(b.estimatedSize))return Number(b.estimate
 function bookMatches(b,q){return !q||[b.title,b.displayTitle,b.shortTitle,b.symbol,b.publicationType,...(b.categories||[]),...(b.attributes||[]),...categoryPath(b),...categoryPath(b).map(catLabel)].join(' ').toLowerCase().includes(q)}
 function categoryCounts(books,prefix){const m=new Map();for(const b of books){const p=categoryPath(b);if(p.length<=prefix.length||!prefix.every((x,i)=>p[i]===x))continue;const key=p[prefix.length];m.set(key,(m.get(key)||0)+1)}return m}
 function clearLibraryLists(){ $('categories').innerHTML='';$('books').innerHTML=''; }
-function addCategoryCard(name,count,prefix){const meta=CATEGORY_META[name]||{icon:'📂',desc:'按此分类浏览'};const el=document.createElement('button');el.className='category-card';el.innerHTML=`<span class="category-icon">${meta.icon}</span><span><strong>${safeText(catLabel(name))}</strong><small>${count} ${t('本')} · ${safeText(t(meta.desc))}</small></span>`;el.onclick=()=>{categoryTrail=[...prefix,name];renderBooks()};$('categories').appendChild(el)}
+function addCategoryCard(name,count,prefix){const meta=CATEGORY_META[name]||{icon:'folder',desc:'按此分类浏览'};const el=document.createElement('button');el.className='category-card';el.innerHTML=`<span class="category-icon">${svgIcon(meta.icon,22)}</span><span><strong>${safeText(catLabel(name))}</strong><small>${count} ${t('本')} · ${safeText(t(meta.desc))}</small></span>`;el.onclick=()=>{categoryTrail=[...prefix,name];renderBooks()};$('categories').appendChild(el)}
 const BOOK_CATEGORIES=['bible','books','magazines','brochures','meetings','reference','daily','songs','other','uncategorized'];
 async function ensureCategoryIds(){
   let flag=null;try{flag=await getOne('system','categoryIdsV1')}catch(e){}
@@ -142,15 +142,15 @@ async function showCategoryManager(anchor){
     const row=document.createElement('div');row.className='category-manage-row';
     const name=document.createElement('button');name.className='book-action category-manage-name';name.textContent=`${c.name} (${count})`;
     name.onclick=async e=>{e.stopPropagation();const v=prompt(t('重命名分类'),c.name);if(v===null)return;const clean=String(v).trim();if(!clean)return;const updated={...c,name:clean};await saveOne('categories',updated);CUSTOM_CATEGORIES.set(String(c.id),updated);closeCategoryManager();renderSection()};
-    const del=document.createElement('button');del.className='category-manage-del';del.textContent='×';del.title=t('删除分类');
-    del.onclick=async e=>{e.stopPropagation();if(!confirm(t('删除分类')+'：'+c.name+'？'))return;
+    const del=document.createElement('button');del.className='category-manage-del';del.innerHTML=svgIcon('close',16);del.title=t('删除分类');del.setAttribute('aria-label',t('删除分类'));
+    del.onclick=async e=>{e.stopPropagation();if(!(await askConfirm(t('删除分类'),t('删除分类')+'：'+c.name+'？')))return;
       for(const b of all){if(String(b.categoryId||categoryPath(b)[0])!==String(c.id))continue;const meta=await getBookMeta(b.id);if(!meta)continue;meta.categoryId='uncategorized';meta.categoryPath=['uncategorized'];meta.categorySource='manual';await saveBookMeta(meta)}
       try{await reqP(tx('categories','readwrite').delete(c.id))}catch(err){}CUSTOM_CATEGORIES.delete(String(c.id));closeCategoryManager();renderSection();
     };
     row.append(name,del);menu.appendChild(row);
   }
-  const re=document.createElement('button');re.className='book-action';re.textContent=t('重新自动分类未手动归类的出版物');
-  re.onclick=async e=>{e.stopPropagation();if(!confirm(t('重新自动分类未手动归类的出版物')+'？'))return;
+  const re=document.createElement('button');re.className='book-action';re.innerHTML=svgIcon('search',18)+'<span></span>';re.lastChild.textContent=t('重新自动分类未手动归类的出版物');
+  re.onclick=async e=>{e.stopPropagation();if(!(await askConfirm(t('重新自动分类未手动归类的出版物'),t('重新自动分类未手动归类的出版物')+'？')))return;
     const metas=await allBooks();let n=0;
     for(const b of metas){if(b.categorySource==='manual')continue;const meta=await getBookMeta(b.id);if(!meta)continue;const path=classifyPublication(meta);meta.categoryId=path[0];meta.categoryPath=path;meta.categorySource='auto';await saveBookMeta(meta);n++}
     closeCategoryManager();renderSection();say(t('分类管理'),t('已重新分类')+' '+n+' '+t('项'));
@@ -171,10 +171,10 @@ function positionBookMenu(menu,anchor){
 function openBookActions(book,anchor){
   closeBookActions();
   const menu=document.createElement('div');menu.id='bookActionMenu';menu.className='book-action-menu';
-  const add=(label,fn,cls)=>{const b=document.createElement('button');b.className='book-action '+(cls||'');b.textContent=label;b.onclick=e=>{e.stopPropagation();closeBookActions();fn()};menu.appendChild(b)};
-  add(book.favorite?t('取消收藏'):t('收藏该出版物'),async()=>{const meta=await getBookMeta(book.id);if(!meta)return;meta.favorite=!meta.favorite;await saveBookMeta(meta);renderSection()});
-  add(t('移动分类'),()=>openCategoryPicker(book,anchor));
-  add(t('删除'),async()=>{if(!confirm(`确定删除《${book.displayTitle||book.title}》及其关联笔记、书签和阅读记录吗？`))return;await deletePublication(book);renderSection()},'delete');
+  const add=(label,fn,cls,icon)=>{const b=document.createElement('button');b.className='book-action '+(cls||'');b.innerHTML=svgIcon(icon||'right',18)+'<span></span>';b.lastChild.textContent=label;b.onclick=e=>{e.stopPropagation();closeBookActions();fn()};menu.appendChild(b)};
+  add(book.favorite?t('取消收藏'):t('收藏该出版物'),async()=>{const meta=await getBookMeta(book.id);if(!meta)return;meta.favorite=!meta.favorite;await saveBookMeta(meta);renderSection()},'',book.favorite?'starOn':'star');
+  add(t('移动分类'),()=>openCategoryPicker(book,anchor),'','folder');
+  add(t('删除'),async()=>{if(!(await askConfirm(t('删除'),`确定删除《${book.displayTitle||book.title}》及其关联笔记、书签和阅读记录吗？`)))return;await deletePublication(book);renderSection()},'delete','trash');
   document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
 }
 async function openCategoryPicker(book,anchor){
@@ -184,10 +184,10 @@ async function openCategoryPicker(book,anchor){
   const cur=categoryPath(book)[0];
   const move=async id=>{const meta=await getBookMeta(book.id);if(!meta)return;meta.categoryId=id;meta.categoryPath=[id];meta.categorySource='manual';await saveBookMeta(meta);closeBookActions();renderSection()};
   categoryMenuItems().forEach(item=>{
-    const b=document.createElement('button');b.className='book-action'+(cur===item.id?' active':'');b.textContent=item.label;
+    const b=document.createElement('button');b.className='book-action'+(cur===item.id?' active':'');b.innerHTML=svgIcon(cur===item.id?'check':'folder',18)+'<span></span>';b.lastChild.textContent=item.label;
     b.onclick=async e=>{e.stopPropagation();await move(item.id)};menu.appendChild(b);
   });
-  const mk=document.createElement('button');mk.className='book-action';mk.textContent=t('新建分类…');
+  const mk=document.createElement('button');mk.className='book-action';mk.innerHTML=svgIcon('plus',18)+'<span></span>';mk.lastChild.textContent=t('新建分类…');
   mk.onclick=async e=>{e.stopPropagation();const name=prompt(t('新分类名称'));const id=await createCustomCategory(name);if(id)await move(id);else closeBookActions()};
   menu.appendChild(mk);
   document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
@@ -195,12 +195,12 @@ async function openCategoryPicker(book,anchor){
 function makeBookCard(b){
   const el=document.createElement('div');el.className='book book-compact';el.tabIndex=0;
   const main=document.createElement('div');main.className='book-main';
-  const cover=document.createElement('div');cover.className='cover';cover.textContent='▤';
+  const cover=document.createElement('div');cover.className='cover';cover.innerHTML=svgIcon('book',20);
   const block=document.createElement('div');block.className='book-title-block';
-  const h=document.createElement('h3');h.textContent=b.displayTitle||b.title||'未命名出版物';
+  const h=document.createElement('h3');h.textContent=b.displayTitle||b.title||t('未命名出版物');
   const file=document.createElement('small');file.className='source-file';file.textContent=langLabel(b.lang)+' · '+sourceFileName(b.originalFilename||b.manifestName||t('原始文件未知'));
   block.append(h,file);main.append(cover,block);
-  const more=document.createElement('button');more.className='book-more';more.textContent='⋯';more.title='更多操作';more.setAttribute('aria-label','更多操作');
+  const more=document.createElement('button');more.className='book-more';more.innerHTML=svgIcon('more',18);more.title=t('更多操作');more.setAttribute('aria-label',t('更多操作'));
   more.onclick=e=>{e.stopPropagation();openBookActions(b,more)};
   const open=()=>openBook(b.id);
   el.onclick=open;el.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();open()}};
@@ -360,7 +360,7 @@ function showLangMenu(anchor){
     b.onclick=e=>{e.stopPropagation();setUiLang(code)};
     menu.appendChild(b);
   });
-  const add=document.createElement('button');add.className='book-action';add.textContent='＋';add.title=t('导入语言包');add.setAttribute('aria-label',t('导入语言包'));
+  const add=document.createElement('button');add.className='book-action';add.innerHTML=svgIcon('plus',18);add.title=t('导入语言包');add.setAttribute('aria-label',t('导入语言包'));
   add.onclick=e=>{e.stopPropagation();closeLangMenu();const f=$('languagePackInput');if(f)f.click()};menu.appendChild(add);
   const rect=anchor.getBoundingClientRect();menu.style.left=Math.max(8,rect.right-160)+'px';menu.style.top=(rect.bottom+6)+'px';
   document.body.appendChild(menu);langMenuOpenedAt=Date.now();
@@ -417,7 +417,7 @@ function sectionPanel(title,desc,opts={}){
   if(desc)box.appendChild(p);
   $('sectionDashboard').appendChild(box);return box;
 }
-function sectionBookCard(book,subtitle='',targetDocId=null){const card=document.createElement('div');card.className='section-book-card';const title=document.createElement('h3');title.textContent=book.displayTitle||book.title;const meta=document.createElement('p');meta.className='sub';meta.textContent=subtitle||`${langLabel(book.lang)} · ${book.year||''}${book.year?' · ':''}${Number(book.docCount??(book.docs||[]).length)} ${t('文档')} · ${sourceFileName(book.originalFilename||book.manifestName||t('原始文件未知'))}`;const actions=document.createElement('div');actions.className='section-card-actions';const open=document.createElement('button');open.className='btn';open.textContent='打开阅读';open.onclick=()=>targetDocId!==null?openDocInBook(book,targetDocId):openBook(book.id);actions.appendChild(open);if(Number(book.docCount??(book.docs||[]).length)>1){const toc=document.createElement('button');toc.className='btn secondary';toc.textContent='查看目录';toc.onclick=()=>{openBook(book.id).then(()=>{if(window.innerWidth<1100)$('drawer').style.display='block'})};actions.appendChild(toc)}card.append(title,meta,actions);return card}
+function sectionBookCard(book,subtitle='',targetDocId=null){const card=document.createElement('div');card.className='section-book-card';const title=document.createElement('h3');title.textContent=book.displayTitle||book.title;const meta=document.createElement('p');meta.className='sub';meta.textContent=subtitle||`${langLabel(book.lang)} · ${book.year||''}${book.year?' · ':''}${Number(book.docCount??(book.docs||[]).length)} ${t('文档')} · ${sourceFileName(book.originalFilename||book.manifestName||t('原始文件未知'))}`;const actions=document.createElement('div');actions.className='section-card-actions';const open=document.createElement('button');open.className='btn';open.textContent=t('打开阅读');open.onclick=()=>targetDocId!==null?openDocInBook(book,targetDocId):openBook(book.id);actions.appendChild(open);if(Number(book.docCount??(book.docs||[]).length)>1){const toc=document.createElement('button');toc.className='btn secondary';toc.textContent=t('查看目录');toc.onclick=()=>{openBook(book.id).then(()=>{if(window.innerWidth<1100)$('drawer').style.display='block'})};actions.appendChild(toc)}card.append(title,meta,actions);return card}
 function fmtMb(n){const v=Number(n||0);if(v>=1048576)return (v/1048576).toFixed(1)+'MB';if(v>=1024)return (v/1024).toFixed(1)+'KB';return v+'B'}
 async function copyText(text){
   if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);return}
@@ -458,13 +458,13 @@ async function renderMoreDashboard(books){
   const diagActions=document.createElement('div');diagActions.className='manage-actions';
   const mkDiagBtn=(label,fn)=>{const b=document.createElement('button');b.className='mini-action';b.textContent=label;b.onclick=fn;return b};
   let lastDiag=null;
-  const renderDiag=async()=>{diagBox.textContent='正在读取诊断信息…';try{lastDiag=await buildDiagnostics();diagBox.textContent=formatDiagnostics(lastDiag)}catch(e){diagBox.textContent='读取诊断信息失败：'+(e.message||e)}};
+  const renderDiag=async()=>{diagBox.textContent=t('正在读取诊断信息…');try{lastDiag=await buildDiagnostics();diagBox.textContent=formatDiagnostics(lastDiag)}catch(e){diagBox.textContent=t('读取诊断信息失败：')+(e.message||e)}};
   diagActions.append(
     mkDiagBtn(t('刷新'),()=>renderDiag()),
     mkDiagBtn(t('拼音自检'),()=>{const d=pinyinDebug();say(t('拼音自检'),Object.entries(d).map(([k,v])=>`${k}: ${v===null?'—':v}`).join('\n'))}),
     mkDiagBtn(t('复制诊断'),async()=>{try{if(!lastDiag)lastDiag=await buildDiagnostics();await copyText(JSON.stringify(lastDiag,null,2));say(t('已复制'),'诊断信息已复制到剪贴板。')}catch(e){say(t('复制失败'),e.message||String(e))}}),
     mkDiagBtn(t('下载诊断'),async()=>{try{if(!lastDiag)lastDiag=await buildDiagnostics();download(new Blob([JSON.stringify(lastDiag,null,2)],{type:'application/json'}),'offline-library-diagnostics.json')}catch(e){say(t('导出失败'),e.message||String(e))}}),
-    mkDiagBtn(t('清理旧版冗余'),async()=>{if(!confirm('清理已被新版本取代的旧正文/媒体记录？不会删除当前版本。'))return;try{const n=await cleanOldGenerations();await renderDiag();say(t('清理完成'),`已检查 ${n} 份出版物。`)}catch(e){say(t('清理失败'),e.message||String(e))}})
+    mkDiagBtn(t('清理旧版冗余'),async()=>{if(!(await askConfirm(t('清理旧版冗余'),'清理已被新版本取代的旧正文/媒体记录？不会删除当前版本。')))return;try{const n=await cleanOldGenerations();await renderDiag();say(t('清理完成'),`已检查 ${n} 份出版物。`)}catch(e){say(t('清理失败'),e.message||String(e))}})
   );
   diagPanel.appendChild(diagActions);
   renderDiag();
@@ -493,8 +493,8 @@ async function doRenderSection(filter){
   if(primarySection==='bible')return renderBibleHome(all);
   if(primarySection==='meetings')return renderMeetings(books);
   if(primarySection==='study')return renderStudy(books);
-  if(primarySection==='history'){ $('libraryTitle').textContent='阅读历史';$('librarySubtitle').textContent='点击任意记录直接回到上次阅读的文章和位置。';return renderHistory(books); }
-  if(primarySection==='more'){ $('libraryTitle').textContent='更多';$('librarySubtitle').textContent='导入、备份、诊断和设置。';return renderMoreDashboard(books); }
+  if(primarySection==='history'){ $('libraryTitle').textContent=t('阅读历史');$('librarySubtitle').textContent=t('点击任意记录直接回到上次阅读的文章和位置。');return renderHistory(books); }
+  if(primarySection==='more'){ $('libraryTitle').textContent=t('更多');$('librarySubtitle').textContent=t('导入、备份、诊断和设置。');return renderMoreDashboard(books); }
   return renderLibrary(books,q);
 }
 async function renderLibrary(books,q){
@@ -522,12 +522,12 @@ async function renderLibrary(books,q){
   const totalShown=$('books').children.length+$('categories').children.length;
   $('count').textContent=`${totalShown} ${t('项')}`;
   const empty=totalShown===0;$('empty').style.display=empty?'block':'none';
-  if(empty){$('empty').innerHTML=books.length?t('没有找到匹配的出版物。'):t('这里还没有出版物。')+'<br>'+t('点击右上角「更多」（⚙），从您的设备选择 PUB 文件。')}
+  if(empty){$('empty').innerHTML=books.length?t('没有找到匹配的出版物。'):t('这里还没有出版物。')+'<br>'+t('点击右上角「更多」，从您的设备选择 PUB 文件。')}
 }
 async function renderHome(books){
   dailyHomeDirty=false;
-  $('libraryTitle').textContent='首页';
-$('librarySubtitle').textContent='今日经文、收藏和最近导入。';
+  $('libraryTitle').textContent=t('首页');
+$('librarySubtitle').textContent=t('今日经文、收藏和最近导入。');
   const dash=$('sectionDashboard');
   const today=new Date();const dateLabel=today.toLocaleDateString(uiLocale(),{year:'numeric',month:'long',day:'numeric',weekday:'long'});
   const daily=await findTodayDaily(books);
@@ -536,12 +536,12 @@ $('librarySubtitle').textContent='今日经文、收藏和最近导入。';
     const d=await getBookDoc(daily.book.id,daily.doc.id);
     const summary=d?extractDailyVerse(d.html):{date:'',verse:''};
     const card=document.createElement('div');card.className='daily-card';
-    card.title='点击阅读今天全文';
+    card.title=t('点击阅读今天全文');
     card.setAttribute('role','link');card.tabIndex=0;
     const open=()=>openDocInBook(daily.book,daily.doc.id);
     card.onclick=open;card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}};
     const t=document.createElement('div');t.className='daily-title';t.textContent=(summary.date||dateLabel).replace(/(日)(星期)/,'$1 $2');
-    const p=document.createElement('p');p.className='daily-text';p.textContent=summary.verse||'点击阅读今天的经文。';
+    const p=document.createElement('p');p.className='daily-text';p.textContent=summary.verse||t('点击阅读今天的经文。');
     card.append(t,p);dailyPanel.appendChild(card);
   }else{
     const e=document.createElement('div');e.className='section-empty';e.innerHTML='<strong>'+t('今天没有可用的每日经文')+'</strong><p>'+t('请导入包含今天日期的每日经文 PUB（例如当年度的“天天查考圣经”）。')+'</p>';dailyPanel.appendChild(e);
@@ -556,7 +556,7 @@ $('librarySubtitle').textContent='今日经文、收藏和最近导入。';
   else{const e=document.createElement('div');e.className='section-empty';e.innerHTML='<strong>'+t('还没有资料')+'</strong><p>'+t('导入 PUB 后会显示在这里。')+'</p>';recentPanel.appendChild(e)}
 }
 async function renderBibleHome(books){
-  $('libraryTitle').textContent='圣经';$('librarySubtitle').textContent='选择译本、经卷和章节；其他出版物中的经文链接也会使用这里的本地经文。';
+  $('libraryTitle').textContent=t('圣经');$('librarySubtitle').textContent=t('选择译本、经卷和章节；其他出版物中的经文链接也会使用这里的本地经文。');
   const versions=orderedBibles(books);
   if(!versions.length){
     const panel=sectionPanel(t('圣经'),t('导入圣经 PUB 后即可在这里按经卷阅读。'));
@@ -568,7 +568,7 @@ async function renderBibleHome(books){
   const panel=sectionPanel(t('圣经'),t('选择经卷、章节或栏目'));
   const head=panel.querySelector('.section-panel-head');
   if(versions.length>1){
-    const menuBtn=document.createElement('button');menuBtn.className='section-help-btn';menuBtn.textContent='⋯';menuBtn.title=t('切换/排序圣经译本');menuBtn.setAttribute('aria-label','切换圣经译本');
+    const menuBtn=document.createElement('button');menuBtn.className='section-help-btn';menuBtn.innerHTML=svgIcon('more',18);menuBtn.title=t('切换/排序圣经译本');menuBtn.setAttribute('aria-label',t('切换圣经译本'));
     const menu=document.createElement('div');menu.className='bible-version-menu';menu.style.display='none';
     versions.forEach((v,idx)=>{
       const row=document.createElement('div');row.className='bible-version-row';
@@ -577,8 +577,8 @@ async function renderBibleHome(books){
       b.onclick=()=>{currentBibleId=v.id;try{localStorage.setItem('offlineLibraryBibleId',v.id)}catch(e){};bibleSelectedBook=null;bibleSection='正文';renderSection()};
       row.appendChild(b);
       const move=(dir)=>{const ids=versions.map(x=>x.id);const j=idx+dir;if(j<0||j>=ids.length)return;[ids[idx],ids[j]]=[ids[j],ids[idx]];saveBibleOrderIds(ids);renderSection()};
-      const up=document.createElement('button');up.className='bible-order-btn';up.textContent='↑';up.disabled=idx===0;up.title=t('上移');up.onclick=e=>{e.stopPropagation();move(-1)};
-      const down=document.createElement('button');down.className='bible-order-btn';down.textContent='↓';down.disabled=idx===versions.length-1;down.title=t('下移');down.onclick=e=>{e.stopPropagation();move(1)};
+      const up=document.createElement('button');up.className='bible-order-btn';up.innerHTML=svgIcon('up',14);up.disabled=idx===0;up.title=t('上移');up.setAttribute('aria-label',t('上移'));up.onclick=e=>{e.stopPropagation();move(-1)};
+      const down=document.createElement('button');down.className='bible-order-btn';down.innerHTML=svgIcon('down',14);down.disabled=idx===versions.length-1;down.title=t('下移');down.setAttribute('aria-label',t('下移'));down.onclick=e=>{e.stopPropagation();move(1)};
       row.append(up,down);menu.appendChild(row);
     });
     menuBtn.onclick=e=>{e.stopPropagation();menu.style.display=menu.style.display==='none'?'block':'none'};
@@ -628,7 +628,7 @@ function renderBibleBooks(panel,full){
   if(bibleSelectedBook){
     const bn=Number(bibleSelectedBook);
     const chs=(byBook.get(bn)||[]).sort((a,b)=>a-b);
-    const back=document.createElement('button');back.className='btn secondary';back.textContent='‹ '+t('全部经卷');back.onclick=()=>{bibleSelectedBook=null;renderSection()};panel.appendChild(back);
+    const back=document.createElement('button');back.className='btn secondary';back.innerHTML=svgIcon('left',16)+' '+t('全部经卷');back.onclick=()=>{bibleSelectedBook=null;renderSection()};panel.appendChild(back);
     const h=document.createElement('h3');h.className='bible-group-title bible-book-title';h.textContent=`${names[bn]||('第'+bn+'卷')} · ${bookAbbr(bn,full.lang)} · ${t('共')} ${chs.length} ${t('章')}`;panel.appendChild(h);
     const info=(full.bibleStructure&&full.bibleStructure.books||[]).find(x=>Number(x.num)===bn);
     if(info&&(info.introDocId||info.outlineDocId)){
@@ -801,12 +801,12 @@ async function renderMeetings(books){
   meetingWeekDocId=week.doc.id;
   const isToday=todayKey>=week.range.start&&todayKey<=week.range.end;
   const panel=sectionPanel(t('传道与生活聚会'),'');
-  const bar=document.createElement('button');bar.type='button';bar.className='meeting-collapse-bar';bar.innerHTML=`<span class="mc-date">${safeText(week.doc.title)}${isToday?' · '+t('今天'):''}</span><span class="mc-arrow">${meetingsExpanded?'▴':'▾'}</span>`;bar.onclick=()=>{meetingsExpanded=!meetingsExpanded;renderSection()};panel.appendChild(bar);
+  const bar=document.createElement('button');bar.type='button';bar.className='meeting-collapse-bar';bar.innerHTML=`<span class="mc-date">${safeText(week.doc.title)}${isToday?' · '+t('今天'):''}</span><span class="mc-arrow">${meetingsExpanded?svgIcon('up',16):svgIcon('down',16)}</span>`;bar.onclick=()=>{meetingsExpanded=!meetingsExpanded;renderSection()};panel.appendChild(bar);
   if(meetingsExpanded){
   const nav=document.createElement('div');nav.className='meeting-week-nav';
-  const prev=document.createElement('button');prev.textContent='‹ '+t('上一周');prev.disabled=idx<=0;prev.onclick=()=>{if(idx>0){meetingWeekDocId=data.weeks[idx-1].doc.id;renderSection()}};
+  const prev=document.createElement('button');prev.innerHTML=svgIcon('left',16)+' '+t('上一周');prev.disabled=idx<=0;prev.onclick=()=>{if(idx>0){meetingWeekDocId=data.weeks[idx-1].doc.id;renderSection()}};
   const label=document.createElement('div');label.className='meeting-week-label';label.innerHTML=`${safeText(week.doc.title)}${isToday?'<span class="meeting-today-badge">'+t('今天')+'</span>':''}`;
-  const next=document.createElement('button');next.textContent=t('下一周')+' ›';next.disabled=idx>=data.weeks.length-1;next.onclick=()=>{if(idx<data.weeks.length-1){meetingWeekDocId=data.weeks[idx+1].doc.id;renderSection()}};
+  const next=document.createElement('button');next.innerHTML=t('下一周')+svgIcon('right',16);next.disabled=idx>=data.weeks.length-1;next.onclick=()=>{if(idx<data.weeks.length-1){meetingWeekDocId=data.weeks[idx+1].doc.id;renderSection()}};
   nav.append(prev,label,next);panel.appendChild(nav);
   const parts=extractMeetingParts(week.doc.html);
   if(parts.length){
@@ -834,13 +834,13 @@ async function showHistoryPanel(){
   if(!hs.length){const e=document.createElement('div');e.className='section-empty';e.textContent=t('还没有阅读记录。阅读文章后会自动记录');list.appendChild(e)}
   else hs.forEach(h=>{
     const row=document.createElement('button');row.className='manage-row';
-    row.innerHTML=`<span><strong>${safeText(h.bookTitle||'出版物')}</strong><small>${safeText(h.title||'')} · ${new Date(Number(h.openedAt||0)).toLocaleString(uiLocale())}</small></span><span>${t('打开 ›')}</span>`;
+    row.innerHTML=`<span><strong>${safeText(h.bookTitle||t('出版物'))}</strong><small>${safeText(h.title||'')} · ${new Date(Number(h.openedAt||0)).toLocaleString(uiLocale())}</small></span><span>${t('打开 ›')}</span>`;
     row.onclick=async()=>{closeHistoryPanel();const b=await loadBook(h.bookId);if(!b){say('无法打开','对应出版物可能已被删除。');return}await openDocInBook(b,h.docId);restoreReaderScroll(h.scrollTop)};
     list.appendChild(row);
   });
-  $('historyPanel').classList.add('show');
+  rememberPanelFocus($('historyPanel'));$('historyPanel').classList.add('show');setTimeout(()=>focusSafely($('historyClose')),0);
 }
-function closeHistoryPanel(){$('historyPanel').classList.remove('show')}
+function closeHistoryPanel(){const p=$('historyPanel');p.classList.remove('show');restorePanelFocus(p)}
 async function renderHistory(books){
   const ids=new Set((books||[]).map(b=>b.id));
   const hs=(await reqP(tx('history').getAll())).filter(h=>!ids.size||ids.has(h.bookId)).sort((a,b)=>Number(b.openedAt||0)-Number(a.openedAt||0));
@@ -852,7 +852,7 @@ async function renderHistory(books){
   hs.slice(0,120).forEach(h=>{
     const row=document.createElement('button');row.className='manage-row';
     const left=document.createElement('span');
-    left.innerHTML=`<strong>${safeText(h.bookTitle||'出版物')}</strong><small>${safeText(h.title||'')} · ${new Date(Number(h.openedAt||0)).toLocaleString(uiLocale())}</small>`;
+    left.innerHTML=`<strong>${safeText(h.bookTitle||t('出版物'))}</strong><small>${safeText(h.title||'')} · ${new Date(Number(h.openedAt||0)).toLocaleString(uiLocale())}</small>`;
     const right=document.createElement('span');right.textContent=t('打开 ›');
     row.append(left,right);
     row.onclick=async()=>{
@@ -883,7 +883,7 @@ function renderStudyTagBar(container){
     const chip=document.createElement('div');chip.className='study-tag'+(studyState.tagFilter.has(tag.id)?' active':'');
     const name=document.createElement('button');name.type='button';name.className='study-tag-name';name.textContent=tag.name;
     name.onclick=()=>{if(studyState.tagFilter.has(tag.id))studyState.tagFilter.delete(tag.id);else studyState.tagFilter.add(tag.id);renderStudyTagBar(container);renderStudyNotes()};
-    const more=document.createElement('button');more.type='button';more.className='study-tag-more';more.textContent='⋯';more.title=t('标签操作');
+    const more=document.createElement('button');more.type='button';more.className='study-tag-more';more.innerHTML=svgIcon('more',18);more.title=t('标签操作');more.setAttribute('aria-label',t('标签操作'));
     more.onclick=e=>{e.stopPropagation();showTagActions(tag,more)};
     chip.append(name,more);container.appendChild(chip);
   });
@@ -897,8 +897,8 @@ function showTagActions(tag,anchor){
   closeBookActions();
   const menu=document.createElement('div');menu.id='bookActionMenu';menu.className='book-action-menu';
   const title=document.createElement('div');title.className='book-action-title';title.textContent=tag.name;menu.appendChild(title);
-  const del=document.createElement('button');del.className='book-action delete';del.textContent=t('删除标签');
-  del.onclick=async e=>{e.stopPropagation();closeBookActions();if(!confirm(`删除标签“${tag.name}”？笔记中的这个标签也会移除。`))return;await deleteTagCascade(tag.id);studyState.tagFilter.delete(tag.id);studyState.tags=studyState.tags.filter(t=>t.id!==tag.id);renderStudy(studyState.books)};
+  const del=document.createElement('button');del.className='book-action delete';del.innerHTML=svgIcon('trash',18)+'<span></span>';del.lastChild.textContent=t('删除标签');
+  del.onclick=async e=>{e.stopPropagation();closeBookActions();if(!(await askConfirm(t('删除标签'),`删除标签“${tag.name}”？笔记中的这个标签也会移除。`)))return;await deleteTagCascade(tag.id);studyState.tagFilter.delete(tag.id);studyState.tags=studyState.tags.filter(t=>t.id!==tag.id);renderStudy(studyState.books)};
   menu.appendChild(del);document.body.appendChild(menu);positionBookMenu(menu,anchor);
   bookMenuOpenedAt=Date.now();
 }
@@ -912,13 +912,13 @@ function noteRow(note,map){
   const card=document.createElement('div');card.className='note-card';card.tabIndex=0;
   const head=document.createElement('div');head.className='note-card-head';
   const h=document.createElement('h3');h.textContent=noteDisplayTitle(note);
-  const more=document.createElement('button');more.type='button';more.className='note-more';more.textContent='⋯';more.title=t('笔记操作');
+  const more=document.createElement('button');more.type='button';more.className='note-more';more.innerHTML=svgIcon('more',18);more.title=t('笔记操作');more.setAttribute('aria-label',t('笔记操作'));
   more.onclick=e=>{e.stopPropagation();showNoteActions(note,more)};
   head.append(h,more);
   const preview=document.createElement('p');preview.className='note-preview';preview.textContent=notePreview(note)||t('（无正文）');
   const tags=noteTagChips(note,map);
   card.append(head,preview,tags);
-  const del=document.createElement('button');del.type='button';del.className='swipe-delete';del.textContent='删除';
+  const del=document.createElement('button');del.type='button';del.className='swipe-delete';del.textContent=t('删除');
   del.onclick=async e=>{e.stopPropagation();await deleteNoteWithConfirm(note)};
   row.append(card,del);
   let startX=null,startY=null,open=false;
@@ -932,13 +932,13 @@ function noteRow(note,map){
 function showNoteActions(note,anchor){
   closeBookActions();
   const menu=document.createElement('div');menu.id='bookActionMenu';menu.className='book-action-menu';
-  const edit=document.createElement('button');edit.className='book-action';edit.textContent=t('编辑笔记');edit.onclick=e=>{e.stopPropagation();closeBookActions();openNoteEditor(note)};menu.appendChild(edit);
-  if(note.bookId&&note.docId){const open=document.createElement('button');open.className='book-action';open.textContent=t('打开原文');open.onclick=async e=>{e.stopPropagation();closeBookActions();const b=await loadBook(note.bookId);if(b)await openDocInBook(b,note.docId,'','study')};menu.appendChild(open)}
-  const del=document.createElement('button');del.className='book-action delete';del.textContent=t('删除');del.onclick=async e=>{e.stopPropagation();closeBookActions();await deleteNoteWithConfirm(note)};menu.appendChild(del);
+  const edit=document.createElement('button');edit.className='book-action';edit.innerHTML=svgIcon('pencil',18)+'<span></span>';edit.lastChild.textContent=t('编辑笔记');edit.onclick=e=>{e.stopPropagation();closeBookActions();openNoteEditor(note)};menu.appendChild(edit);
+  if(note.bookId&&note.docId){const open=document.createElement('button');open.className='book-action';open.innerHTML=svgIcon('right',18)+'<span></span>';open.lastChild.textContent=t('打开原文');open.onclick=async e=>{e.stopPropagation();closeBookActions();const b=await loadBook(note.bookId);if(b)await openDocInBook(b,note.docId,'','study')};menu.appendChild(open)}
+  const del=document.createElement('button');del.className='book-action delete';del.innerHTML=svgIcon('trash',18)+'<span></span>';del.lastChild.textContent=t('删除');del.onclick=async e=>{e.stopPropagation();closeBookActions();await deleteNoteWithConfirm(note)};menu.appendChild(del);
   document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
 }
 async function deleteNoteWithConfirm(note){
-  if(!confirm(`删除笔记“${noteDisplayTitle(note)}”？高亮会保留。`))return;
+  if(!(await askConfirm(t('删除'),`删除笔记“${noteDisplayTitle(note)}”？高亮会保留。`)))return;
   await deleteNoteCascade(note.id);
   studyState.notes=studyState.notes.filter(n=>n.id!==note.id);
   renderStudy(studyState.books);
@@ -1006,8 +1006,9 @@ async function persistNoteDraft(){
 }
 async function closeNoteEditor(){
   if(!noteEditorState)return;
+  const returnFocus=noteEditorState.returnFocus;
   try{await persistNoteDraft()}catch(e){console.warn('保存笔记失败',e)}
-  noteEditorState=null;hideNoteDock();renderStudy(studyState.books);
+  noteEditorState=null;hideNoteDock();renderStudy(studyState.books);restoreFocus(returnFocus);
 }
 async function minimizeNoteEditor(render=true){
   if(!noteEditorState)return;
@@ -1025,15 +1026,15 @@ function openNoteEditor(note){
   }else{
     state.minimized=false;
   }
-  const shell=document.createElement('section');shell.className='note-editor';state.shell=shell;
+  const shell=document.createElement('section');shell.className='note-editor';shell.id='noteEditor';state.returnFocus=document.activeElement;shell.setAttribute('role','dialog');shell.setAttribute('aria-modal','true');shell.setAttribute('aria-label',t('笔记'));state.shell=shell;
   const head=document.createElement('div');head.className='note-editor-head';
-  const min=document.createElement('button');min.type='button';min.className='iconbtn';min.textContent='⌄';min.title=t('收起');min.onclick=()=>minimizeNoteEditor(true);
+  const min=document.createElement('button');min.type='button';min.className='iconbtn';min.innerHTML=svgIcon('collapse',20);min.title=t('收起');min.setAttribute('aria-label',t('收起'));min.onclick=()=>minimizeNoteEditor(true);
   const spacer=document.createElement('div');spacer.className='note-head-spacer';
   const undoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a6 6 0 0 1 0 12h-1"/></svg>';
   const redoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9h-9a6 6 0 0 0 0 12h1"/></svg>';
   const undo=document.createElement('button');undo.type='button';undo.className='iconbtn note-icon-btn';undo.innerHTML=undoIcon;undo.title=t('撤销');undo.setAttribute('aria-label',t('撤销'));undo.onclick=()=>{if(state.index>0){state.index--;applyNoteSnapshot(state,state.history[state.index])}};
   const redo=document.createElement('button');redo.type='button';redo.className='iconbtn note-icon-btn';redo.innerHTML=redoIcon;redo.title=t('前进');redo.setAttribute('aria-label',t('前进'));redo.onclick=()=>{if(state.index<state.history.length-1){state.index++;applyNoteSnapshot(state,state.history[state.index])}};
-  const close=document.createElement('button');close.type='button';close.className='iconbtn';close.textContent='×';close.title=t('关闭');close.onclick=closeNoteEditor;
+  const close=document.createElement('button');close.type='button';close.className='iconbtn';close.innerHTML=svgIcon('close',18);close.title=t('关闭');close.setAttribute('aria-label',t('关闭'));close.onclick=closeNoteEditor;
   head.append(min,spacer,undo,redo,close);
   const title=document.createElement('input');title.className='note-input';title.placeholder=t('标题');title.value=state.note.title||'';
   const text=document.createElement('textarea');text.className='note-textarea';text.placeholder=t('写笔记…');text.value=state.note.text||'';
@@ -1056,6 +1057,7 @@ function openNoteEditor(note){
   const footer=document.createElement('div');footer.className='note-editor-footer';footer.append(tagLabel,tagBox);
   shell.append(head,title,text,footer);dash.appendChild(shell);
   hideNoteDock();
+  setTimeout(()=>focusSafely(title),0);
   // The editor is sized to the viewport; starting from the list's old scroll
   // position would push the tag footer underneath the fixed bottom navigation.
   try{window.scrollTo(0,0)}catch(e){}
@@ -1071,7 +1073,7 @@ async function renderStudy(books){
   const toolbar=document.createElement('div');toolbar.className='study-toolbar';
   const search=document.createElement('input');search.className='search study-search';search.placeholder=t('搜索标题、正文或标签');search.value=studyState.query||'';
   search.oninput=()=>{studyState.query=search.value;renderStudyNotes()};
-  const add=document.createElement('button');add.type='button';add.className='iconbtn study-add-note';add.textContent='＋';add.title=t('新建笔记');add.onclick=()=>openNoteEditor(null);
+  const add=document.createElement('button');add.type='button';add.className='iconbtn study-add-note';add.innerHTML=svgIcon('plus',18);add.title=t('新建笔记');add.onclick=()=>openNoteEditor(null);
   toolbar.append(search,add);
   const tagbar=document.createElement('div');tagbar.className='study-tagbar';tagbar.id='studyTagBar';
   const list=document.createElement('div');list.className='study-note-list';list.id='studyNoteList';
@@ -1100,17 +1102,29 @@ document.addEventListener('click',e=>{
   if(cm&&!cm.contains(e.target))cm.remove();
 });
 
-function showSystemMenu(anchor){
+const HELP_TEXT_ZH='这是一个单文件离线图书馆。底部导航依次是首页、圣经、多媒体图书馆、聚会和个人研读。单击栏目回到上次位置，双击回到该栏目顶部。导入：点右上角「更多」，选择设备中的 PUB 文件；新文件默认勾选，已导入的文件默认不勾选。备份与恢复：定期导出完整备份，恢复前会先确认。界面语言用顶部语言按钮切换；阅读时可用左右方向键翻页。';
+function showHelp(){say(t('使用说明'),uiLang==='zh'?HELP_TEXT_ZH:t('使用说明内容'))}
+function showSystemMenu(anchor,view){
   closeBookActions();
   const menu=document.createElement('div');menu.id='bookActionMenu';menu.className='book-action-menu';
-  const add=(label,fn)=>{const b=document.createElement('button');b.className='book-action';b.textContent=t(label);b.onclick=e=>{e.stopPropagation();closeBookActions();fn()};menu.appendChild(b)};
-  add('导入 PUB',()=>$('fileInput').click());
-  add('备份笔记',()=>backupNotes());
-  add('恢复笔记',()=>startRestore('notes'));
-  add('备份整个图书馆',()=>backupLibrary());
-  add('恢复整个图书馆',()=>startRestore('library'));
-  add('系统诊断',()=>setPrimaryNav('more'));
-  add('设置与关于',()=>showAbout());
+  const add=(label,fn,icon)=>{const b=document.createElement('button');b.className='book-action';b.innerHTML=svgIcon(icon,18)+'<span>'+t(label)+'</span>';b.onclick=e=>{e.stopPropagation();closeBookActions();fn()};menu.appendChild(b)};
+  const reopen=(next)=>{closeBookActions();showSystemMenu(anchor,next)};
+  if(view==='backup'){
+    add('备份笔记',()=>backupNotes(),'download');
+    add('恢复笔记',()=>startRestore('notes'),'upload');
+    add('备份整个图书馆',()=>backupLibrary(),'download');
+    add('恢复整个图书馆',()=>startRestore('library'),'upload');
+    add('返回',()=>reopen(''),'left');
+  }else if(view==='settings'){
+    add('系统诊断',()=>setPrimaryNav('more'),'search');
+    add('设置与关于',()=>showAbout(),'settings');
+    add('返回',()=>reopen(''),'left');
+  }else{
+    add('导入 PUB',()=>$('fileInput').click(),'plus');
+    add('备份与恢复',()=>reopen('backup'),'download');
+    add('使用说明',()=>showHelp(),'help');
+    add('设置与诊断',()=>reopen('settings'),'settings');
+  }
   document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
 }
 

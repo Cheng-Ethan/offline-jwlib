@@ -6,9 +6,8 @@
 
 ## 1. 基线
 
-- 当前基线版本：**0.13.0**。上游 0.13 之前的历史视为折叠，不再追溯。
-- 本次文档分层重构属于基线的一部分：**不升版本**，不修改 `project.json` 或 `APP_VERSION`，不重建 HTML。
-- 从**下一次**实际改动开始，按第 4 节规则升版本。
+- 初始基线版本：**0.13.0**；上游 0.13 之前的历史视为折叠，不再追溯。当前版本以 `project.json` 的 `appVersion` 为准。
+- 文档分层重构属于 0.13 基线的一部分；从 0.14 起按第 4 节规则升版本并重建产物。
 
 ## 2. 分支规则
 
@@ -92,7 +91,7 @@
 
 ## English summary
 
-- Baseline version is **0.13.0**; the current documentation refactor does not bump it.
+- Initial baseline is **0.13.0**; the current version is `appVersion` in `project.json`.
 - `develop` is the development stream; `master` is published periodically by the user; `main` is only an upstream reference.
 - User docs live in `docs/user/`; developer docs in `docs/dev/`; both have English mirrors.
 - Version rules: major for breaking changes, minor for new capabilities, patch for non-breaking improvements, **no bump for pure bug fixes**. `project.json` → version constant → CHANGELOG → READMEs must stay in sync.

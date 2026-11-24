@@ -1,6 +1,14 @@
 # 更新记录 / Changelog
 
-> 当前版本以 `project.json` 为准：**0.13.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
+> 当前版本以 `project.json` 为准：**0.14.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
+
+## 0.14.0（2026-11-24）
+- **界面一致性改版**：统一 9 档字号、4 档圆角、2 种阴影与语义色 token；按钮、图标按钮、菜单项和确认框共用同一套组件规则。
+- 界面图标统一为一套线性 SVG；分类图标不再使用 emoji；书签使用同一星形图标的空心/实心状态。
+- 顶部「更多」菜单收敛为 4 个顶层项；备份与恢复、设置与诊断进入二级菜单；新增「使用说明」入口。
+- 高亮颜色收进一个颜色按钮的浮层；恢复「本章笔记」入口；上一节/下一节按位置禁用，并支持左右方向键翻页。
+- 浏览器原生 `confirm()` 改为可翻译的应用内确认对话框；补齐英语、日语、韩语界面文案。
+- 无障碍：统一焦点环、Escape 关闭浮层、弹窗焦点管理、44px 触控目标、减少动效支持；界面允许缩放。
 
 ## 0.13.0（2026-11-24）
 - **基线版本**：本仓库以 0.13.0 作为初始版本，上游更早历史折叠；本次文档分层重构不升版本。开发规则见 [AGENTS.md](AGENTS.md)。
@@ -53,8 +61,9 @@
 
 ## English summary
 
-The current version is defined by `project.json`: **0.13.0**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
+The current version is defined by `project.json`: **0.14.0**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
 
+- **0.14.0** — UI consistency pass: shared type/radius/shadow/semantic-colour tokens; one linear SVG icon set; four-item More menu with nested backup and settings views; in-app help; one highlight-colour control; restored chapter-notes entry; pager states and arrow-key paging; in-app translatable confirmations; focus management, Escape handling, 44px touch targets and reduced-motion support.
 - **0.13.0** — baseline version (earlier upstream history collapsed; this docs restructure does not bump it; see [AGENTS.md](AGENTS.md)); full-text search for Bible/publications, recent searches, return-to-results; bilingual open-source documentation split into user/dev trees; MIT licence, contributing guide, security policy, code of conduct and third-party notices.
 - **0.12.0** — Bible concordance, verse info, single-verse copy and verse notes.
 - **0.11.0** — collapsible note editor, undo/redo and section scroll restoration.

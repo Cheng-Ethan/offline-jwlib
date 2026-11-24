@@ -19,7 +19,7 @@ Exports are `application/json`. Filenames are fixed to `offline-library-library-
 ```json
 {
   "format": "offline-library-notes-v1",
-  "appVersion": "0.13.0",
+  "appVersion": "0.14.0",
   "createdAt": "2026-11-24T00:00:00.000Z",
   "notes": [],
   "tags": [],
@@ -36,7 +36,7 @@ Top-level structure (streamed by `backupLibrary()`):
 ```json
 {
   "format": "offline-library-library-v1",
-  "appVersion": "0.13.0",
+  "appVersion": "0.14.0",
   "createdAt": "2026-11-24T00:00:00.000Z",
   "books": [ "<packed book>" ],
   "notes": [ "<packed notes>" ],

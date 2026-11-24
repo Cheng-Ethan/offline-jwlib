@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const APP_VERSION='0.13.0';
+const APP_VERSION='0.14.0';
 const DB_NAME='OfflineJwLibrary', DB_VERSION=5;
 let idb, SQL, currentBook=null, currentIndex=0, fontSize=19, currentObjectUrls=[], bibleMode=false, bibleReturn=null;
 let assetUrlCache=new Map(), pronunciationOn=false, historyWriteAt=0, readerReturnSection=null, readerNavSection=null, readerOriginSection=null, readerReturnTarget=null;
@@ -117,8 +117,8 @@ Object.assign(I18N.en,{'还没有阅读记录。':'No reading history yet.','还
 Object.assign(I18N.ja,{'还没有阅读记录。':'閲覧履歴はまだありません。','还没有书签。':'ブックマークはまだありません。','还没有个人笔记。':'メモはまだありません。','返回原文':'戻る'});
 Object.assign(I18N.en,{'移除':'Remove','正在导入':'Importing'});
 Object.assign(I18N.ja,{'移除':'削除','正在导入':'インポート中'});
-Object.assign(I18N.en,{'使用说明内容':'This is a single-file offline library. Bottom navigation: Home, Bible, Media Library, Meetings, Personal Study. Tap once to return to the last position; double-tap to reset. To import, tap More (⚙) in the top-right corner and choose PUB files from your device; new files are selected, already imported files are not. Use the language button in the header to switch the interface language; publications are filtered by language. Export backups regularly.'});
-Object.assign(I18N.ja,{'使用说明内容':'これは単一HTMLのオフライン図書館です。下部ナビゲーション：ホーム、聖書、マルチメディア図書館、集会、個人研究。1回タップで前回の位置へ、2回タップで初期位置へ戻ります。PUBのインポートは右上の「その他」（⚙）から行い、お使いのデバイスからファイルを選択します。未インポートのファイルは選択済み、インポート済みは未選択です。ヘッダーの言語ボタンで表示言語を切り替えると、出版物もその言語だけが表示されます。定期的にバックアップを書き出してください。'});
+Object.assign(I18N.en,{'使用说明内容':'This is a single-file offline library. Bottom navigation: Home, Bible, Media Library, Meetings, Personal Study. Tap once to return to the last position; double-tap to reset. To import, tap More in the top-right corner and choose PUB files from your device; new files are selected, already imported files are not. Use the language button in the header to switch the interface language; publications are filtered by language. Export backups regularly.'});
+Object.assign(I18N.ja,{'使用说明内容':'これは単一HTMLのオフライン図書館です。下部ナビゲーション：ホーム、聖書、マルチメディア図書館、集会、個人研究。1回タップで前回の位置へ、2回タップで初期位置へ戻ります。PUBのインポートは右上の「その他」から行い、お使いのデバイスからファイルを選択します。未インポートのファイルは選択済み、インポート済みは未選択です。ヘッダーの言語ボタンで表示言語を切り替えると、出版物もその言語だけが表示されます。定期的にバックアップを書き出してください。'});
 Object.assign(I18N.en,{'切换/排序圣经译本':'Switch / order Bible versions'});
 Object.assign(I18N.ja,{'切换/排序圣经译本':'聖書訳の切替・並べ替え'});
 Object.assign(I18N.en,{'搜索标题或正文':'Search titles or text','新标签':'New tag','编辑笔记':'Edit note','新建笔记':'New note','保存':'Save','写笔记…':'Write a note…','标题':'Title','标签':'Tags','无标题笔记':'Untitled note','（无正文）':'(No text)','没有找到匹配的笔记':'No matching notes','还没有笔记。阅读文章时可以添加笔记。':'No notes yet. You can add notes while reading.','打开原文':'Open original','删除标签':'Delete tag','标签操作':'Tag actions','笔记操作':'Note actions','本章笔记':'Chapter notes','本章还没有划线笔记。':'No highlights in this chapter yet.','备份笔记':'Back up notes','恢复笔记':'Restore notes','备份整个图书馆':'Back up library','恢复整个图书馆':'Restore library','系统诊断':'Diagnostics','写批注…':'Write a comment…'});
@@ -170,7 +170,7 @@ I18N.ko={
  '出版物':'출판물','收藏的出版物会显示在这里':'즐겨찾는 출판물이 여기에 표시됩니다','还没有导入资料':'아직 가져온 자료가 없습니다','最近导入的资料会显示在这里':'최근 가져온 출판물이 여기에 표시됩니다','导入 PUB、备份、恢复和系统诊断。':'PUB 가져오기, 백업, 복원 및 진단.','数据保存在当前 Sitecase / 浏览器项目的本地数据库中。更换项目或更新来源前，请先导出备份。':'데이터는 현재 Sitecase/브라우저 프로젝트의 로컬 데이터베이스에 저장됩니다. 프로젝트나 소스를 변경하기 전에 백업을 내보내십시오.','建议在升级前先导出完整备份；恢复备份会按记录 ID 合并数据。':'업그레이드 전에 전체 백업을 내보내는 것이 좋습니다. 복원은 기록 ID별로 병합됩니다.','调整阅读时的注音显示。设置只保存在当前浏览器项目中。':'읽을 때 병음 표시를 조정합니다. 설정은 현재 브라우저 프로젝트에만 저장됩니다.','点击记录可回到对应文章和上次阅读位置。':'기록을 누르면 해당 기사와 마지막 읽은 위치로 돌아갑니다.','集中管理已经标记的文章或章节。':'북마크한 기사나 장을 관리합니다.','笔记仅保存在本机；请通过完整备份在设备间迁移。':'메모는 이 기기에만 저장됩니다. 전체 백업으로 다른 기기로 옮기십시오.','查看本机存储、迁移状态和最近的导入/备份事件。诊断信息不包含正文内容。':'저장 공간, 마이그레이션 상태, 최근 가져오기/백업 이벤트를 봅니다. 진단 정보에는 본문이 포함되지 않습니다.','导入圣经 PUB 后即可在这里按经卷阅读。':'성경 PUB를 가져오면 여기에서 책별로 읽을 수 있습니다.','最近导入的':'최근 가져온','份资料':'개 출판물','条记录':'개 기록',
  '还没有阅读记录。':'읽기 기록이 없습니다.','还没有书签。':'북마크가 없습니다.','还没有个人笔记。':'개인 메모가 없습니다.','返回原文':'원문으로 돌아가기',
  '移除':'제거','正在导入':'가져오는 중',
- '使用说明内容':'단일 HTML 오프라인 도서관입니다. 하단 탐색: 홈, 성경, 멀티미디어 도서관, 집회, 개인 연구. 한 번 누르면 마지막 위치로, 두 번 누르면 기본 위치로 돌아갑니다. PUB 가져오기는 오른쪽 위 「더보기」(⚙)에서 하며, 기기에서 파일을 선택합니다. 가져오지 않은 파일은 선택되고 가져온 파일은 선택되지 않습니다. 헤더의 언어 버튼으로 인터페이스 언어를 바꿀 수 있습니다. 정기적으로 백업을 내보내십시오.',
+ '使用说明内容':'단일 HTML 오프라인 도서관입니다. 하단 탐색: 홈, 성경, 멀티미디어 도서관, 집회, 개인 연구. 한 번 누르면 마지막 위치로, 두 번 누르면 기본 위치로 돌아갑니다. PUB 가져오기는 오른쪽 위 「더보기」에서 하며, 기기에서 파일을 선택합니다. 가져오지 않은 파일은 선택되고 가져온 파일은 선택되지 않습니다. 헤더의 언어 버튼으로 인터페이스 언어를 바꿀 수 있습니다. 정기적으로 백업을 내보내십시오.',
  '切换/排序圣经译本':'성경 번역판 전환/정렬',
  '搜索标题或正文':'제목 또는 본문 검색','新标签':'새 태그','编辑笔记':'메모 편집','新建笔记':'새 메모','保存':'저장','写笔记…':'메모 작성…','标题':'제목','标签':'태그','无标题笔记':'제목 없는 메모','（无正文）':'(본문 없음)','没有找到匹配的笔记':'일치하는 메모가 없습니다','打开原文':'원문 열기','删除标签':'태그 삭제','标签操作':'태그 작업','笔记操作':'메모 작업','本章笔记':'이 장의 메모','本章还没有划线笔记。':'이 장에는 아직 하이라이트 메모가 없습니다.','备份笔记':'메모 백업','恢复笔记':'메모 복원','备份整个图书馆':'도서관 전체 백업','恢复整个图书馆':'도서관 전체 복원','写批注…':'주석 작성…',
  '笔记':'메모','收起':'최소화','撤销':'실행 취소','前进':'다시 실행','相关经文':'관련 성구','经文信息':'구절 정보','整节经文':'전체 구절','这一节没有可显示的脚注或相关经文。':'이 구절에는 표시할 각주나 관련 성구가 없습니다.','脚注':'각주','没有找到对应的脚注正文。':'해당 각주 본문을 찾지 못했습니다.','无法确定当前经卷。':'현재 성경 책을 확인할 수 없습니다.','添加笔记':'메모 추가','复制本章':'이 구절 복사','复制经文':'이 구절 복사','没有找到相关经文。':'관련 성구를 찾지 못했습니다.','没有找到经文正文。':'성구 본문을 찾지 못했습니다.','正在读取…':'읽는 중…','仅显示前 20 条':'처음 20개만 표시합니다.','经文已复制。':'구절을 복사했습니다.','这份圣经是在旧版本导入的，没有串珠索引。请重新导入该圣经 PUB。':'이 성경은 이전 버전에서 가져와 관련 성구 색인이 없습니다. 성경 PUB를 다시 가져오십시오.','搜索或新建标签':'태그 검색 또는 만들기','搜索标题、正文或标签':'제목, 본문 또는 태그 검색',
@@ -193,15 +193,78 @@ Object.assign(I18N.ko,{'所有已导入出版物':'가져온 모든 출판물','
 Object.assign(I18N.en,{'收起栏目':'Collapse sidebar','展开栏目':'Expand sidebar','隐藏目录':'Hide contents','显示目录':'Show contents'});
 Object.assign(I18N.ja,{'收起栏目':'サイドバーを折りたたむ','展开栏目':'サイドバーを展開','隐藏目录':'目次を隠す','显示目录':'目次を表示'});
 Object.assign(I18N.ko,{'收起栏目':'사이드바 접기','展开栏目':'사이드바 펼치기','隐藏目录':'목차 숨기기','显示目录':'목차 표시'});
-Object.assign(I18N.en,{'点击右上角「更多」（⚙），从您的设备选择 PUB 文件。':'Tap More (⚙) in the top-right corner, then choose a PUB file from your device.','未导入的文件默认勾选；已导入的文件默认不勾选；如需覆盖重新解析，请勾选对应文件。':'New files are selected by default; already imported files are not. Tick an imported file to overwrite and re-parse it.'});
-Object.assign(I18N.ja,{'点击右上角「更多」（⚙），从您的设备选择 PUB 文件。':'右上の「その他」（⚙）から、お使いのデバイス内のPUBファイルを選択してください。','未导入的文件默认勾选；已导入的文件默认不勾选；如需覆盖重新解析，请勾选对应文件。':'未インポートのファイルは既定で選択され、インポート済みのファイルは選択されません。上書き再解析するには該当ファイルにチェックを入れてください。'});
-Object.assign(I18N.ko,{'点击右上角「更多」（⚙），从您的设备选择 PUB 文件。':'오른쪽 위 「더보기」(⚙)를 누른 다음 기기에서 PUB 파일을 선택하십시오.','未导入的文件默认勾选；已导入的文件默认不勾选；如需覆盖重新解析，请勾选对应文件。':'가져오지 않은 파일은 기본으로 선택되고 가져온 파일은 선택되지 않습니다. 덮어쓰기로 다시 분석하려면 해당 파일을 선택하십시오.'});
+Object.assign(I18N.en,{'点击右上角「更多」，从您的设备选择 PUB 文件。':'Tap More in the top-right corner, then choose a PUB file from your device.','未导入的文件默认勾选；已导入的文件默认不勾选；如需覆盖重新解析，请勾选对应文件。':'New files are selected by default; already imported files are not. Tick an imported file to overwrite and re-parse it.'});
+Object.assign(I18N.ja,{'点击右上角「更多」，从您的设备选择 PUB 文件。':'右上の「その他」から、お使いのデバイス内のPUBファイルを選択してください。','未导入的文件默认勾选；已导入的文件默认不勾选；如需覆盖重新解析，请勾选对应文件。':'未インポートのファイルは既定で選択され、インポート済みのファイルは選択されません。上書き再解析するには該当ファイルにチェックを入れてください。'});
+Object.assign(I18N.ko,{'点击右上角「更多」，从您的设备选择 PUB 文件。':'오른쪽 위 「더보기」를 누른 다음 기기에서 PUB 파일을 선택하십시오.','未导入的文件默认勾选；已导入的文件默认不勾选；如需覆盖重新解析，请勾选对应文件。':'가져오지 않은 파일은 기본으로 선택되고 가져온 파일은 선택되지 않습니다. 덮어쓰기로 다시 분석하려면 해당 파일을 선택하십시오.'});
+Object.assign(I18N.en,{"未命名出版物":"Untitled publication","点击阅读今天的经文。":"Read today’s verse.","没有可显示的内容。":"No content to display.","这条相关文章的正文没有保存在本机。":"The text for this related article is not stored on this device.","它很可能是在旧版（0.5.1 及更早）导入的；旧版只保存了链接和标题，没有保存 Extract 正文。请重新导入这份 PUB，或从包含正文的备份恢复后再试。":"It was probably imported with an older version (0.5.1 or earlier), which saved only the link and title, not the Extract text. Re-import this PUB, or restore from a backup that contains the text, and try again.","这条注释没有可显示的正文。":"No readable text for this note.","文章章节":"Article section","研究注释":"Study note"});
+Object.assign(I18N.ja,{"未命名出版物":"無題の出版物","点击阅读今天的经文。":"今日の聖句を読む。","没有可显示的内容。":"表示できる内容がありません。","这条相关文章的正文没有保存在本机。":"この関連記事の本文はこの端末に保存されていません。","它很可能是在旧版（0.5.1 及更早）导入的；旧版只保存了链接和标题，没有保存 Extract 正文。请重新导入这份 PUB，或从包含正文的备份恢复后再试。":"旧版（0.5.1以前）でインポートされた可能性があります。旧版はリンクとタイトルだけを保存し、Extract本文を保存していません。このPUBを再インポートするか、本文を含むバックアップから復元して再試行してください。","这条注释没有可显示的正文。":"この注釈には表示できる本文がありません。","文章章节":"記事の章","研究注释":"研究注釈"});
+Object.assign(I18N.ko,{"未命名出版物":"제목 없는 출판물","点击阅读今天的经文。":"오늘의 성구 읽기.","没有可显示的内容。":"표시할 내용이 없습니다.","这条相关文章的正文没有保存在本机。":"이 관련 기사의 본문이 이 기기에 저장되어 있지 않습니다.","它很可能是在旧版（0.5.1 及更早）导入的；旧版只保存了链接和标题，没有保存 Extract 正文。请重新导入这份 PUB，或从包含正文的备份恢复后再试。":"구버전(0.5.1 이하)에서 가져왔을 가능성이 있습니다. 구버전은 링크와 제목만 저장하고 Extract 본문은 저장하지 않았습니다. 이 PUB를 다시 가져오거나 본문이 포함된 백업에서 복원한 뒤 다시 시도하십시오.","这条注释没有可显示的正文。":"이 주석에는 표시할 본문이 없습니다.","文章章节":"기사 장","研究注释":"연구 주석"});
+Object.assign(I18N.en,{"保存失败":"Save failed","已识别经文位置，但本地没有经文正文":"Verse location recognised, but no local verse text","找不到经文索引":"Verse index not found","拼音自检":"Pinyin self-check","无法显示章节":"Cannot display chapter","本地没有对应的研究注释":"No local study note for this reference","本地没有这条链接的正文":"No local text for this link","正在升级本地数据":"Upgrading local data","部分数据未升级":"Some data was not upgraded"});
+Object.assign(I18N.ja,{"保存失败":"保存に失敗","已识别经文位置，但本地没有经文正文":"聖句の位置は特定しましたが、ローカルに本文がありません","找不到经文索引":"聖句索引が見つかりません","拼音自检":"ピンイン自己診断","无法显示章节":"章を表示できません","本地没有对应的研究注释":"ローカルに対応する研究注釈がありません","本地没有这条链接的正文":"このリンクの本文がローカルにありません","正在升级本地数据":"ローカルデータを更新中","部分数据未升级":"一部のデータを更新できませんでした"});
+Object.assign(I18N.ko,{"保存失败":"저장 실패","已识别经文位置，但本地没有经文正文":"성구 위치는 확인했지만 로컬 본문이 없습니다","找不到经文索引":"성구 색인을 찾을 수 없습니다","拼音自检":"병음 자체 점검","无法显示章节":"장을 표시할 수 없음","本地没有对应的研究注释":"로컬에 해당 연구 주석이 없습니다","本地没有这条链接的正文":"이 링크의 로컬 본문이 없습니다","正在升级本地数据":"로컬 데이터 업그레이드 중","部分数据未升级":"일부 데이터를 업그레이드하지 못했습니다"});
+Object.assign(I18N.en,{"图书馆":"Library","离线阅读":"Offline reading","本书目录":"Contents of this book","轻触框外区域或点关闭按钮":"Tap outside or use the close button","按类型浏览":"Browse by type"});
+Object.assign(I18N.ja,{"图书馆":"図書館","离线阅读":"オフライン閲覧","本书目录":"この本の目次","轻触框外区域或点关闭按钮":"外側をタップするか、閉じるボタンを使用してください","按类型浏览":"種類別に閲覧"});
+Object.assign(I18N.ko,{"图书馆":"라이브러리","离线阅读":"오프라인 읽기","本书目录":"이 책의 목차","轻触框外区域或点关闭按钮":"바깥을 누르거나 닫기 버튼을 사용하십시오","按类型浏览":"유형별 찾아보기"});
+Object.assign(I18N.en,{"打开阅读":"Read","查看目录":"View contents","正在读取诊断信息…":"Reading diagnostics…","读取诊断信息失败：":"Could not read diagnostics: ","点击任意记录直接回到上次阅读的文章和位置。":"Tap an entry to return to the article and position where you left off.","导入、备份、诊断和设置。":"Import, backup, diagnostics and settings.","今日经文、收藏和最近导入。":"Daily text, favourites and recent imports.","选择译本、经卷和章节；其他出版物中的经文链接也会使用这里的本地经文。":"Choose a version, book and chapter. Verse links from other publications also use the local Bible here.","点击阅读今天全文":"Read today’s full text"});
+Object.assign(I18N.ja,{"打开阅读":"読む","查看目录":"目次を見る","正在读取诊断信息…":"診断情報を読み込み中…","读取诊断信息失败：":"診断情報の読み込みに失敗：","点击任意记录直接回到上次阅读的文章和位置。":"記録をタップすると、前回読んだ記事と位置に戻ります。","导入、备份、诊断和设置。":"インポート、バックアップ、診断、設定。","今日经文、收藏和最近导入。":"今日の聖句、お気に入り、最近のインポート。","选择译本、经卷和章节；其他出版物中的经文链接也会使用这里的本地经文。":"翻訳・書・章を選択します。他の出版物の聖句リンクもここのローカル聖書を使います。","点击阅读今天全文":"今日の全文を読む"});
+Object.assign(I18N.ko,{"打开阅读":"읽기","查看目录":"목차 보기","正在读取诊断信息…":"진단 정보를 읽는 중…","读取诊断信息失败：":"진단 정보를 읽지 못했습니다: ","点击任意记录直接回到上次阅读的文章和位置。":"기록을 누르면 마지막으로 읽던 기사와 위치로 돌아갑니다.","导入、备份、诊断和设置。":"가져오기, 백업, 진단 및 설정.","今日经文、收藏和最近导入。":"오늘의 성구, 즐겨찾기, 최근 가져온 자료.","选择译本、经卷和章节；其他出版物中的经文链接也会使用这里的本地经文。":"번역판, 책, 장을 선택하십시오. 다른 출판물의 성구 링크도 여기의 로컬 성경을 사용합니다.","点击阅读今天全文":"오늘의 전체 본문 읽기"});
+Object.assign(I18N.en,{"主导航":"Main navigation","阅读器导航":"Reader navigation","内容操作":"Content actions","链接内容":"Linked content","黄色高亮":"Yellow highlight","绿色高亮":"Green highlight","蓝色高亮":"Blue highlight","粉色高亮":"Pink highlight"});
+Object.assign(I18N.ja,{"主导航":"メインナビゲーション","阅读器导航":"リーダーナビゲーション","内容操作":"コンテンツ操作","链接内容":"リンク内容","黄色高亮":"黄色のハイライト","绿色高亮":"緑のハイライト","蓝色高亮":"青のハイライト","粉色高亮":"ピンクのハイライト"});
+Object.assign(I18N.ko,{"主导航":"기본 탐색","阅读器导航":"리더 탐색","内容操作":"콘텐츠 작업","链接内容":"링크 내용","黄色高亮":"노랑 강조","绿色高亮":"초록 강조","蓝色高亮":"파랑 강조","粉色高亮":"분홍 강조"});
+Object.assign(I18N.en,{"上一节":"Previous section","下一节":"Next section","放大字号":"Larger text","缩小字号":"Smaller text"});
+Object.assign(I18N.ja,{"上一节":"前の節","下一节":"次の節","放大字号":"文字を大きく","缩小字号":"文字を小さく"});
+Object.assign(I18N.ko,{"上一节":"이전 절","下一节":"다음 절","放大字号":"글자 크게","缩小字号":"글자 작게"});
+Object.assign(I18N.en,{"书签": "Bookmark", "已书签": "Bookmarked", "备份与恢复": "Backup & restore", "设置与诊断": "Settings & diagnostics", "返回": "Back", "高亮颜色": "Highlight colour", "继续": "Continue", "正在恢复图书馆": "Restoring library", "恢复完成": "Restore complete", "恢复失败": "Restore failed", "正在读取备份文件…": "Reading the backup file…", "备份失败": "Backup failed", "正在备份图书馆": "Backing up library", "无法打开圣经": "Cannot open the Bible", "找不到该出版物的数据。": "Data for this publication was not found.", "无法打开": "Cannot open", "对应出版物可能已被删除。": "The publication may have been deleted.", "高亮范围": "Highlight range", "请在同一段文字内选择需要高亮的内容。": "Select text within a single paragraph to highlight.", "已有高亮": "Already highlighted", "这个范围已经有高亮。": "This range is already highlighted.", "缺少经文正文": "Verse text missing", "这份出版物没有保存 BibleVerse 经文数据。请先导入对应语言的圣经 PUB。": "This publication has no BibleVerse data. Import a Bible PUB in the matching language first.", "经文范围过大": "Too many verses", "本阅读器一次最多显示 120 节，请缩小经文范围。": "The reader shows at most 120 verses at a time. Narrow the range.", "没有经文正文": "No verse text", "这份圣经文件中没有找到对应经文正文。": "The matching verse text was not found in this Bible file.", "已检查本机导入的圣经译本，但没有找到这段经文的可显示正文。": "Imported Bibles were checked, but no readable text was found for this passage.", "暂不支持的内部链接": "Unsupported internal link", "当前版本无法识别这个 PUB 内部链接格式。已支持出版物段落链接和圣经经文链接；研究注释会在本地出版物包含对应 Commentary 数据时尝试预览。": "This PUB link format is not recognised. Publication paragraph links and Bible verse links are supported; study notes are previewed when the local publication includes Commentary data.", "离线链接不可用": "Offline link unavailable", "这是一个外部网页链接，当前离线阅读器不会尝试联网打开。": "This is an external web link. The offline reader does not open network links.", "本地存储不可用": "Local storage unavailable", "当前浏览器或容器未允许本地存储，无法保存图书：": "This browser or container does not allow local storage, so books cannot be saved: ", "诊断信息已复制到剪贴板。": "Diagnostics copied to the clipboard.", "使用说明内容": "This is a single-file offline library. Bottom navigation: Home, Bible, Media Library, Meetings, Personal Study. Tap once to return to the last position; double-tap to reset. To import, tap More in the top-right corner and choose PUB files from your device; new files are selected, already imported files are not. Export a full backup regularly. Use the arrow keys to turn pages while reading."});
+Object.assign(I18N.ja,{"书签": "ブックマーク", "已书签": "登録済み", "备份与恢复": "バックアップと復元", "设置与诊断": "設定と診断", "返回": "戻る", "高亮颜色": "ハイライト色", "继续": "続行", "正在恢复图书馆": "図書館を復元中", "恢复完成": "復元完了", "恢复失败": "復元に失敗", "正在读取备份文件…": "バックアップファイルを読み込み中…", "备份失败": "バックアップに失敗", "正在备份图书馆": "図書館をバックアップ中", "无法打开圣经": "聖書を開けません", "找不到该出版物的数据。": "この出版物のデータが見つかりません。", "无法打开": "開けません", "对应出版物可能已被删除。": "出版物が削除された可能性があります。", "高亮范围": "ハイライト範囲", "请在同一段文字内选择需要高亮的内容。": "同じ段落内の文字を選択してください。", "已有高亮": "ハイライト済み", "这个范围已经有高亮。": "この範囲はすでにハイライトされています。", "缺少经文正文": "聖句本文がありません", "这份出版物没有保存 BibleVerse 经文数据。请先导入对应语言的圣经 PUB。": "この出版物にはBibleVerseデータがありません。対応言語の聖書PUBを先にインポートしてください。", "经文范围过大": "聖句の範囲が広すぎます", "本阅读器一次最多显示 120 节，请缩小经文范围。": "一度に表示できるのは120節までです。範囲を狭めてください。", "没有经文正文": "聖句本文がありません", "这份圣经文件中没有找到对应经文正文。": "この聖書ファイルに対応する聖句本文が見つかりません。", "已检查本机导入的圣经译本，但没有找到这段经文的可显示正文。": "インポート済みの聖書を確認しましたが、この箇所の本文が見つかりません。", "暂不支持的内部链接": "未対応の内部リンク", "当前版本无法识别这个 PUB 内部链接格式。已支持出版物段落链接和圣经经文链接；研究注释会在本地出版物包含对应 Commentary 数据时尝试预览。": "このPUB内部リンク形式には対応していません。出版物の段落リンクと聖句リンクには対応しています。研究注釈はローカル出版物にCommentaryデータがある場合にプレビューします。", "离线链接不可用": "オフラインリンクは利用できません", "这是一个外部网页链接，当前离线阅读器不会尝试联网打开。": "これは外部ウェブリンクです。オフラインリーダーはネットワークを開きません。", "本地存储不可用": "ローカル保存を利用できません", "当前浏览器或容器未允许本地存储，无法保存图书：": "このブラウザまたはコンテナではローカル保存が許可されていないため、書籍を保存できません：", "诊断信息已复制到剪贴板。": "診断情報をクリップボードにコピーしました。", "使用说明内容": "これは単一HTMLのオフライン図書館です。下部ナビゲーション：ホーム、聖書、マルチメディア図書館、集会、個人研究。1回タップで前回の位置へ、2回タップで先頭へ戻ります。PUBのインポートは右上の「その他」から行い、お使いのデバイスからファイルを選択します。未インポートのファイルは選択済み、インポート済みは未選択です。定期的に完全バックアップを書き出してください。読書中は左右の矢印キーでページを移動できます。"});
+Object.assign(I18N.ko,{"书签": "책갈피", "已书签": "저장됨", "备份与恢复": "백업 및 복원", "设置与诊断": "설정 및 진단", "返回": "뒤로", "高亮颜色": "강조 색", "继续": "계속", "正在恢复图书馆": "라이브러리 복원 중", "恢复完成": "복원 완료", "恢复失败": "복원 실패", "正在读取备份文件…": "백업 파일을 읽는 중…", "备份失败": "백업 실패", "正在备份图书馆": "라이브러리 백업 중", "无法打开圣经": "성경을 열 수 없음", "找不到该出版物的数据。": "이 출판물의 데이터를 찾을 수 없습니다.", "无法打开": "열 수 없음", "对应出版物可能已被删除。": "출판물이 삭제되었을 수 있습니다.", "高亮范围": "강조 범위", "请在同一段文字内选择需要高亮的内容。": "같은 문단 안의 텍스트를 선택하십시오.", "已有高亮": "이미 강조됨", "这个范围已经有高亮。": "이 범위는 이미 강조되어 있습니다.", "缺少经文正文": "성구 본문 없음", "这份出版物没有保存 BibleVerse 经文数据。请先导入对应语言的圣经 PUB。": "이 출판물에는 BibleVerse 데이터가 없습니다. 해당 언어의 성경 PUB를 먼저 가져오십시오.", "经文范围过大": "성구 범위가 너무 큼", "本阅读器一次最多显示 120 节，请缩小经文范围。": "한 번에 최대 120절까지 표시합니다. 범위를 줄이십시오.", "没有经文正文": "성구 본문 없음", "这份圣经文件中没有找到对应经文正文。": "이 성경 파일에서 해당 성구 본문을 찾지 못했습니다.", "已检查本机导入的圣经译本，但没有找到这段经文的可显示正文。": "가져온 성경을 확인했지만 이 구절의 본문을 찾지 못했습니다.", "暂不支持的内部链接": "지원하지 않는 내부 링크", "当前版本无法识别这个 PUB 内部链接格式。已支持出版物段落链接和圣经经文链接；研究注释会在本地出版物包含对应 Commentary 数据时尝试预览。": "이 PUB 내부 링크 형식은 인식할 수 없습니다. 출판물 문단 링크와 성구 링크는 지원합니다. 연구 주석은 로컬 출판물에 Commentary 데이터가 있을 때 미리 보기합니다.", "离线链接不可用": "오프라인 링크 사용 불가", "这是一个外部网页链接，当前离线阅读器不会尝试联网打开。": "외부 웹 링크입니다. 오프라인 리더는 네트워크를 열지 않습니다.", "本地存储不可用": "로컬 저장소 사용 불가", "当前浏览器或容器未允许本地存储，无法保存图书：": "이 브라우저 또는 컨테이너에서 로컬 저장소가 허용되지 않아 책을 저장할 수 없습니다: ", "诊断信息已复制到剪贴板。": "진단 정보를 클립보드에 복사했습니다.", "使用说明内容": "단일 HTML 오프라인 라이브러리입니다. 하단 탐색: 홈, 성경, 멀티미디어 라이브러리, 집회, 개인 연구. 한 번 누르면 마지막 위치로, 두 번 누르면 맨 위로 돌아갑니다. PUB 가져오기는 오른쪽 위 「더보기」에서 하며 기기에서 파일을 선택합니다. 가져오지 않은 파일은 선택되고 가져온 파일은 선택되지 않습니다. 정기적으로 전체 백업을 내보내십시오. 읽는 동안 좌우 화살표 키로 페이지를 넘길 수 있습니다."});
+const UI_ICONS={
+  close:'<path d="M6 6l12 12M18 6 6 18"/>',
+  more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  star:'<path d="m12 3.8 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.9l5.8-.8z"/>',
+  starOn:'<path d="m12 3.8 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.9l5.8-.8z" fill="currentColor"/>',
+  note:'<path d="M5.5 4.5h13v10.2l-4.8 4.8H5.5z"/><path d="M18.5 14.7h-4.8v4.8"/><path d="M12 8.4v4.8M9.6 10.8h4.8"/>',
+  left:'<path d="M14.5 5.5 8 12l6.5 6.5"/>',
+  right:'<path d="M9.5 5.5 16 12l-6.5 6.5"/>',
+  up:'<path d="M6 14.5 12 8.5l6 6"/>',
+  down:'<path d="M6 9.5 12 15.5l6-6"/>',
+  collapse:'<path d="M5 8.5 12 15.5l7-7"/>',
+  book:'<path d="M4 5.5c2.8-.8 5.1-.2 8 1.4v13c-2.9-1.6-5.2-2.2-8-1.4z"/><path d="M20 5.5c-2.8-.8-5.1-.2-8 1.4v13c2.9-1.6 5.2-2.2 8-1.4z"/>',
+  books:'<path d="M4 7.5h5v12H4zM10.5 5h4v14.5h-4zM16 8h4v11.5h-4z"/>',
+  magazine:'<path d="M5 4.5h14v15H5z"/><path d="M8 8h5M8 11.5h5M8 15h8"/>',
+  file:'<path d="M6 3.5h7l5 5v12H6z"/><path d="M13 3.5v5h5"/>',
+  calendar:'<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M8 3.5v4M16 3.5v4M4 10h16"/>',
+  search:'<circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.2 4.2"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/>',
+  music:'<path d="M9 18.5V6l10-2v12.5"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/>',
+  folder:'<path d="M3.5 6.5h6l2 2.5h9v11h-17z"/>',
+  help:'<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.9.7c0 1.7-2.5 2-2.5 3.7"/><path d="M12 17.2h.01"/>',
+  download:'<path d="M12 3.5v11M7.5 10.5 12 15l4.5-4.5"/><path d="M4.5 18.5h15"/>',
+  upload:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4.5 18.5h15"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M18 6l-1.4 1.4M7.4 16.6 6 18"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7"/>',
+  language:'<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.4 3.8 5.3 3.8 8.5S14.5 18.1 12 20.5c-2.5-2.4-3.8-5.3-3.8-8.5S9.5 5.9 12 3.5z"/>',
+  history:'<path d="M20.5 12a8.5 8.5 0 1 1-2.5-6.1"/><path d="M20.6 3.4v4.8h-4.8"/><path d="M12 7.6V12l3.1 1.9"/>',
+  pencil:'<path d="M4 20l4.1-1 10-10-3.1-3.1-10 10z"/><path d="M13.9 6.8l3.1 3.1"/>',
+  trash:'<path d="M4.5 6.5h15M9.5 6.5V4h5v2.5M6.8 6.5l.8 13h8.8l.8-13M10.5 10v6M13.5 10v6"/>',
+  tag:'<path d="M4 4h7l9 9-7 7-9-9z"/><circle cx="8.2" cy="8.2" r="1.3"/>'
+};
+function svgIcon(name,size){
+  const n=Number(size)||24;
+  return '<svg viewBox="0 0 24 24" width="'+n+'" height="'+n+'" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(UI_ICONS[name]||UI_ICONS.help)+'</svg>';
+}
 function t(s){
   if(uiLang==='zh')return s;
   const pack=I18N[uiLang];
   if(pack&&pack[s])return pack[s];
   if(uiLang!=='en'&&I18N.en&&I18N.en[s])return I18N.en[s];
   return s;
+}
+function renderBookmarkButton(on){
+  const b=document.getElementById('bookmarkBtn');if(!b)return;
+  const key=on?'已书签':'书签';b.innerHTML='<span class="btn-icon">'+svgIcon(on?'starOn':'star',18)+'</span><span data-i18n="'+key+'">'+t(key)+'</span>';
+  b.classList.toggle('is-on',!!on);
+  b.setAttribute('aria-pressed',on?'true':'false');
 }
 function uiLocale(){return (UI_LANGS[uiLang]||UI_LANGS.zh).locale}
 let CUSTOM_CATEGORIES=new Map();
@@ -220,6 +283,7 @@ function applyI18n(){
     document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'))});
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{el.placeholder=t(el.getAttribute('data-i18n-placeholder'))});
     document.querySelectorAll('[data-i18n-title]').forEach(el=>{el.title=t(el.getAttribute('data-i18n-title'))});
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(el=>{el.setAttribute('aria-label',t(el.getAttribute('data-i18n-aria-label')))});
     const lb=document.getElementById('langBtn');if(lb){lb.textContent=uiLang==='zh'?'中':uiLang==='en'?'EN':uiLang==='ja'?'日':uiLang==='ko'?'한':String(uiLang).toUpperCase();lb.title=t('界面语言')+' · '+((UI_LANGS[uiLang]||UI_LANGS.zh).name||'')}
     const cb=document.getElementById('contentLangBtn');if(cb)cb.textContent='文';
     const rb=document.getElementById('readerLangBtn');if(rb)rb.textContent=uiLang==='en'?'L':uiLang==='ko'?'언':uiLang==='ja'?'語':'语';
@@ -227,7 +291,50 @@ function applyI18n(){
   }catch(e){}
 }
 const XOR='11cbb5587e32846d4c26790c633da289f66fe5842a3a585ce1bc3a294af5ada7';
-const say=(title,msg)=>{$('modalTitle').textContent=title;$('modalText').textContent=msg;$('modal').style.display='flex'};
+function focusSafely(el){if(!el||!el.focus)return;try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(err){}}}
+function focusablesIn(root){
+  if(!root)return [];
+  return [...root.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(el=>!el.disabled&&el.getAttribute('aria-hidden')!=='true'&&el.offsetParent!==null);
+}
+function trapFocus(root,e){
+  if(!root||e.key!=='Tab')return false;
+  const items=focusablesIn(root);if(!items.length)return false;
+  const first=items[0],last=items[items.length-1],active=document.activeElement;
+  if(e.shiftKey&&(active===first||!root.contains(active))){e.preventDefault();focusSafely(last);return true}
+  if(!e.shiftKey&&(active===last||!root.contains(active))){e.preventDefault();focusSafely(first);return true}
+  return false;
+}
+let modalReturnFocus=null;
+const say=(title,msg,busy)=>{
+  const m=$('modal');if(m&&m.style.display!=='flex')modalReturnFocus=document.activeElement;
+  $('modalTitle').textContent=t(title);$('modalText').textContent=t(msg);
+  const ok=$('modalOk');if(ok)ok.style.display=busy?'none':'';
+  m.style.display='flex';
+  if(!busy)setTimeout(()=>focusSafely(ok),0);
+};
+function closeModal(){
+  const m=$('modal');if(m)m.style.display='none';
+  restoreFocus(modalReturnFocus);modalReturnFocus=null;
+}
+function restoreFocus(el){if(el&&document.contains(el))focusSafely(el)}
+function rememberPanelFocus(panel){if(panel&&!panel._returnFocus)panel._returnFocus=document.activeElement}
+function restorePanelFocus(panel){if(!panel)return;const el=panel._returnFocus;panel._returnFocus=null;restoreFocus(el)}
+function askConfirm(title,message,okLabel){
+  return new Promise(resolve=>{
+    const m=$('confirmModal');if(!m){resolve(true);return}
+    const returnFocus=document.activeElement;
+    $('confirmTitle').textContent=t(title);
+    $('confirmText').textContent=t(message);
+    $('confirmOk').textContent=t(okLabel||'继续');
+    $('confirmCancel').textContent=t('取消');
+    m.style.display='flex';
+    const close=(v)=>{m.style.display='none';m.onclick=null;$('confirmOk').onclick=null;$('confirmCancel').onclick=null;resolve(v);restoreFocus(returnFocus)};
+    $('confirmOk').onclick=()=>close(true);
+    $('confirmCancel').onclick=()=>close(false);
+    m.onclick=e=>{if(e.target===m)close(false)};
+    setTimeout(()=>focusSafely($('confirmCancel')),0);
+  });
+}
 function showReaderNav(section){
   readerNavSection=(section==='more'||section==='history')?'study':(section||'study');
   const nav=$('bottomNav');
@@ -315,7 +422,24 @@ function pinyinDebug(){
   return out;
 }
 
-$('modalOk').onclick=()=>$('modal').style.display='none';
+$('modalOk').onclick=closeModal;
+document.addEventListener('keydown',e=>{
+  const cm=$('confirmModal'),m=$('modal');
+  if(e.key==='Escape'){
+    if(cm&&cm.style.display==='flex'){const c=$('confirmCancel');if(c)c.click();e.preventDefault();return}
+    if(m&&m.style.display==='flex'){if(!$('modalOk')||$('modalOk').style.display!=='none'){closeModal();e.preventDefault()}return}
+    const imp=$('importDialog');if(imp&&imp.style.display==='flex'){closeImportDialog();e.preventDefault();return}
+    const ae=$('annotationEditor');if(ae&&ae.classList.contains('show')){closeAnnotationEditor();e.preventDefault();return}
+    if($('noteEditor')){closeNoteEditor();e.preventDefault();return}
+    if($('annotationsPanel').classList.contains('show')){closeAnnotationsPanel();e.preventDefault();return}
+    if($('historyPanel').classList.contains('show')){closeHistoryPanel();e.preventDefault();return}
+    if($('linkPopover').style.display==='block'){closeLinkPopover();e.preventDefault();return}
+    if($('readerSearchPanel').classList.contains('show')){closeReaderSearch();e.preventDefault();return}
+    if($('drawer').style.display==='block'){closeDrawer();e.preventDefault();return}
+  }
+  if(cm&&cm.style.display==='flex')trapFocus(cm,e);
+  else if(m&&m.style.display==='flex')trapFocus(m,e);
+});
 const diagEvents=[];
 function logDiag(level,message,detail){
   try{
@@ -921,7 +1045,7 @@ async function migrateLegacyBooks(){
   let flag=null;try{flag=await reqP(tx('system').get('migratedV3'))}catch(e){}
   if(flag&&flag.done)return;
   let keys=[];try{keys=await reqP(tx('books').getAllKeys())}catch(e){keys=[]}
-  if(keys.length)say('正在升级本地数据',`正在把 ${keys.length} 份已导入出版物拆分为更省内存的存储结构，请勿关闭页面…`);
+  if(keys.length)say(t('正在升级本地数据'),`正在把 ${keys.length} 份已导入出版物拆分为更省内存的存储结构，请勿关闭页面…`);
   const failed=[];
   for(const key of keys){
     let rec=null;try{rec=await reqP(tx('books').get(key))}catch(e){failed.push({id:key,error:String(e&&e.message||e)});continue}
@@ -935,7 +1059,7 @@ async function migrateLegacyBooks(){
   }
   await reqP(tx('system','readwrite').put({id:'migratedV3',done:true,at:Date.now(),failed}));
   if(keys.length){
-    if(failed.length)say('部分数据未升级',`有 ${failed.length} 份出版物未能拆分存储，仍保留旧格式并可继续打开；其余 ${keys.length-failed.length} 份已完成。\n\n${failed.slice(0,5).map(f=>f.id+'：'+f.error).join('\n')}`);
+    if(failed.length)say(t('部分数据未升级'),`有 ${failed.length} 份出版物未能拆分存储，仍保留旧格式并可继续打开；其余 ${keys.length-failed.length} 份已完成。\n\n${failed.slice(0,5).map(f=>f.id+'：'+f.error).join('\n')}`);
     else try{$('modal').style.display='none'}catch(e){}
   }
 }

@@ -4,7 +4,7 @@
 
 > An offline, single-file, local-first JWPUB reader. Open one HTML, import `.jwpub` / `.pub`, unpack/decrypt/parse/read/annotate in the browser — no server, no outbound application requests.
 
-Current version: **0.13.0** (baseline, see [AGENTS.md](AGENTS.md)).
+Current version: **0.14.0** (initial baseline 0.13.0, see [AGENTS.md](AGENTS.md)).
 
 ---
 
@@ -41,7 +41,7 @@ Additional docs: [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [
 
 ## Key conventions
 
-- Baseline version `0.13.0`; this documentation restructure does not bump it.
+- Initial baseline `0.13.0`; the current version is defined by `project.json`.
 - Commits go to `develop`; `master` is published periodically by the user; agents do not push it.
 - User language JSON is a **user language pack (plugin v0)**: UI strings only, not a code plugin API.
 - Data stays in local IndexedDB / localStorage; backup JSON is unencrypted.

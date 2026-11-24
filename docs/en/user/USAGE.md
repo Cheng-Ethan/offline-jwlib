@@ -19,7 +19,7 @@ Import happens entirely locally: ZIP read (with repair for a missing central dir
 | Publications | Browse by category, search, favourite, recategorise, delete |
 | Daily Text | Date-based documents generated from `DatedText`; content comes from the publication |
 | Meetings | Meeting workbooks, programs and convention material |
-| More | Import, full/notes backup & restore, recent reads, bookmarks, notes, language packs, About |
+| More | Import PUB, backup & restore, help, settings & diagnostics |
 
 Categories are derived from `src/categories.json` rules matching publication symbols, types and titles. Source-code fallbacks apply when no rule matches. Users can also set custom categories from a card menu.
 
@@ -47,7 +47,7 @@ Categories are derived from `src/categories.json` rules matching publication sym
 
 ### Export
 
-In **More**:
+In **More → Backup & restore**:
 
 - **Backup library** → `offline-library-library-v1.json`: all publications, raw SQLite, assets, notes, tags, highlights, bookmarks, history and categories.
 - **Backup notes** → `offline-library-notes-v1.json`: notes, tags and highlights only.
@@ -71,7 +71,7 @@ The language button switches built-in UI languages (Chinese/English/Japanese/Kor
 
 ### Import a language pack
 
-Import a local JSON file from **More**:
+Open the language menu in the top-right corner and choose **+** to import a local JSON file:
 
 ```json
 {
