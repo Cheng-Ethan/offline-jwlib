@@ -4676,22 +4676,47 @@ function wrapHighlight(block,start,end,id,color){
   }
   return true;
 }
-function gutterHost(el){return el&&el.closest?el.closest('[data-pid],p,li,blockquote,.bible-verse,.v')||el.parentElement:null}
-function placeGutterMarker(host,btn){
+function gutterHost(el){
+  if(!el)return null;
+  if(el.closest){
+    const direct=el.closest('[data-pid],p,li,blockquote,.bible-verse');
+    if(direct)return direct;
+  }
+  // Fall back to the nearest block ancestor, never an inline verse span: a
+  // marker on an inline `.v` would sit in the middle of the paragraph.
+  let node=el.parentElement;
+  while(node){
+    try{const display=getComputedStyle(node).display;if(display&&!/^inline/.test(display))return node}catch(e){}
+    node=node.parentElement;
+  }
+  return el.parentElement;
+}
+function placeGutterMarker(host,btn,anchor){
   if(!host||!btn)return;
   host.classList.add('has-gutter-note');btn.classList.add('hl-gutter-note');
-  const count=host.querySelectorAll('.hl-gutter-note').length;
-  btn.style.top=(0.18+count*1.12)+'em';
+  let top=0;
+  if(anchor){
+    try{
+      const hostRect=host.getBoundingClientRect();
+      const rects=anchor.getClientRects?[...anchor.getClientRects()]:[];
+      const r=(rects.length?rects[0]:anchor.getBoundingClientRect());
+      if(r&&hostRect)top=Math.max(0,r.top-hostRect.top-(host.clientTop||0)+Math.max(0,(r.height-18)/2));
+    }catch(e){}
+  }
+  // Keep markers on different lines from covering each other.
+  const occupied=[...host.querySelectorAll('.hl-gutter-note')].map(el=>parseFloat(el.style.top)).filter(n=>Number.isFinite(n));
+  while(occupied.some(v=>Math.abs(v-top)<20))top+=20;
+  btn.style.top=Math.round(top)+'px';
   host.appendChild(btn);
 }
 function addNoteMarker(id){
   const content=hlRoot();if(!content)return;
   let spans=[];try{spans=[...content.querySelectorAll('.hl[data-hl-id="'+CSS.escape(String(id))+'"]')]}catch(e){}
   if(!spans.length)return;
-  const last=spans[spans.length-1],host=gutterHost(last);
+  const first=spans[0],host=gutterHost(first);
   if(!host||host.querySelector('.hl-note-mark[data-hl-id="'+CSS.escape(String(id))+'"]'))return;
   const m=document.createElement('button');m.type='button';m.className='hl-note-mark';m.dataset.hlId=String(id);m.title=t('笔记');
-  placeGutterMarker(host,m);
+  placeGutterMarker(host,m,first);
 }
 function addVerseNoteMarker(note){
   if(!note||note.kind!=='verse')return;
@@ -4703,7 +4728,7 @@ function addVerseNoteMarker(note){
   const host=gutterHost(verse);if(!host)return;
   if(host.querySelector('.hl-note-mark[data-note-id="'+CSS.escape(String(note.id))+'"]'))return;
   const m=document.createElement('button');m.type='button';m.className='hl-note-mark';m.dataset.noteId=String(note.id);m.title=note.title||t('笔记');
-  placeGutterMarker(host,m);
+  placeGutterMarker(host,m,verse);
 }
 async function applyVerseNotesForDoc(bookId,docId){
   let notes=[];try{notes=await reqP(tx('notes').getAll())}catch(e){return}
@@ -4781,7 +4806,7 @@ async function applyCrossLanguageNotes(book,doc){
     if(!n||(!n.text&&!n.title))continue;
     const btn=document.createElement('button');btn.type='button';btn.className='hl-note-mark hl-note-foreign';btn.title=t('其他语言笔记');
     btn.onclick=e=>{e.stopPropagation();e.preventDefault();const body=[n.title,n.text].filter(Boolean).join('\n\n')||t('（无正文）');say(t('其他语言笔记'),body)};
-    placeGutterMarker(gutterHost(block)||block,btn);
+    placeGutterMarker(gutterHost(block)||block,btn,block);
   }
 }
 
@@ -5054,14 +5079,21 @@ function placeSelectionToolbar(bar,rect){
   const w=bar.offsetWidth||180,h=bar.offsetHeight||44;
   const vv=window.visualViewport;
   const vw=vv?vv.width:window.innerWidth,vh=vv?vv.height:window.innerHeight;
-  // Leave one text line free between the toolbar and the selection. Prefer the
-  // space above (the native copy menu usually opens below the end handle on
-  // touch devices); fall back below only when the top would leave the screen.
+  // Keep one line of space plus enough room for the native selection menu.
+  // We cannot read the system menu's position, so reserve its height on the
+  // chosen side: whether the system menu opens above or below the selection,
+  // our bar then sits beyond it instead of underneath it.
   const line=Math.max(24,Math.min(40,(rect.lineHeight||rect.height||24)*1.15));
+  let coarse=false;try{coarse=!!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches)}catch(e){}
+  const nativeMenu=coarse?56:0;
+  const clear=line+nativeMenu;
   const minTop=8,maxTop=Math.max(minTop,vh-h-12);
-  let top=rect.top-h-line;
-  if(top<minTop)top=rect.bottom+line;
-  if(top+h>maxTop)top=Math.max(minTop,Math.min(top,maxTop));
+  const above=rect.top-h-clear,below=rect.bottom+clear;
+  const roomAbove=rect.top-minTop,roomBelow=maxTop-rect.bottom;
+  let top;
+  if(above>=minTop)top=above;
+  else if(below+h<=maxTop)top=below;
+  else top=roomAbove>=roomBelow?Math.max(minTop,above):Math.min(maxTop,below);
   const left=Math.max(8,Math.min(rect.left+rect.width/2-w/2,vw-w-8));
   bar.style.left=left+'px';bar.style.top=top+'px';
 }
