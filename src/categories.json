@@ -1,0 +1,384 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "category-daily",
+      "priority": 2,
+      "category": "daily",
+      "match": {
+        "publicationCategorySymbol": [
+          "^es$"
+        ],
+        "categoryCodes": [
+          "(?:^|\\s)es(?:\\s|$)"
+        ]
+      }
+    },
+    {
+      "id": "category-bible",
+      "priority": 3,
+      "category": "bible",
+      "match": {
+        "publicationCategorySymbol": [
+          "^bi$"
+        ],
+        "categoryCodes": [
+          "(?:^|\\s)bi(?:\\s|$)"
+        ]
+      }
+    },
+    {
+      "id": "category-awake",
+      "priority": 4,
+      "category": "magazines.awake",
+      "match": {
+        "publicationCategorySymbol": [
+          "^g$"
+        ],
+        "categoryCodes": [
+          "(?:^|\\s)g(?:\\s|$)"
+        ]
+      }
+    },
+    {
+      "id": "category-meetings",
+      "priority": 5,
+      "category": "meetings",
+      "match": {
+        "publicationCategorySymbol": [
+          "^mwb$",
+          "^meeting$"
+        ],
+        "categoryCodes": [
+          "(?:^|\\s)mwb(?:\\s|$)"
+        ]
+      }
+    },
+    {
+      "id": "category-songs",
+      "priority": 6,
+      "category": "songs",
+      "match": {
+        "publicationCategorySymbol": [
+          "^sj",
+          "^song"
+        ],
+        "categoryCodes": [
+          "(?:^|\\s)sj"
+        ]
+      }
+    },
+    {
+      "id": "category-reference",
+      "priority": 7,
+      "category": "reference",
+      "match": {
+        "publicationCategorySymbol": [
+          "^(dx|it|rs|rsg)$"
+        ],
+        "categoryCodes": [
+          "(?:^|\\s)(dx|it|rs|rsg)(?:\\s|$)"
+        ]
+      }
+    },
+    {
+      "id": "category-books",
+      "priority": 8,
+      "category": "books",
+      "match": {
+        "publicationCategorySymbol": [
+          "^bk$"
+        ],
+        "categoryCodes": [
+          "(?:^|\\s)bk(?:\\s|$)"
+        ]
+      }
+    },
+    {
+      "id": "category-booklets",
+      "priority": 9,
+      "category": "brochures.booklets",
+      "match": {
+        "publicationCategorySymbol": [
+          "^br$"
+        ],
+        "categoryCodes": [
+          "(?:^|\\s)br(?:\\s|$)"
+        ]
+      }
+    },
+    {
+      "id": "category-tracts",
+      "priority": 10,
+      "category": "brochures.tracts",
+      "match": {
+        "publicationCategorySymbol": [
+          "^tr$"
+        ],
+        "categoryCodes": [
+          "(?:^|\\s)tr(?:\\s|$)"
+        ]
+      }
+    },
+    {
+      "id": "category-watchtower",
+      "priority": 11,
+      "category": "magazines.watchtower",
+      "match": {
+        "publicationCategorySymbol": [
+          "^w$"
+        ],
+        "categoryCodes": [
+          "(?:^|\\s)w(?:\\s|$)"
+        ]
+      }
+    },
+    {
+      "id": "daily-symbol",
+      "priority": 10,
+      "category": "daily",
+      "match": {
+        "uniqueEnglishSymbol": [
+          "^es\\d"
+        ],
+        "symbol": [
+          "^es\\d"
+        ],
+        "publicationType": [
+          "daily.?text",
+          "examining the scriptures"
+        ],
+        "title": [
+          "每日经文",
+          "天天查考圣经"
+        ]
+      }
+    },
+    {
+      "id": "bible-data",
+      "priority": 20,
+      "category": "bible",
+      "match": {
+        "hasBible": true
+      }
+    },
+    {
+      "id": "bible-symbol",
+      "priority": 21,
+      "category": "bible",
+      "match": {
+        "uniqueEnglishSymbol": [
+          "^(nwt|nwtsty|bi12|bi10|rbi8|by|bible)"
+        ],
+        "symbol": [
+          "^(nwt|nwtsty|bi12|bi10|rbi8|by|bible)"
+        ],
+        "publicationType": [
+          "^bible"
+        ]
+      }
+    },
+    {
+      "id": "magazine-awake",
+      "priority": 40,
+      "category": "magazines.awake",
+      "match": {
+        "uniqueEnglishSymbol": [
+          "^g\\d",
+          "^g$"
+        ],
+        "symbol": [
+          "^g\\d",
+          "^g$"
+        ],
+        "title": [
+          "警醒",
+          "awake"
+        ]
+      }
+    },
+    {
+      "id": "magazine-watchtower-public",
+      "priority": 41,
+      "category": "magazines.watchtower.public",
+      "match": {
+        "uniqueEnglishSymbol": [
+          "^wp"
+        ],
+        "symbol": [
+          "^wp"
+        ],
+        "title": [
+          "公众版",
+          "public edition"
+        ]
+      }
+    },
+    {
+      "id": "magazine-watchtower-study",
+      "priority": 42,
+      "category": "magazines.watchtower.study",
+      "match": {
+        "uniqueEnglishSymbol": [
+          "^w\\d",
+          "^w$"
+        ],
+        "symbol": [
+          "^w\\d",
+          "^w$"
+        ],
+        "publicationType": [
+          "watchtower"
+        ],
+        "title": [
+          "研读",
+          "study edition"
+        ]
+      }
+    },
+    {
+      "id": "magazine-watchtower",
+      "priority": 43,
+      "category": "magazines.watchtower",
+      "match": {
+        "publicationType": [
+          "watchtower"
+        ],
+        "title": [
+          "守望台",
+          "watchtower"
+        ]
+      }
+    },
+    {
+      "id": "magazine-other",
+      "priority": 44,
+      "category": "magazines.other",
+      "match": {
+        "publicationType": [
+          "magazine"
+        ],
+        "title": [
+          "杂志",
+          "magazine"
+        ]
+      }
+    },
+    {
+      "id": "brochures-tracts",
+      "priority": 50,
+      "category": "brochures.tracts",
+      "match": {
+        "publicationType": [
+          "tract",
+          "invitation"
+        ],
+        "title": [
+          "单张",
+          "传单",
+          "邀请函",
+          "tract",
+          "invitation"
+        ]
+      }
+    },
+    {
+      "id": "brochures-booklets",
+      "priority": 51,
+      "category": "brochures.booklets",
+      "match": {
+        "publicationType": [
+          "brochure",
+          "booklet"
+        ],
+        "title": [
+          "册子",
+          "小册子",
+          "brochure",
+          "booklet"
+        ]
+      }
+    },
+    {
+      "id": "meetings",
+      "priority": 60,
+      "category": "meetings",
+      "match": {
+        "uniqueEnglishSymbol": [
+          "^(mwb|th|ca|co|mem)"
+        ],
+        "symbol": [
+          "^(mwb|th|ca|co|mem)"
+        ],
+        "publicationType": [
+          "meeting",
+          "workbook",
+          "program"
+        ],
+        "title": [
+          "聚会",
+          "工作手册",
+          "大会",
+          "节目"
+        ]
+      }
+    },
+    {
+      "id": "reference",
+      "priority": 70,
+      "category": "reference",
+      "match": {
+        "uniqueEnglishSymbol": [
+          "^(dx|it|rs|rsg)"
+        ],
+        "symbol": [
+          "^(dx|it|rs|rsg)"
+        ],
+        "publicationType": [
+          "research guide",
+          "index",
+          "encyclopedia",
+          "insight"
+        ],
+        "title": [
+          "索引",
+          "研究指南",
+          "洞悉",
+          "insight"
+        ]
+      }
+    },
+    {
+      "id": "songs",
+      "priority": 80,
+      "category": "songs",
+      "match": {
+        "publicationType": [
+          "song"
+        ],
+        "title": [
+          "诗歌",
+          "唱诗",
+          "song",
+          "sing out"
+        ]
+      }
+    },
+    {
+      "id": "books",
+      "priority": 90,
+      "category": "books",
+      "match": {
+        "publicationType": [
+          "book"
+        ],
+        "categories": [
+          "books?"
+        ],
+        "attributes": [
+          "books?"
+        ]
+      }
+    }
+  ]
+}
