@@ -198,7 +198,7 @@ function makeBookCard(b){
   const cover=document.createElement('div');cover.className='cover';cover.textContent='▤';
   const block=document.createElement('div');block.className='book-title-block';
   const h=document.createElement('h3');h.textContent=b.displayTitle||b.title||'未命名出版物';
-  const file=document.createElement('small');file.className='source-file';file.textContent=langLabel(b.lang)+' · '+(b.originalFilename||b.manifestName||t('原始文件未知'));
+  const file=document.createElement('small');file.className='source-file';file.textContent=langLabel(b.lang)+' · '+sourceFileName(b.originalFilename||b.manifestName||t('原始文件未知'));
   block.append(h,file);main.append(cover,block);
   const more=document.createElement('button');more.className='book-more';more.textContent='⋯';more.title='更多操作';more.setAttribute('aria-label','更多操作');
   more.onclick=e=>{e.stopPropagation();openBookActions(b,more)};
@@ -417,7 +417,7 @@ function sectionPanel(title,desc,opts={}){
   if(desc)box.appendChild(p);
   $('sectionDashboard').appendChild(box);return box;
 }
-function sectionBookCard(book,subtitle='',targetDocId=null){const card=document.createElement('div');card.className='section-book-card';const title=document.createElement('h3');title.textContent=book.displayTitle||book.title;const meta=document.createElement('p');meta.className='sub';meta.textContent=subtitle||`${langLabel(book.lang)} · ${book.year||''}${book.year?' · ':''}${Number(book.docCount??(book.docs||[]).length)} ${t('文档')} · ${book.originalFilename||book.manifestName||t('原始文件未知')}`;const actions=document.createElement('div');actions.className='section-card-actions';const open=document.createElement('button');open.className='btn';open.textContent='打开阅读';open.onclick=()=>targetDocId!==null?openDocInBook(book,targetDocId):openBook(book.id);actions.appendChild(open);if(Number(book.docCount??(book.docs||[]).length)>1){const toc=document.createElement('button');toc.className='btn secondary';toc.textContent='查看目录';toc.onclick=()=>{openBook(book.id).then(()=>{if(window.innerWidth<1100)$('drawer').style.display='block'})};actions.appendChild(toc)}card.append(title,meta,actions);return card}
+function sectionBookCard(book,subtitle='',targetDocId=null){const card=document.createElement('div');card.className='section-book-card';const title=document.createElement('h3');title.textContent=book.displayTitle||book.title;const meta=document.createElement('p');meta.className='sub';meta.textContent=subtitle||`${langLabel(book.lang)} · ${book.year||''}${book.year?' · ':''}${Number(book.docCount??(book.docs||[]).length)} ${t('文档')} · ${sourceFileName(book.originalFilename||book.manifestName||t('原始文件未知'))}`;const actions=document.createElement('div');actions.className='section-card-actions';const open=document.createElement('button');open.className='btn';open.textContent='打开阅读';open.onclick=()=>targetDocId!==null?openDocInBook(book,targetDocId):openBook(book.id);actions.appendChild(open);if(Number(book.docCount??(book.docs||[]).length)>1){const toc=document.createElement('button');toc.className='btn secondary';toc.textContent='查看目录';toc.onclick=()=>{openBook(book.id).then(()=>{if(window.innerWidth<1100)$('drawer').style.display='block'})};actions.appendChild(toc)}card.append(title,meta,actions);return card}
 function fmtMb(n){const v=Number(n||0);if(v>=1048576)return (v/1048576).toFixed(1)+'MB';if(v>=1024)return (v/1024).toFixed(1)+'KB';return v+'B'}
 async function copyText(text){
   if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);return}

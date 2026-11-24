@@ -209,6 +209,7 @@ const CATEGORY_LABEL_KEYS={
   meetings:'聚会资料',reference:'索引和参考资料',daily:'每日经文',songs:'诗歌',other:'其他',uncategorized:'未分类'
 };
 function catLabel(name){const key=String(name);const custom=CUSTOM_CATEGORIES.get(key);if(custom&&custom.name)return custom.name;return t(CATEGORY_LABEL_KEYS[key]||key)}
+function sourceFileName(v){return String(v||'').replace(/\.(jwpub|pub)$/i,'')}
 function applyI18n(){
   try{
     document.documentElement.lang=uiLocale();
