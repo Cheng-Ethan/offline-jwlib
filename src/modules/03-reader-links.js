@@ -536,7 +536,7 @@ function bibleRangeTitle(data,range){
 }
 const HL_SELECTOR='[data-pid],p,h1,h2,h3,h4,li,blockquote,.bible-verse';
 let hlPendingRange=null,hlToolbarTimer=null,hlActiveId=null,annotationState=null;
-let contextActionState=null,verseActionState=null,verseActionTarget=null,contextToolbarRect=null;
+let contextActionState=null,verseActionState=null,verseActionTarget=null,contextToolbarRect=null,contextBarGuardUntil=0;
 let readerSearchRunId=0,readerSearchTimer=null;
 let readerSearchBook=null,readerSearchKind='publications',readerSearchTab='library',readerSearchReturn=null;
 const bibleSearchCache=new Map();
@@ -550,6 +550,16 @@ function visibleTextNodes(block){
   let n;while((n=walker.nextNode()))out.push(n);return out;
 }
 function visibleText(block){return visibleTextNodes(block).map(n=>n.data).join('')}
+function plainTextFromRange(range){
+  if(!range)return '';
+  try{
+    const frag=range.cloneContents();
+    // Ruby annotations (pinyin) are readable on screen but must never be copied.
+    frag.querySelectorAll('rt,rp,script,style').forEach(n=>n.remove());
+    const box=document.createElement('div');box.appendChild(frag);
+    return String(box.innerText||box.textContent||'').replace(/[\u200b-\u200d]/g,'').trim();
+  }catch(e){return String(range.toString()||'').replace(/[\u200b-\u200d]/g,'').trim()}
+}
 function offsetInBlock(block,container,offset){
   if(!block||!container)return null;
   let pos=0;
@@ -943,17 +953,27 @@ function hideContextActions(){
 }
 function hideVerseActions(){hideContextActions()}
 function hideHighlightToolbar(){hideContextActions()}
+function rangePlacementRect(range,fallback){
+  let rects=[];try{rects=[...range.getClientRects()].filter(r=>r.width||r.height)}catch(e){}
+  if(!rects.length)return fallback;
+  const first=rects[0],last=rects[rects.length-1];
+  let left=Infinity,right=-Infinity;
+  rects.forEach(r=>{left=Math.min(left,r.left);right=Math.max(right,r.right)});
+  return {top:first.top,bottom:last.bottom,left,width:right-left,height:last.height||first.height||24,lineHeight:last.height||first.height||24};
+}
 function placeSelectionToolbar(bar,rect){
-  const w=bar.offsetWidth||180,h=bar.offsetHeight||44,gap=16,vh=window.innerHeight;
-  const minTop=64,maxTop=Math.max(minTop,vh-h-78);
-  // Native selection menus normally sit above the selection (and flip below
-  // only near the top edge). Put ours on the opposite side, close to the text.
-  const nativeAbove=rect.top>72;
-  let top=nativeAbove?rect.bottom+gap:rect.top-h-gap;
-  if(top<minTop)top=rect.bottom+gap;
-  if(top+h>maxTop)top=Math.max(minTop,rect.top-h-gap);
-  top=Math.max(minTop,Math.min(top,maxTop));
-  const left=Math.max(8,Math.min(rect.left+rect.width/2-w/2,window.innerWidth-w-8));
+  const w=bar.offsetWidth||180,h=bar.offsetHeight||44;
+  const vv=window.visualViewport;
+  const vw=vv?vv.width:window.innerWidth,vh=vv?vv.height:window.innerHeight;
+  // Leave one text line free between the toolbar and the selection. Prefer the
+  // space above (the native copy menu usually opens below the end handle on
+  // touch devices); fall back below only when the top would leave the screen.
+  const line=Math.max(24,Math.min(40,(rect.lineHeight||rect.height||24)*1.15));
+  const minTop=8,maxTop=Math.max(minTop,vh-h-12);
+  let top=rect.top-h-line;
+  if(top<minTop)top=rect.bottom+line;
+  if(top+h>maxTop)top=Math.max(minTop,Math.min(top,maxTop));
+  const left=Math.max(8,Math.min(rect.left+rect.width/2-w/2,vw-w-8));
   bar.style.left=left+'px';bar.style.top=top+'px';
 }
 function showContextActions(state,rect){
@@ -974,12 +994,16 @@ function showContextActions(state,rect){
     hlPendingRange=state.range;
   }
   if(!rect)rect={left:window.innerWidth/2,top:window.innerHeight/2,bottom:window.innerHeight/2,width:0,height:0};
+  if(state.kind==='selection'&&state.range)rect=rangePlacementRect(state.range,rect);
   contextToolbarRect=rect;
   placeSelectionToolbar(bar,rect);
 }
-function scheduleHighlightToolbar(){
+function scheduleHighlightToolbar(e){
+  if(Date.now()<contextBarGuardUntil)return;
+  if(e&&e.target&&e.target.closest&&e.target.closest('#contextActions'))return;
   if(hlToolbarTimer)clearTimeout(hlToolbarTimer);
   hlToolbarTimer=setTimeout(()=>{
+    if(Date.now()<contextBarGuardUntil)return;
     const sel=window.getSelection();
     if(!sel||!sel.rangeCount||sel.isCollapsed||!$('article')){
       if(contextActionState&&contextActionState.kind==='selection')hideContextActions();
@@ -1027,7 +1051,7 @@ async function createHighlightFromRange(range,color){
   let start=offsetInBlock(startBlock,range.startContainer,range.startOffset);
   let end=offsetInBlock(startBlock,range.endContainer,range.endOffset);
   if(start===null||end===null||end<=start){
-    const q=String(window.getSelection()&&window.getSelection().toString()||'').replace(/[\u200b-\u200d]/g,'').trim();
+    const q=plainTextFromRange(range).replace(/\s+/g,' ').trim();
     if(!q)return;const i=blockText.indexOf(q);if(i<0)return;start=i;end=i+q.length;
   }
   const quote=blockText.slice(start,end);
@@ -1618,6 +1642,9 @@ $('readerSearchInput').addEventListener('keydown',e=>{
   else if(e.key==='Escape'){e.preventDefault();closeReaderSearch()}
 });
 $('contextActions').addEventListener('mousedown',e=>e.preventDefault());
+// Taps inside the bar also fire document-level selectionchange/touchend. Keep
+// those handlers from refreshing (and therefore closing) the bar mid-tap.
+['pointerdown','mousedown','touchstart'].forEach(ev=>$('contextActions').addEventListener(ev,()=>{contextBarGuardUntil=Date.now()+900},{passive:true}));
 $('contextActions').querySelectorAll('[data-context-color]').forEach(btn=>btn.onclick=e=>{
   e.stopPropagation();
   const state=contextActionState;if(!state)return;
@@ -1642,7 +1669,7 @@ $('contextActions').querySelectorAll('[data-context-act]').forEach(btn=>btn.oncl
   if(act==='copy'){
     let text='';
     if(state.kind==='verse')text=verseTextForCopy(state.ctx.el);
-    else if(state.kind==='selection'){try{text=String(state.range.toString()||'')}catch(err){}}
+    else if(state.kind==='selection'){text=plainTextFromRange(state.range)}
     else if(state.kind==='highlight'){const h=await getOne('highlights',state.highlightId);text=String(h&&h.quote||'')}
     text=text.replace(/[\u200b-\u200d]/g,'').trim();
     hideContextActions();
@@ -1664,6 +1691,17 @@ $('contextActions').querySelectorAll('[data-context-act]').forEach(btn=>btn.oncl
   }
 });
 document.addEventListener('click',e=>{const panel=$('readerSearchPanel');if(!panel||!panel.classList.contains('show'))return;if(panel.contains(e.target))return;if(e.target.closest&&e.target.closest('#readerSearchBtn,#librarySearchBtn,.bible-search-btn'))return;closeReaderSearch()},true);
+document.addEventListener('copy',e=>{
+  try{
+    const sel=window.getSelection();
+    if(!sel||!sel.rangeCount)return;
+    const range=sel.getRangeAt(0),article=$('article');
+    if(!article||!article.contains(range.commonAncestorContainer))return;
+    const text=plainTextFromRange(range);
+    if(!text||!e.clipboardData)return;
+    e.clipboardData.setData('text/plain',text);e.preventDefault();
+  }catch(err){}
+});
 document.addEventListener('selectionchange',scheduleHighlightToolbar);
 document.addEventListener('mouseup',scheduleHighlightToolbar);
 document.addEventListener('touchend',scheduleHighlightToolbar,{passive:true});
