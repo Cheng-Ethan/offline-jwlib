@@ -7,7 +7,7 @@ function buildToc(){
     const bookNum=item.group?bibleTocBookNumber(item.title):0;
     if(bookNum)el.classList.add('toc-book-link');
     const activate=()=>{
-      if(!item.group){const ix=currentBook.docs.findIndex(d=>d.id===item.docId);if(ix>=0){pushReaderHistory(readerOriginSection||primarySection);currentIndex=ix;showDoc();buildToc();$('drawer').style.display='none'}}
+      if(!item.group){const ix=currentBook.docs.findIndex(d=>d.id===item.docId);if(ix>=0){pushReaderHistory(historyTab());currentIndex=ix;showDoc();buildToc();$('drawer').style.display='none'}}
       else if(bookNum)openBibleBookFromToc(bookNum);
     };
     if(!item.group||bookNum)el.onclick=activate;
@@ -82,7 +82,7 @@ $('backBtn').onclick=async()=>{
  if(readerSearchReturn){
    const state=readerSearchReturn;readerSearchReturn=null;
    const tab=state.tab||primarySection||'library';
-   readerReturnTarget=null;readerReturnSection=null;readerOriginSection=null;
+   readerReturnTarget=null;readerReturnSection=null;readerOriginSection=null;readerSessionTab=null;
    clearUrls();bibleMode=false;bibleReturn=null;setBibleToolbar(false);
    $('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
    try{delete sectionViews[tab]}catch(e){}
@@ -101,10 +101,11 @@ $('backBtn').onclick=async()=>{
      if(ok){restoreReaderScroll(target.scrollTop);return}
    }
    $('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
+   readerSessionTab=null;readerOriginSection=null;
    setPrimaryNav(target.tab||'library',{skipRestore:true});return;
  }
  if(currentBook&&!bibleMode&&currentIndex>=0){const hd=currentBook.docs[currentIndex];if(hd)await recordHistory(currentBook,hd,$('readerBody').scrollTop)}
- const historySection=readerOriginSection||(bibleMode?'bible':(readerNavSection||primarySection));
+ const historySection=readerSessionTab||readerOriginSection||(bibleMode?'bible':(readerNavSection||primarySection));
  let previousPage=popReaderHistory(historySection);
  while(previousPage){
    readerHistoryRestoring=true;
@@ -113,8 +114,8 @@ $('backBtn').onclick=async()=>{
    previousPage=popReaderHistory(historySection);
  }
  if(bibleMode&&bibleReturn){const r=bibleReturn;bibleMode=false;bibleReturn=null;setBibleToolbar(false);const b=await loadBook(r.bookId);if(b){await openDocInBook(b,r.docId||b.docs[0]?.id);return;}}
- const ret=readerOriginSection||(bibleMode?'bible':(readerNavSection||readerReturnSection));
- readerReturnSection=null;readerOriginSection=null;readerReturnTarget=null;readerSearchReturn=null;
+ const ret=readerSessionTab||readerOriginSection||(bibleMode?'bible':(readerNavSection||readerReturnSection));
+ readerReturnSection=null;readerOriginSection=null;readerSessionTab=null;readerReturnTarget=null;readerSearchReturn=null;
  clearUrls();bibleMode=false;bibleReturn=null;setBibleToolbar(false);$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
  if(ret){
    // Leaving the reader with the back arrow means this tab's current page is
@@ -158,6 +159,10 @@ function bibleChapterMax(bookNum){
 function syncPager(){
   const p=$('prevBtn'),n=$('nextBtn');if(!p||!n)return;
   if(!currentBook){p.disabled=true;n.disabled=true;return}
+  const daily=isDailyTextPublication(currentBook)||categoryPath(currentBook)[0]==='daily';
+  const pKey=daily?'前一日':'上一节',nKey=daily?'后一日':'下一节';
+  p.setAttribute('data-i18n',pKey);p.textContent=t(pKey);
+  n.setAttribute('data-i18n',nKey);n.textContent=t(nKey);
   if(bibleMode){
     const d=currentBook.docs[currentIndex],m=/^bible-(\d+)-(\d+)$/.exec(String(d&&d.id));
     if(!m){p.disabled=true;n.disabled=true;return}
@@ -175,9 +180,9 @@ function readerNext(){
     const d=currentBook.docs[currentIndex],m=/^bible-(\d+)-(\d+)$/.exec(String(d&&d.id));if(!m)return;
     let b=Number(m[1]),c=Number(m[2])+1;const max=bibleChapterMax(b);
     if(c>max){b++;c=1;if(b>66)return}
-    openBibleChapterReader(currentBook.id,b,c,0,readerOriginSection||primarySection||'bible');return;
+    openBibleChapterReader(currentBook.id,b,c,0,readerSessionTab||readerOriginSection||primarySection||'bible');return;
   }
-  if(currentIndex<currentBook.docs.length-1){pushReaderHistory(readerOriginSection||primarySection);currentIndex++;showDoc();buildToc()}
+  if(currentIndex<currentBook.docs.length-1){pushReaderHistory(historyTab());currentIndex++;showDoc();buildToc()}
 }
 function readerPrev(){
   if(!currentBook)return;
@@ -185,9 +190,9 @@ function readerPrev(){
     const d=currentBook.docs[currentIndex],m=/^bible-(\d+)-(\d+)$/.exec(String(d&&d.id));if(!m)return;
     let b=Number(m[1]),c=Number(m[2])-1;
     if(c<1){b--;if(b<1)return;c=bibleChapterMax(b)}
-    openBibleChapterReader(currentBook.id,b,c,0,readerOriginSection||primarySection||'bible');return;
+    openBibleChapterReader(currentBook.id,b,c,0,readerSessionTab||readerOriginSection||primarySection||'bible');return;
   }
-  if(currentIndex>0){pushReaderHistory(readerOriginSection||primarySection);currentIndex--;showDoc();buildToc()}
+  if(currentIndex>0){pushReaderHistory(historyTab());currentIndex--;showDoc();buildToc()}
 }
 $('prevBtn').onclick=readerPrev;
 $('nextBtn').onclick=readerNext;

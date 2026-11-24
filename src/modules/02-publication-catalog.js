@@ -292,7 +292,8 @@ function activateTab(tab,reset,opts={}){
   const hadOpenEditor=!!(noteEditorState&&!noteEditorState.minimized);
   if(hadOpenEditor)minimizeNoteEditor(prev===tab);
   const readerOpen=$('reader').style.display==='block';
-  if(readerOpen&&!reset&&tab===readerNavSection&&!opts.skipRestore){document.querySelectorAll('#bottomNav button').forEach(x=>x.classList.toggle('active',x.dataset.primary===(tab==='more'||tab==='history'?'study':tab)));return Promise.resolve()}
+  const readerTab=readerSessionTab||readerNavSection;
+  if(readerOpen&&!reset&&tab===readerTab&&!opts.skipRestore){document.querySelectorAll('#bottomNav button').forEach(x=>x.classList.toggle('active',x.dataset.primary===(tab==='more'||tab==='history'?'study':tab)));return Promise.resolve()}
   if(prev===tab&&!reset&&!readerOpen){
     if(tab==='home'&&dailyHomeDirty)return renderSection();
     if(!opts.skipRestore&&!hadOpenEditor&&sectionViews[tab])return restoreSectionView(tab).then(ok=>{if(epoch!==tabEpoch)return;return ok?undefined:renderSection().then(()=>{if(epoch===tabEpoch)window.scrollTo(0,navScroll[tab]||0)})});
@@ -302,9 +303,9 @@ function activateTab(tab,reset,opts={}){
   if(reset)resetSectionState(tab);
   const willRestore=!reset&&!opts.skipRestore&&!!sectionViews[tab];
   if(readerOpen){
-    const sourceTab=readerOriginSection||readerNavSection||primarySection;
+    const sourceTab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;
     storeReaderView(sourceTab,true);cancelReaderPositionRestore();
-    hideVerseActions();closeLinkPopover();clearUrls();bibleMode=false;bibleReturn=null;setBibleToolbar(false);readerReturnSection=null;readerOriginSection=null;readerReturnTarget=null;readerSearchReturn=null;
+    hideVerseActions();closeLinkPopover();clearUrls();bibleMode=false;bibleReturn=null;setBibleToolbar(false);readerReturnSection=null;readerOriginSection=null;readerSessionTab=null;readerReturnTarget=null;readerSearchReturn=null;
     // Keep the old reader visible while the target tab's article loads. Hiding
     // it first made the section list flash between the two articles.
     if(!willRestore){$('reader').style.display='none';$('home').style.display='block'}
@@ -1084,7 +1085,11 @@ async function renderStudy(books){
 
 async function renderBooks(filter=''){return renderSection(filter)}
 document.querySelectorAll('#bottomNav button[data-primary]').forEach(btn=>btn.onclick=()=>onNavTap(btn.dataset.primary));
-document.querySelectorAll('[data-reader-primary]').forEach(btn=>btn.onclick=()=>{ cancelReaderPositionRestore();$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';readerReturnTarget=null;readerReturnSection=null;readerOriginSection=null;readerSearchReturn=null;bibleMode=false;bibleReturn=null;setBibleToolbar(false);onNavTap(btn.dataset.readerPrimary); });
+document.querySelectorAll('[data-reader-primary]').forEach(btn=>btn.onclick=()=>{
+  const sourceTab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;
+  if($('reader').style.display==='block'&&currentBook)storeReaderView(sourceTab,true);
+  cancelReaderPositionRestore();$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';readerReturnTarget=null;readerReturnSection=null;readerOriginSection=null;readerSessionTab=null;readerSearchReturn=null;bibleMode=false;bibleReturn=null;setBibleToolbar(false);onNavTap(btn.dataset.readerPrimary);
+});
 const _noteDockOpen=$('noteDockOpen');if(_noteDockOpen)_noteDockOpen.onclick=async()=>{if(!noteEditorState)return;await setPrimaryNav('study',{skipRestore:true});openNoteEditor(noteEditorState.note)};
 const moreBtn=$('moreBtn');if(moreBtn)moreBtn.onclick=()=>showSystemMenu(moreBtn);
 document.getElementById('historyClose').onclick=closeHistoryPanel;
@@ -1135,7 +1140,7 @@ async function deletePublication(book){
  for(const m of marks)if(m.bookId===book.id)t.objectStore('bookmarks').delete(m.id);for(const h of history)if(h.bookId===book.id)t.objectStore('history').delete(h.id);
  await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error)});
  try{await deleteBookData(book.id)}catch(e){console.warn('删除正文/媒体记录失败',e)}
- clearUrls(book.id);if(currentBook?.id===book.id){closeLinkPopover();clearUrls();currentBook=null;readerReturnTarget=null;readerOriginSection=null;readerReturnSection=null;$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid'}
+ clearUrls(book.id);if(currentBook?.id===book.id){closeLinkPopover();clearUrls();currentBook=null;readerReturnTarget=null;readerOriginSection=null;readerSessionTab=null;readerReturnSection=null;$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid'}
 }
 async function recordHistory(book,doc,scrollTop){
  const id=`${book.id}:${doc.id}`;const old=await getOne('history',id);

@@ -433,6 +433,7 @@ body.section-mode main{max-width:none;padding-left:clamp(16px,3vw,44px);padding-
 .publication-content.context-spotlight{position:relative}
 .publication-content.context-spotlight::after{content:'';position:absolute;inset:0;background:rgba(235,239,240,.64);z-index:1;pointer-events:none;border-radius:var(--radius-sm)}
 .publication-content .v.verse-action-active,.publication-content .bible-verse.verse-action-active{position:relative;z-index:2;background:var(--paper,#fff)!important;border-radius:var(--radius-sm);box-shadow:none!important;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.publication-content .block-action-active{background:#f2f7f9!important;border-radius:var(--radius-sm);box-shadow:0 0 0 6px #f2f7f9}
 
 /* Notes live in the left gutter so the inline reading text stays untouched. */
 .publication-content .has-gutter-note{position:relative}
@@ -460,7 +461,10 @@ body.section-mode main{max-width:none;padding-left:clamp(16px,3vw,44px);padding-
 .context-actions.mode-selection [data-context-act="copy"],
 .context-actions.mode-highlight [data-context-act="note"],
 .context-actions.mode-highlight [data-context-act="copy"],
-.context-actions.mode-highlight [data-context-act="erase"]{display:grid}
+.context-actions.mode-highlight [data-context-act="erase"],
+.context-actions.mode-block [data-context-act="info"],
+.context-actions.mode-block [data-context-act="note"],
+.context-actions.mode-block [data-context-act="copy"]{display:grid}
 @media(pointer:coarse){.context-actions.mode-selection{max-width:calc(100vw - 20px)}}
 .publication-content .hl.context-highlight-active{outline:2px solid #7d9087;outline-offset:1px}
 
@@ -1211,7 +1215,7 @@ const $ = id => document.getElementById(id);
 const APP_VERSION='0.14.0';
 const DB_NAME='OfflineJwLibrary', DB_VERSION=5;
 let idb, SQL, currentBook=null, currentIndex=0, fontSize=19, currentObjectUrls=[], bibleMode=false, bibleReturn=null;
-let assetUrlCache=new Map(), pronunciationOn=false, historyWriteAt=0, readerReturnSection=null, readerNavSection=null, readerOriginSection=null, readerReturnTarget=null;
+let assetUrlCache=new Map(), pronunciationOn=false, historyWriteAt=0, readerReturnSection=null, readerNavSection=null, readerOriginSection=null, readerReturnTarget=null, readerSessionTab=null;
 let bibleState={bookId:null,tab:'books',book:null};
 let libraryTab='publications', categoryTrail=[], primarySection='home', tabEpoch=0;
 let currentBibleId=null, bibleSection='正文', bibleSelectedBook=null;
@@ -1420,6 +1424,9 @@ Object.assign(I18N.ko,{"主导航":"기본 탐색","阅读器导航":"리더 탐
 Object.assign(I18N.en,{"上一节":"Previous section","下一节":"Next section","放大字号":"Larger text","缩小字号":"Smaller text"});
 Object.assign(I18N.ja,{"上一节":"前の節","下一节":"次の節","放大字号":"文字を大きく","缩小字号":"文字を小さく"});
 Object.assign(I18N.ko,{"上一节":"이전 절","下一节":"다음 절","放大字号":"글자 크게","缩小字号":"글자 작게"});
+Object.assign(I18N.en,{"前一日":"Previous day","后一日":"Next day","段落信息":"Paragraph information","段落笔记":"Paragraph note","这一段没有可显示的脚注或相关链接。":"This paragraph has no footnotes or related links."});
+Object.assign(I18N.ja,{"前一日":"前日","后一日":"翌日","段落信息":"段落情報","段落笔记":"段落ノート","这一段没有可显示的脚注或相关链接。":"この段落には表示できる脚注や関連リンクがありません。"});
+Object.assign(I18N.ko,{"前一日":"이전 날","后一日":"다음 날","段落信息":"문단 정보","段落笔记":"문단 노트","这一段没有可显示的脚注或相关链接。":"이 문단에는 표시할 각주나 관련 링크가 없습니다."});
 Object.assign(I18N.en,{"书签": "Bookmark", "已书签": "Bookmarked", "备份与恢复": "Backup & restore", "设置与诊断": "Settings & diagnostics", "返回": "Back", "高亮颜色": "Highlight colour", "继续": "Continue", "正在恢复图书馆": "Restoring library", "恢复完成": "Restore complete", "恢复失败": "Restore failed", "正在读取备份文件…": "Reading the backup file…", "备份失败": "Backup failed", "正在备份图书馆": "Backing up library", "无法打开圣经": "Cannot open the Bible", "找不到该出版物的数据。": "Data for this publication was not found.", "无法打开": "Cannot open", "对应出版物可能已被删除。": "The publication may have been deleted.", "高亮范围": "Highlight range", "请在同一段文字内选择需要高亮的内容。": "Select text within a single paragraph to highlight.", "已有高亮": "Already highlighted", "这个范围已经有高亮。": "This range is already highlighted.", "缺少经文正文": "Verse text missing", "这份出版物没有保存 BibleVerse 经文数据。请先导入对应语言的圣经 PUB。": "This publication has no BibleVerse data. Import a Bible PUB in the matching language first.", "经文范围过大": "Too many verses", "本阅读器一次最多显示 120 节，请缩小经文范围。": "The reader shows at most 120 verses at a time. Narrow the range.", "没有经文正文": "No verse text", "这份圣经文件中没有找到对应经文正文。": "The matching verse text was not found in this Bible file.", "已检查本机导入的圣经译本，但没有找到这段经文的可显示正文。": "Imported Bibles were checked, but no readable text was found for this passage.", "暂不支持的内部链接": "Unsupported internal link", "当前版本无法识别这个 PUB 内部链接格式。已支持出版物段落链接和圣经经文链接；研究注释会在本地出版物包含对应 Commentary 数据时尝试预览。": "This PUB link format is not recognised. Publication paragraph links and Bible verse links are supported; study notes are previewed when the local publication includes Commentary data.", "离线链接不可用": "Offline link unavailable", "这是一个外部网页链接，当前离线阅读器不会尝试联网打开。": "This is an external web link. The offline reader does not open network links.", "本地存储不可用": "Local storage unavailable", "当前浏览器或容器未允许本地存储，无法保存图书：": "This browser or container does not allow local storage, so books cannot be saved: ", "诊断信息已复制到剪贴板。": "Diagnostics copied to the clipboard.", "使用说明内容": "This is a single-file offline library. Bottom navigation: Home, Bible, Media Library, Meetings, Personal Study. Tap once to return to the last position; double-tap to reset. To import, tap More in the top-right corner and choose PUB files from your device; new files are selected, already imported files are not. Export a full backup regularly. Use the arrow keys to turn pages while reading."});
 Object.assign(I18N.ja,{"书签": "ブックマーク", "已书签": "登録済み", "备份与恢复": "バックアップと復元", "设置与诊断": "設定と診断", "返回": "戻る", "高亮颜色": "ハイライト色", "继续": "続行", "正在恢复图书馆": "図書館を復元中", "恢复完成": "復元完了", "恢复失败": "復元に失敗", "正在读取备份文件…": "バックアップファイルを読み込み中…", "备份失败": "バックアップに失敗", "正在备份图书馆": "図書館をバックアップ中", "无法打开圣经": "聖書を開けません", "找不到该出版物的数据。": "この出版物のデータが見つかりません。", "无法打开": "開けません", "对应出版物可能已被删除。": "出版物が削除された可能性があります。", "高亮范围": "ハイライト範囲", "请在同一段文字内选择需要高亮的内容。": "同じ段落内の文字を選択してください。", "已有高亮": "ハイライト済み", "这个范围已经有高亮。": "この範囲はすでにハイライトされています。", "缺少经文正文": "聖句本文がありません", "这份出版物没有保存 BibleVerse 经文数据。请先导入对应语言的圣经 PUB。": "この出版物にはBibleVerseデータがありません。対応言語の聖書PUBを先にインポートしてください。", "经文范围过大": "聖句の範囲が広すぎます", "本阅读器一次最多显示 120 节，请缩小经文范围。": "一度に表示できるのは120節までです。範囲を狭めてください。", "没有经文正文": "聖句本文がありません", "这份圣经文件中没有找到对应经文正文。": "この聖書ファイルに対応する聖句本文が見つかりません。", "已检查本机导入的圣经译本，但没有找到这段经文的可显示正文。": "インポート済みの聖書を確認しましたが、この箇所の本文が見つかりません。", "暂不支持的内部链接": "未対応の内部リンク", "当前版本无法识别这个 PUB 内部链接格式。已支持出版物段落链接和圣经经文链接；研究注释会在本地出版物包含对应 Commentary 数据时尝试预览。": "このPUB内部リンク形式には対応していません。出版物の段落リンクと聖句リンクには対応しています。研究注釈はローカル出版物にCommentaryデータがある場合にプレビューします。", "离线链接不可用": "オフラインリンクは利用できません", "这是一个外部网页链接，当前离线阅读器不会尝试联网打开。": "これは外部ウェブリンクです。オフラインリーダーはネットワークを開きません。", "本地存储不可用": "ローカル保存を利用できません", "当前浏览器或容器未允许本地存储，无法保存图书：": "このブラウザまたはコンテナではローカル保存が許可されていないため、書籍を保存できません：", "诊断信息已复制到剪贴板。": "診断情報をクリップボードにコピーしました。", "使用说明内容": "これは単一HTMLのオフライン図書館です。下部ナビゲーション：ホーム、聖書、マルチメディア図書館、集会、個人研究。1回タップで前回の位置へ、2回タップで先頭へ戻ります。PUBのインポートは右上の「その他」から行い、お使いのデバイスからファイルを選択します。未インポートのファイルは選択済み、インポート済みは未選択です。定期的に完全バックアップを書き出してください。読書中は左右の矢印キーでページを移動できます。"});
 Object.assign(I18N.ko,{"书签": "책갈피", "已书签": "저장됨", "备份与恢复": "백업 및 복원", "设置与诊断": "설정 및 진단", "返回": "뒤로", "高亮颜色": "강조 색", "继续": "계속", "正在恢复图书馆": "라이브러리 복원 중", "恢复完成": "복원 완료", "恢复失败": "복원 실패", "正在读取备份文件…": "백업 파일을 읽는 중…", "备份失败": "백업 실패", "正在备份图书馆": "라이브러리 백업 중", "无法打开圣经": "성경을 열 수 없음", "找不到该出版物的数据。": "이 출판물의 데이터를 찾을 수 없습니다.", "无法打开": "열 수 없음", "对应出版物可能已被删除。": "출판물이 삭제되었을 수 있습니다.", "高亮范围": "강조 범위", "请在同一段文字内选择需要高亮的内容。": "같은 문단 안의 텍스트를 선택하십시오.", "已有高亮": "이미 강조됨", "这个范围已经有高亮。": "이 범위는 이미 강조되어 있습니다.", "缺少经文正文": "성구 본문 없음", "这份出版物没有保存 BibleVerse 经文数据。请先导入对应语言的圣经 PUB。": "이 출판물에는 BibleVerse 데이터가 없습니다. 해당 언어의 성경 PUB를 먼저 가져오십시오.", "经文范围过大": "성구 범위가 너무 큼", "本阅读器一次最多显示 120 节，请缩小经文范围。": "한 번에 최대 120절까지 표시합니다. 범위를 줄이십시오.", "没有经文正文": "성구 본문 없음", "这份圣经文件中没有找到对应经文正文。": "이 성경 파일에서 해당 성구 본문을 찾지 못했습니다.", "已检查本机导入的圣经译本，但没有找到这段经文的可显示正文。": "가져온 성경을 확인했지만 이 구절의 본문을 찾지 못했습니다.", "暂不支持的内部链接": "지원하지 않는 내부 링크", "当前版本无法识别这个 PUB 内部链接格式。已支持出版物段落链接和圣经经文链接；研究注释会在本地出版物包含对应 Commentary 数据时尝试预览。": "이 PUB 내부 링크 형식은 인식할 수 없습니다. 출판물 문단 링크와 성구 링크는 지원합니다. 연구 주석은 로컬 출판물에 Commentary 데이터가 있을 때 미리 보기합니다.", "离线链接不可用": "오프라인 링크 사용 불가", "这是一个外部网页链接，当前离线阅读器不会尝试联网打开。": "외부 웹 링크입니다. 오프라인 리더는 네트워크를 열지 않습니다.", "本地存储不可用": "로컬 저장소 사용 불가", "当前浏览器或容器未允许本地存储，无法保存图书：": "이 브라우저 또는 컨테이너에서 로컬 저장소가 허용되지 않아 책을 저장할 수 없습니다: ", "诊断信息已复制到剪贴板。": "진단 정보를 클립보드에 복사했습니다.", "使用说明内容": "단일 HTML 오프라인 라이브러리입니다. 하단 탐색: 홈, 성경, 멀티미디어 라이브러리, 집회, 개인 연구. 한 번 누르면 마지막 위치로, 두 번 누르면 맨 위로 돌아갑니다. PUB 가져오기는 오른쪽 위 「더보기」에서 하며 기기에서 파일을 선택합니다. 가져오지 않은 파일은 선택되고 가져온 파일은 선택되지 않습니다. 정기적으로 전체 백업을 내보내십시오. 읽는 동안 좌우 화살표 키로 페이지를 넘길 수 있습니다."});
@@ -3237,7 +3244,8 @@ function activateTab(tab,reset,opts={}){
   const hadOpenEditor=!!(noteEditorState&&!noteEditorState.minimized);
   if(hadOpenEditor)minimizeNoteEditor(prev===tab);
   const readerOpen=$('reader').style.display==='block';
-  if(readerOpen&&!reset&&tab===readerNavSection&&!opts.skipRestore){document.querySelectorAll('#bottomNav button').forEach(x=>x.classList.toggle('active',x.dataset.primary===(tab==='more'||tab==='history'?'study':tab)));return Promise.resolve()}
+  const readerTab=readerSessionTab||readerNavSection;
+  if(readerOpen&&!reset&&tab===readerTab&&!opts.skipRestore){document.querySelectorAll('#bottomNav button').forEach(x=>x.classList.toggle('active',x.dataset.primary===(tab==='more'||tab==='history'?'study':tab)));return Promise.resolve()}
   if(prev===tab&&!reset&&!readerOpen){
     if(tab==='home'&&dailyHomeDirty)return renderSection();
     if(!opts.skipRestore&&!hadOpenEditor&&sectionViews[tab])return restoreSectionView(tab).then(ok=>{if(epoch!==tabEpoch)return;return ok?undefined:renderSection().then(()=>{if(epoch===tabEpoch)window.scrollTo(0,navScroll[tab]||0)})});
@@ -3247,9 +3255,9 @@ function activateTab(tab,reset,opts={}){
   if(reset)resetSectionState(tab);
   const willRestore=!reset&&!opts.skipRestore&&!!sectionViews[tab];
   if(readerOpen){
-    const sourceTab=readerOriginSection||readerNavSection||primarySection;
+    const sourceTab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;
     storeReaderView(sourceTab,true);cancelReaderPositionRestore();
-    hideVerseActions();closeLinkPopover();clearUrls();bibleMode=false;bibleReturn=null;setBibleToolbar(false);readerReturnSection=null;readerOriginSection=null;readerReturnTarget=null;readerSearchReturn=null;
+    hideVerseActions();closeLinkPopover();clearUrls();bibleMode=false;bibleReturn=null;setBibleToolbar(false);readerReturnSection=null;readerOriginSection=null;readerSessionTab=null;readerReturnTarget=null;readerSearchReturn=null;
     // Keep the old reader visible while the target tab's article loads. Hiding
     // it first made the section list flash between the two articles.
     if(!willRestore){$('reader').style.display='none';$('home').style.display='block'}
@@ -4029,7 +4037,11 @@ async function renderStudy(books){
 
 async function renderBooks(filter=''){return renderSection(filter)}
 document.querySelectorAll('#bottomNav button[data-primary]').forEach(btn=>btn.onclick=()=>onNavTap(btn.dataset.primary));
-document.querySelectorAll('[data-reader-primary]').forEach(btn=>btn.onclick=()=>{ cancelReaderPositionRestore();$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';readerReturnTarget=null;readerReturnSection=null;readerOriginSection=null;readerSearchReturn=null;bibleMode=false;bibleReturn=null;setBibleToolbar(false);onNavTap(btn.dataset.readerPrimary); });
+document.querySelectorAll('[data-reader-primary]').forEach(btn=>btn.onclick=()=>{
+  const sourceTab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;
+  if($('reader').style.display==='block'&&currentBook)storeReaderView(sourceTab,true);
+  cancelReaderPositionRestore();$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';readerReturnTarget=null;readerReturnSection=null;readerOriginSection=null;readerSessionTab=null;readerSearchReturn=null;bibleMode=false;bibleReturn=null;setBibleToolbar(false);onNavTap(btn.dataset.readerPrimary);
+});
 const _noteDockOpen=$('noteDockOpen');if(_noteDockOpen)_noteDockOpen.onclick=async()=>{if(!noteEditorState)return;await setPrimaryNav('study',{skipRestore:true});openNoteEditor(noteEditorState.note)};
 const moreBtn=$('moreBtn');if(moreBtn)moreBtn.onclick=()=>showSystemMenu(moreBtn);
 document.getElementById('historyClose').onclick=closeHistoryPanel;
@@ -4080,7 +4092,7 @@ async function deletePublication(book){
  for(const m of marks)if(m.bookId===book.id)t.objectStore('bookmarks').delete(m.id);for(const h of history)if(h.bookId===book.id)t.objectStore('history').delete(h.id);
  await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error)});
  try{await deleteBookData(book.id)}catch(e){console.warn('删除正文/媒体记录失败',e)}
- clearUrls(book.id);if(currentBook?.id===book.id){closeLinkPopover();clearUrls();currentBook=null;readerReturnTarget=null;readerOriginSection=null;readerReturnSection=null;$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid'}
+ clearUrls(book.id);if(currentBook?.id===book.id){closeLinkPopover();clearUrls();currentBook=null;readerReturnTarget=null;readerOriginSection=null;readerSessionTab=null;readerReturnSection=null;$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid'}
 }
 async function recordHistory(book,doc,scrollTop){
  const id=`${book.id}:${doc.id}`;const old=await getOne('history',id);
@@ -4090,10 +4102,11 @@ async function recordHistory(book,doc,scrollTop){
 async function openBook(id){
   const epoch=tabEpoch;
   const readerWasOpen=$('reader').style.display==='block';
-  if(readerWasOpen&&!readerHistoryRestoring)pushReaderHistory(readerOriginSection||primarySection);
+  if(readerWasOpen&&!readerHistoryRestoring)pushReaderHistory(historyTab());
   readerReturnSection=null;
   readerReturnTarget=null;
   readerOriginSection=primarySection||null;
+  readerSessionTab=readerOriginSection||'home';
   if(currentBook&&currentBook.id!==id)clearUrls();
   try{navScroll[primarySection]=window.scrollY||0}catch(e){}
   closeLinkPopover();showReaderNav(primarySection);bibleMode=false;bibleReturn=null;setBibleToolbar(false);
@@ -4116,14 +4129,17 @@ async function openBook(id){
 async function openDocInBook(book,docId,anchor='',returnSection=null){
   const epoch=tabEpoch;
   const readerWasOpen=$('reader').style.display==='block';
-  const origin=returnSection||primarySection||readerOriginSection||'study';
+  // A link followed inside the reader belongs to the tab that is currently
+  // reading, even if primarySection was changed by an earlier navigation.
+  const origin=returnSection||(readerWasOpen?(readerSessionTab||readerOriginSection):null)||primarySection||'study';
   if(readerWasOpen&&!readerHistoryRestoring&&origin===historyTab())pushReaderHistory(origin);
   readerReturnSection=returnSection||null;
   readerReturnTarget=null;
   readerOriginSection=origin;
+  readerSessionTab=origin;
   if(book&&currentBook&&currentBook.id!==book.id)clearUrls();
   try{navScroll[primarySection]=window.scrollY||0}catch(e){}
-  closeLinkPopover();showReaderNav(returnSection||primarySection);bibleMode=false;bibleReturn=null;setBibleToolbar(false);
+  closeLinkPopover();showReaderNav(returnSection||origin||primarySection);bibleMode=false;bibleReturn=null;setBibleToolbar(false);
   if(!book||book.id===undefined)return false;
   const bibleMatch=String(docId).match(/^bible-(\d+)-(\d+)$/);
   if(bibleMatch){return await openBibleChapterReader(book.id,Number(bibleMatch[1]),Number(bibleMatch[2]),0,origin)===true;}
@@ -4169,7 +4185,7 @@ function readerViewSnapshot(){
 }
 const READER_HISTORY_LIMIT=30;
 let readerHistoryRestoring=false;
-function historyTab(){return readerOriginSection||primarySection||'home'}
+function historyTab(){return readerSessionTab||readerOriginSection||primarySection||'home'}
 function pushReaderHistory(tab){
   tab=tab||historyTab();
   const snap=readerViewSnapshot();if(!snap||!tab)return;
@@ -4232,7 +4248,25 @@ function restoreReaderPosition(view,tab){
   try{$('article').querySelectorAll('img').forEach(img=>{if(!img.complete)img.addEventListener('load',()=>{if(token===readerRestoreToken)apply()},{once:true})})}catch(e){}
 }
 function readerVisiblePid(){
-  try{const blocks=[...$('article').querySelectorAll('[data-pid]')];for(const el of blocks){const r=el.getBoundingClientRect();if(r.bottom>90)return el.getAttribute('data-pid')||''}}catch(e){}
+  try{
+    const body=$('readerBody'),article=$('article');
+    if(!body||!article)return '';
+    const threshold=body.getBoundingClientRect().top+72;
+    const hits=[];let next=null,nextTop=Infinity;
+    for(const el of article.querySelectorAll('[data-pid]')){
+      const pid=el.getAttribute('data-pid');if(!pid)continue;
+      const r=el.getBoundingClientRect();if(r.height<=0)continue;
+      if(r.top<=threshold&&r.bottom>threshold)hits.push({el,r});
+      else if(r.top>threshold&&r.top<nextTop){next=el;nextTop=r.top}
+    }
+    // Nested wrappers all "contain" the reading line. Pick the smallest one so
+    // the saved anchor is the actual paragraph, not an outer article wrapper.
+    if(hits.length){
+      hits.sort((a,b)=>(a.r.height-b.r.height)||(b.r.top-a.r.top));
+      return hits[0].el.getAttribute('data-pid')||'';
+    }
+    if(next)return next.getAttribute('data-pid')||'';
+  }catch(e){}
   return '';
 }
 function closeReaderLangMenu(){const m=document.getElementById('readerLangMenu');if(m)m.remove()}
@@ -4253,7 +4287,7 @@ async function switchReaderLanguage(sibling){
   if(!currentBook||!sibling)return;
   const doc=currentBook.docs[currentIndex],pid=readerVisiblePid();
   const bibleMatch=String(doc&&doc.id||'').match(/^bible-(\d+)-(\d+)$/);
-  if(bibleMatch){closeReaderLangMenu();await openBibleChapterReader(sibling.id,Number(bibleMatch[1]),Number(bibleMatch[2]),0,readerOriginSection||primarySection||'bible');return}
+  if(bibleMatch){closeReaderLangMenu();await openBibleChapterReader(sibling.id,Number(bibleMatch[1]),Number(bibleMatch[2]),0,readerSessionTab||readerOriginSection||primarySection||'bible');return}
   const full=await loadBook(sibling.id);
   if(!full){say(t('语言版本'),t('找不到该出版物的数据。'));return}
   let target=null;
@@ -4450,6 +4484,7 @@ async function showDoc(anchor=''){
   updateReaderLanguageButton();
   await applyHighlightsForDoc(currentBook.id,d.id);
   await applyVerseNotesForDoc(currentBook.id,d.id);
+  await applyBlockNotesForDoc(currentBook.id,d.id);
   await applyCrossLanguageNotes(currentBook,d);
   await setupAnswerFields(currentBook.id,d.id);
   if(epoch!==tabEpoch)return false;
@@ -4470,7 +4505,7 @@ async function showDoc(anchor=''){
   // lastDocId lives in the small metadata record; never rewrite the whole book.
   await touchedBookMeta(currentBook,{lastDocId:d.id});
   if(!pendingView)await recordHistory(currentBook,d,restore);
-  const viewTab=readerOriginSection||readerNavSection||primarySection;
+  const viewTab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;
   if(viewTab){
     const oldView=sectionViews[viewTab];
     if(pendingView)sectionViews[viewTab]={...pendingView};
@@ -4549,7 +4584,7 @@ async function openBibleChapterReader(bookId,bookNum,chapter,verse=0,origin=null
   const externalJump=readerWasOpen&&!readerHistoryRestoring&&sourceBook&&!sourceBook.bibleData&&!sourceBook.hasBible;
   if(readerWasOpen&&!readerHistoryRestoring&&!externalJump&&(origin||primarySection||readerOriginSection)===historyTab())pushReaderHistory(historyTab());
   if(externalJump){
-    readerReturnTarget={type:'publication',tab:readerOriginSection||primarySection||'library',bookId:String(sourceBook.id),docId:String(sourceDoc&&sourceDoc.id||''),mepsDocId:String(sourceDoc&&sourceDoc.mepsId||''),anchor:readerVisiblePid(),scrollTop:Number($('readerBody').scrollTop||0)};
+    readerReturnTarget={type:'publication',tab:readerSessionTab||readerOriginSection||primarySection||'library',bookId:String(sourceBook.id),docId:String(sourceDoc&&sourceDoc.id||''),mepsDocId:String(sourceDoc&&sourceDoc.mepsId||''),anchor:readerVisiblePid(),scrollTop:Number($('readerBody').scrollTop||0)};
   }else if(!readerWasOpen||!readerReturnTarget){
     readerReturnTarget=null;
   }
@@ -4588,8 +4623,9 @@ async function openBibleChapterReader(bookId,bookNum,chapter,verse=0,origin=null
   const ix=full.docs.findIndex(d=>String(d.id)===docId);
   if(ix>=0)full.docs[ix]=synthetic;else full.docs.push(synthetic);
   currentBook=full;currentIndex=full.docs.findIndex(d=>String(d.id)===docId);
-  const section=origin||primarySection||readerOriginSection||'bible';
+  const section=(readerWasOpen?(readerSessionTab||readerOriginSection):null)||origin||primarySection||'bible';
   readerOriginSection=section;
+  readerSessionTab=section;
   readerReturnSection=section;
   bibleMode=false;setBibleToolbar(false);
   try{navScroll[primarySection]=window.scrollY||0}catch(e){}
@@ -4625,7 +4661,7 @@ function bibleRangeTitle(data,range){
 }
 const HL_SELECTOR='[data-pid],p,h1,h2,h3,h4,li,blockquote,.bible-verse';
 let hlPendingRange=null,hlToolbarTimer=null,hlActiveId=null,annotationState=null;
-let contextActionState=null,verseActionState=null,verseActionTarget=null,contextToolbarRect=null,contextBarGuardUntil=0;
+let contextActionState=null,verseActionState=null,verseActionTarget=null,blockActionState=null,blockActionTarget=null,contextToolbarRect=null,contextBarGuardUntil=0;
 let readerSearchRunId=0,readerSearchTimer=null;
 let readerSearchBook=null,readerSearchKind='publications',readerSearchTab='library',readerSearchReturn=null;
 const bibleSearchCache=new Map();
@@ -4734,11 +4770,30 @@ async function applyVerseNotesForDoc(bookId,docId){
   let notes=[];try{notes=await reqP(tx('notes').getAll())}catch(e){return}
   for(const n of notes)if(n.kind==='verse'&&String(n.bookId)===String(bookId)&&String(n.docId)===String(docId))addVerseNoteMarker(n);
 }
+function addBlockNoteMarker(note){
+  if(!note)return;
+  const content=hlRoot();if(!content)return;
+  let block=null;
+  if(note.pid){try{block=content.querySelector('[data-pid="'+CSS.escape(String(note.pid))+'"]')}catch(e){}}
+  if(!block&&Number.isFinite(Number(note.blockIndex)))block=hlBlocks(content)[Number(note.blockIndex)]||null;
+  if(!block)return;
+  const host=gutterHost(block);if(!host)return;
+  if(host.querySelector('.hl-note-mark[data-note-id="'+CSS.escape(String(note.id))+'"]'))return;
+  const m=document.createElement('button');m.type='button';m.className='hl-note-mark';m.dataset.noteId=String(note.id);m.title=note.title||t('笔记');
+  placeGutterMarker(host,m,block);
+}
+async function applyBlockNotesForDoc(bookId,docId){
+  let notes=[];try{notes=await reqP(tx('notes').getAll())}catch(e){return}
+  for(const n of notes)if(n.kind==='paragraph'&&String(n.bookId)===String(bookId)&&String(n.docId)===String(docId))addBlockNoteMarker(n);
+}
 async function openVerseNote(noteId){
   const note=await getOne('notes',noteId);if(!note)return;
   hideVerseActions();
   const h={id:'verse-note-'+note.id,bookId:note.bookId,docId:note.docId,seriesKey:note.seriesKey||seriesKeyFor(currentBook),mepsDocId:note.mepsDocId||'',pid:note.pid||'',quote:note.title||'',color:'#ffe58a',noteId:note.id};
-  await openAnnotationEditor(h,note,false,{virtual:true,data:{kind:'verse',verseId:String(note.verseId||''),bibleBook:note.bibleBook,bibleChapter:note.bibleChapter}});
+  const data=note.kind==='verse'
+    ?{kind:'verse',verseId:String(note.verseId||''),bibleBook:note.bibleBook,bibleChapter:note.bibleChapter}
+    :{kind:note.kind||'paragraph',pid:note.pid||''};
+  await openAnnotationEditor(h,note,false,{virtual:true,data});
 }
 function removeNoteMarker(id){
   try{document.querySelectorAll('.hl-note-mark[data-hl-id="'+CSS.escape(String(id))+'"],.hl-note-mark[data-note-id="'+CSS.escape(String(id))+'"]').forEach(el=>el.remove())}catch(e){}
@@ -4840,7 +4895,7 @@ async function openReaderSearch(opts={}){
   let kind=opts.kind,book=opts.book||null,tab=opts.tab||primarySection||'library';
   const readerOpen=$('reader').style.display==='block';
   if(!kind){
-    if(readerOpen&&currentBook){book=currentBook;kind=currentBook.bibleData?'bible':'publications';tab=readerOriginSection||primarySection||'library'}
+    if(readerOpen&&currentBook){book=currentBook;kind=currentBook.bibleData?'bible':'publications';tab=readerSessionTab||readerOriginSection||primarySection||'library'}
     else if(primarySection==='bible'){kind='bible';tab='bible'}
     else{kind='publications';tab=primarySection||'library'}
   }
@@ -5061,9 +5116,10 @@ function hideContextActions(){
   const bar=$('contextActions');
   if(bar){bar.classList.remove('show','mode-verse','mode-selection','mode-highlight','colors-open');const ct=bar.querySelector('.ctx-color-toggle');if(ct)ct.setAttribute('aria-expanded','false');bar.querySelectorAll('[data-context-color]').forEach(b=>b.classList.remove('active'))}
   if(verseActionTarget&&verseActionTarget.classList)verseActionTarget.classList.remove('verse-action-active');
+  if(blockActionTarget&&blockActionTarget.classList)blockActionTarget.classList.remove('block-action-active');
   const content=hlRoot();if(content)content.classList.remove('context-spotlight');
   document.querySelectorAll('.hl.context-highlight-active').forEach(el=>el.classList.remove('context-highlight-active'));
-  contextActionState=null;verseActionTarget=null;verseActionState=null;hlPendingRange=null;hlActiveId=null;contextToolbarRect=null;
+  contextActionState=null;verseActionTarget=null;verseActionState=null;blockActionState=null;blockActionTarget=null;hlPendingRange=null;hlActiveId=null;contextToolbarRect=null;
 }
 function hideVerseActions(){hideContextActions()}
 function hideHighlightToolbar(){hideContextActions()}
@@ -5083,9 +5139,11 @@ function placeSelectionToolbar(bar,rect){
   // We cannot read the system menu's position, so reserve its height on the
   // chosen side: whether the system menu opens above or below the selection,
   // our bar then sits beyond it instead of underneath it.
-  const line=Math.max(24,Math.min(40,(rect.lineHeight||rect.height||24)*1.15));
-  let coarse=false;try{coarse=!!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches)}catch(e){}
-  const nativeMenu=coarse?56:0;
+  const line=Math.max(30,Math.min(48,(rect.lineHeight||rect.height||24)*1.3));
+  // A one-line gap alone lands inside the native selection menu, so always
+  // reserve a full menu height as well. This also covers touch-capable
+  // laptops where `(pointer:coarse)` can still report false.
+  const nativeMenu=88;
   const clear=line+nativeMenu;
   const minTop=8,maxTop=Math.max(minTop,vh-h-12);
   const above=rect.top-h-clear,below=rect.bottom+clear;
@@ -5113,6 +5171,15 @@ function showContextActions(state,rect){
     bar.querySelectorAll('[data-context-color]').forEach(b=>b.classList.toggle('active',String(b.getAttribute('data-context-color')).toLowerCase()===String(state.color||'').toLowerCase()));
   }else if(state.kind==='selection'){
     hlPendingRange=state.range;
+  }else if(state.kind==='block'){
+    blockActionState=state;blockActionTarget=state.el;
+    if(blockActionTarget&&blockActionTarget.classList)blockActionTarget.classList.add('block-action-active');
+  }
+  const infoBtn=bar.querySelector('[data-context-act="info"]');
+  if(infoBtn){
+    const key=state.kind==='block'?'段落信息':'经文信息';
+    infoBtn.setAttribute('data-i18n-title',key);infoBtn.setAttribute('data-i18n-aria-label',key);
+    infoBtn.title=t(key);infoBtn.setAttribute('aria-label',t(key));
   }
   if(!rect)rect={left:window.innerWidth/2,top:window.innerHeight/2,bottom:window.innerHeight/2,width:0,height:0};
   if(state.kind==='selection'&&state.range)rect=rangePlacementRect(state.range,rect);
@@ -5213,6 +5280,7 @@ async function saveAnnotation(){
   await saveOne('notes',note);
   if(highlight&&!annotationState.virtual&&highlight.noteId!==note.id){highlight.noteId=note.id;await saveHighlight(highlight);addNoteMarker(highlight.id)}
   if(note.kind==='verse')await applyVerseNotesForDoc(note.bookId,note.docId);
+  else if(note.kind==='paragraph')await applyBlockNotesForDoc(note.bookId,note.docId);
   closeAnnotationEditor();
 }
 async function deleteAnnotation(){
@@ -5446,7 +5514,7 @@ async function openPublicationReference(href,anchorEl){
     }
     const bibleTarget=await findBibleBookDocTarget(target.docId);
     if(bibleTarget){
-      await openBibleChapterReader(bibleTarget.bookId,bibleTarget.bookNum,1,0,readerOriginSection||primarySection||'bible');
+      await openBibleChapterReader(bibleTarget.bookId,bibleTarget.bookNum,1,0,readerSessionTab||readerOriginSection||primarySection||'bible');
       return true;
     }
   }
@@ -5516,7 +5584,7 @@ async function routeBibleChapterLink(href,anchorEl){
     if(hit){bookNum=Number(hit.chapterNumber||0);bookId=hit.bookId}
   }
   if(!bookNum||!bookId)return false;
-  await openBibleChapterReader(bookId,bookNum,chapter,verse,readerOriginSection||primarySection||'bible');
+  await openBibleChapterReader(bookId,bookNum,chapter,verse,readerSessionTab||readerOriginSection||primarySection||'bible');
   return true;
 }
 async function routeCommentaryLink(href,anchorEl){
@@ -5606,6 +5674,77 @@ function verseContext(el){
 function showVerseActions(el){
   const ctx=verseContext(el);if(!ctx)return;
   showContextActions({kind:'verse',ctx},el.getBoundingClientRect());
+}
+function blockActionCandidate(target){
+  const el=target&&target.nodeType===1?target:(target&&target.parentElement);
+  if(!el||!el.closest)return null;
+  if(el.closest('a,button,input,textarea,select,.hl,.hl-note-mark,.fn,.m[data-mid],.vl'))return null;
+  const block=el.closest('p,li,blockquote,h1,h2,h3,h4,[data-pid]');
+  if(!block||!hlRoot().contains(block))return null;
+  if(block.closest('.v,.bible-verse'))return null;
+  if(block.matches('[data-pid]')&&block.querySelector('p,li,blockquote'))return null;
+  if(!visibleText(block).trim())return null;
+  return block;
+}
+function pointLineRect(x,y,fallback){
+  try{
+    let range=null;
+    if(document.caretRangeFromPoint)range=document.caretRangeFromPoint(x,y);
+    else if(document.caretPositionFromPoint){const p=document.caretPositionFromPoint(x,y);if(p){range=document.createRange();range.setStart(p.offsetNode,p.offset);range.collapse(true)}}
+    if(range){
+      const rects=[...range.getClientRects()].filter(r=>r.width||r.height);
+      const r=rects[0]||range.getBoundingClientRect();
+      if(r&&(r.width||r.height))return {top:r.top,bottom:r.bottom,left:r.left,width:r.width,height:r.height,lineHeight:r.height||24};
+    }
+  }catch(e){}
+  return fallback;
+}
+function showBlockActions(el,rect){
+  if(!el)return;
+  const fallback=el.getBoundingClientRect();
+  showContextActions({kind:'block',el},rect||{top:fallback.top,bottom:Math.min(fallback.bottom,fallback.top+32),left:fallback.left,width:fallback.width,height:Math.min(fallback.height,32),lineHeight:24});
+}
+function blockText(block){
+  try{
+    const clone=block.cloneNode(true);
+    clone.querySelectorAll('rt,rp,.tt,.fn,.m,.vl,.cl,.fcc,.hl-note-mark').forEach(n=>n.remove());
+    return String(clone.innerText||clone.textContent||'').replace(/[\u200b-\u200d]/g,'').replace(/\s+/g,' ').trim();
+  }catch(e){return visibleText(block).replace(/[\u200b-\u200d]/g,'').replace(/\s+/g,' ').trim()}
+}
+async function showBlockInfo(block){
+  const scope=hlRoot();const sections=[];const seen=new Set();
+  block.querySelectorAll('.fn[data-fnid]').forEach(node=>{
+    const id=String(node.getAttribute('data-fnid')||'');if(!id||seen.has(id))return;seen.add(id);
+    const target=footnoteTarget(scope,id);
+    sections.push({label:(node.dataset.fnSymbol||'*')+' '+t('脚注'),html:target?footnoteBodyHtml(target):'<p class="xref-empty">'+t('没有找到对应的脚注正文。')+'</p>'});
+  });
+  block.querySelectorAll('a[data-jwlink]').forEach(a=>{
+    const href=String(a.dataset.jwlink||'');if(!href)return;
+    const label=String(a.textContent||'').trim()||t('相关链接');
+    sections.push({label:t('相关链接'),html:`<p><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(label)}</a></p>`});
+  });
+  if(!sections.length){say(t('段落信息'),t('这一段没有可显示的脚注或相关链接。'));return}
+  const html=sections.map(x=>`<div class="verse-ref-section"><p class="verse-ref-label">${safeText(x.label)}</p>${x.html}</div>`).join('');
+  await showLinkPopover(t('段落信息'),html,currentBook,block);
+}
+async function doBlockAction(act){
+  const state=blockActionState;if(!state||!state.el)return;
+  const block=state.el,quote=blockText(block);
+  hideContextActions();
+  if(act==='info'){await showBlockInfo(block);return}
+  if(act==='copy'){
+    if(!quote)return;
+    try{if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(quote);else await copyText(quote);say(t('已复制'),quote.slice(0,160))}catch(e){say(t('复制失败'),e.message||String(e))}
+    return;
+  }
+  if(act==='note'){
+    if(!quote)return;
+    const d=currentBook&&currentBook.docs[currentIndex];if(!d)return;
+    const pid=block.getAttribute('data-pid')||'',blockIndex=hlBlocks(hlRoot()).indexOf(block);
+    const h={id:'block-note-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),bookId:String(currentBook.id),docId:String(d.id),seriesKey:seriesKeyFor(currentBook),mepsDocId:String(d.mepsId||''),pid,blockIndex,quote:quote.slice(0,600),color:'#ffe58a',noteId:null,createdAt:Date.now()};
+    const note={id:noteIdForNew(),title:quote.slice(0,40)||t('段落笔记'),text:'',tagIds:[],bookId:String(currentBook.id),docId:String(d.id),seriesKey:seriesKeyFor(currentBook),mepsDocId:String(d.mepsId||''),pid,blockIndex,kind:'paragraph',createdAt:Date.now(),updatedAt:Date.now()};
+    await openAnnotationEditor(h,note,true,{virtual:true,data:{kind:'paragraph',pid}});
+  }
 }
 function xrefLabel(ctx,item){
   if(!item)return '';
@@ -5737,10 +5876,17 @@ $('article').addEventListener('click',async e=>{
   if(num){e.preventDefault();e.stopPropagation();await showBibleVerseRefs(num);return}
 },true);
 $('article').addEventListener('click',handleLinkedContentClick);
-$('article').addEventListener('click',e=>{if(window.getSelection&&!window.getSelection().isCollapsed)return;if(e.target.closest('a,.hl,.hl-note-mark,.m[data-mid],.vl'))return;const v=e.target.closest('.bible-verse,.v');if(v)showVerseActions(v)});
+$('article').addEventListener('click',e=>{
+  if(window.getSelection&&!window.getSelection().isCollapsed)return;
+  if(e.target.closest('a,.hl,.hl-note-mark,.m[data-mid],.vl,.fn'))return;
+  const v=e.target.closest('.bible-verse,.v');
+  if(v){showVerseActions(v);return}
+  const block=blockActionCandidate(e.target);
+  if(block)showBlockActions(block,pointLineRect(e.clientX,e.clientY,null));
+});
 $('article').addEventListener('click',async e=>{const mark=e.target.closest&&e.target.closest('.hl-note-mark');if(mark){const hlId=mark.dataset.hlId,noteId=mark.dataset.noteId;if(!hlId&&!noteId)return;e.preventDefault();e.stopPropagation();if(noteId)await openVerseNote(noteId);else await openHighlightNote(hlId);return}const span=e.target.closest&&e.target.closest('.hl');if(!span)return;e.preventDefault();e.stopPropagation();await showHighlightActions(span,span.dataset.hlId);},true);
-['touchstart','wheel','pointerdown'].forEach(ev=>$('readerBody').addEventListener(ev,()=>{readerRestoreToken++},{passive:true}));
-$('readerBody').addEventListener('scroll',()=>{if(!currentBook||currentIndex<0)return;if(readerRestoreActive)return;const tab=readerOriginSection||readerNavSection||primarySection;if(tab&&sectionViews[tab]){sectionViews[tab].scrollTop=Number($('readerBody').scrollTop||0);sectionViews[tab].pid='';sectionViews[tab].anchorOffset=0}if(bibleMode)return;const now=Date.now();if(now-historyWriteAt<1200)return;historyWriteAt=now;const d=currentBook.docs[currentIndex];if(d)recordHistory(currentBook,d,$('readerBody').scrollTop).catch(()=>{})},{passive:true});
+['touchstart','wheel','pointerdown'].forEach(ev=>$('readerBody').addEventListener(ev,()=>{readerRestoreToken++;readerRestoreActive=false},{passive:true}));
+$('readerBody').addEventListener('scroll',()=>{if(!currentBook||currentIndex<0)return;if(readerRestoreActive)return;const tab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;if(tab&&sectionViews[tab]){sectionViews[tab].scrollTop=Number($('readerBody').scrollTop||0);sectionViews[tab].pid='';sectionViews[tab].anchorOffset=0}if(bibleMode)return;const now=Date.now();if(now-historyWriteAt<1200)return;historyWriteAt=now;const d=currentBook.docs[currentIndex];if(d)recordHistory(currentBook,d,$('readerBody').scrollTop).catch(()=>{})},{passive:true});
 const handleLinkPanelClick=async e=>{const fn=e.target.closest&&e.target.closest('.fn[data-fnid]');if(fn){e.preventDefault();e.stopPropagation();await showFootnote(fn);return}await handleLinkedContentClick(e)};
 $('linkPopoverBody').addEventListener('click',handleLinkPanelClick);
 const _readerSidePanelBody=$('readerSidePanelBody');if(_readerSidePanelBody)_readerSidePanelBody.addEventListener('click',handleLinkPanelClick);
@@ -5784,6 +5930,9 @@ $('contextActions').querySelectorAll('[data-context-act]').forEach(btn=>btn.oncl
   if(act==='info'&&state.kind==='verse'){
     const ctx=state.ctx;hideContextActions();await showBibleVerseRefs(ctx.el);return;
   }
+  if(act==='info'&&state.kind==='block'){
+    const el=state.el;hideContextActions();await showBlockInfo(el);return;
+  }
   if(act==='erase'&&state.kind==='highlight'){
     const id=state.highlightId;hideContextActions();await clearHighlight(id);return;
   }
@@ -5791,6 +5940,7 @@ $('contextActions').querySelectorAll('[data-context-act]').forEach(btn=>btn.oncl
     let text='';
     if(state.kind==='verse')text=verseTextForCopy(state.ctx.el);
     else if(state.kind==='selection'){text=plainTextFromRange(state.range)}
+    else if(state.kind==='block'){text=blockText(state.el)}
     else if(state.kind==='highlight'){const h=await getOne('highlights',state.highlightId);text=String(h&&h.quote||'')}
     text=text.replace(/[\u200b-\u200d]/g,'').trim();
     hideContextActions();
@@ -5804,6 +5954,9 @@ $('contextActions').querySelectorAll('[data-context-act]').forEach(btn=>btn.oncl
     }
     if(state.kind==='verse'){
       const ctx=state.ctx;hideContextActions();verseActionState=ctx;await doVerseAction('note');return;
+    }
+    if(state.kind==='block'){
+      await doBlockAction('note');return;
     }
     if(state.kind==='selection'){
       const range=state.range;hideContextActions();
@@ -5853,7 +6006,7 @@ function bibleTocBookNumber(title){
 }
 async function openBibleBookFromToc(bookNum){
   if(!bookNum||!currentBook)return;
-  const id=currentBook.id,origin=readerOriginSection||primarySection||'bible';
+  const id=currentBook.id,origin=readerSessionTab||readerOriginSection||primarySection||'bible';
   $('drawer').style.display='none';
   if(origin==='bible'){
     bibleSelectedBook=bookNum;bibleSection='正文';currentBibleId=id;
@@ -5875,7 +6028,7 @@ function buildToc(){
     const bookNum=item.group?bibleTocBookNumber(item.title):0;
     if(bookNum)el.classList.add('toc-book-link');
     const activate=()=>{
-      if(!item.group){const ix=currentBook.docs.findIndex(d=>d.id===item.docId);if(ix>=0){pushReaderHistory(readerOriginSection||primarySection);currentIndex=ix;showDoc();buildToc();$('drawer').style.display='none'}}
+      if(!item.group){const ix=currentBook.docs.findIndex(d=>d.id===item.docId);if(ix>=0){pushReaderHistory(historyTab());currentIndex=ix;showDoc();buildToc();$('drawer').style.display='none'}}
       else if(bookNum)openBibleBookFromToc(bookNum);
     };
     if(!item.group||bookNum)el.onclick=activate;
@@ -5950,7 +6103,7 @@ $('backBtn').onclick=async()=>{
  if(readerSearchReturn){
    const state=readerSearchReturn;readerSearchReturn=null;
    const tab=state.tab||primarySection||'library';
-   readerReturnTarget=null;readerReturnSection=null;readerOriginSection=null;
+   readerReturnTarget=null;readerReturnSection=null;readerOriginSection=null;readerSessionTab=null;
    clearUrls();bibleMode=false;bibleReturn=null;setBibleToolbar(false);
    $('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
    try{delete sectionViews[tab]}catch(e){}
@@ -5969,10 +6122,11 @@ $('backBtn').onclick=async()=>{
      if(ok){restoreReaderScroll(target.scrollTop);return}
    }
    $('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
+   readerSessionTab=null;readerOriginSection=null;
    setPrimaryNav(target.tab||'library',{skipRestore:true});return;
  }
  if(currentBook&&!bibleMode&&currentIndex>=0){const hd=currentBook.docs[currentIndex];if(hd)await recordHistory(currentBook,hd,$('readerBody').scrollTop)}
- const historySection=readerOriginSection||(bibleMode?'bible':(readerNavSection||primarySection));
+ const historySection=readerSessionTab||readerOriginSection||(bibleMode?'bible':(readerNavSection||primarySection));
  let previousPage=popReaderHistory(historySection);
  while(previousPage){
    readerHistoryRestoring=true;
@@ -5981,8 +6135,8 @@ $('backBtn').onclick=async()=>{
    previousPage=popReaderHistory(historySection);
  }
  if(bibleMode&&bibleReturn){const r=bibleReturn;bibleMode=false;bibleReturn=null;setBibleToolbar(false);const b=await loadBook(r.bookId);if(b){await openDocInBook(b,r.docId||b.docs[0]?.id);return;}}
- const ret=readerOriginSection||(bibleMode?'bible':(readerNavSection||readerReturnSection));
- readerReturnSection=null;readerOriginSection=null;readerReturnTarget=null;readerSearchReturn=null;
+ const ret=readerSessionTab||readerOriginSection||(bibleMode?'bible':(readerNavSection||readerReturnSection));
+ readerReturnSection=null;readerOriginSection=null;readerSessionTab=null;readerReturnTarget=null;readerSearchReturn=null;
  clearUrls();bibleMode=false;bibleReturn=null;setBibleToolbar(false);$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
  if(ret){
    // Leaving the reader with the back arrow means this tab's current page is
@@ -6026,6 +6180,10 @@ function bibleChapterMax(bookNum){
 function syncPager(){
   const p=$('prevBtn'),n=$('nextBtn');if(!p||!n)return;
   if(!currentBook){p.disabled=true;n.disabled=true;return}
+  const daily=isDailyTextPublication(currentBook)||categoryPath(currentBook)[0]==='daily';
+  const pKey=daily?'前一日':'上一节',nKey=daily?'后一日':'下一节';
+  p.setAttribute('data-i18n',pKey);p.textContent=t(pKey);
+  n.setAttribute('data-i18n',nKey);n.textContent=t(nKey);
   if(bibleMode){
     const d=currentBook.docs[currentIndex],m=/^bible-(\d+)-(\d+)$/.exec(String(d&&d.id));
     if(!m){p.disabled=true;n.disabled=true;return}
@@ -6043,9 +6201,9 @@ function readerNext(){
     const d=currentBook.docs[currentIndex],m=/^bible-(\d+)-(\d+)$/.exec(String(d&&d.id));if(!m)return;
     let b=Number(m[1]),c=Number(m[2])+1;const max=bibleChapterMax(b);
     if(c>max){b++;c=1;if(b>66)return}
-    openBibleChapterReader(currentBook.id,b,c,0,readerOriginSection||primarySection||'bible');return;
+    openBibleChapterReader(currentBook.id,b,c,0,readerSessionTab||readerOriginSection||primarySection||'bible');return;
   }
-  if(currentIndex<currentBook.docs.length-1){pushReaderHistory(readerOriginSection||primarySection);currentIndex++;showDoc();buildToc()}
+  if(currentIndex<currentBook.docs.length-1){pushReaderHistory(historyTab());currentIndex++;showDoc();buildToc()}
 }
 function readerPrev(){
   if(!currentBook)return;
@@ -6053,9 +6211,9 @@ function readerPrev(){
     const d=currentBook.docs[currentIndex],m=/^bible-(\d+)-(\d+)$/.exec(String(d&&d.id));if(!m)return;
     let b=Number(m[1]),c=Number(m[2])-1;
     if(c<1){b--;if(b<1)return;c=bibleChapterMax(b)}
-    openBibleChapterReader(currentBook.id,b,c,0,readerOriginSection||primarySection||'bible');return;
+    openBibleChapterReader(currentBook.id,b,c,0,readerSessionTab||readerOriginSection||primarySection||'bible');return;
   }
-  if(currentIndex>0){pushReaderHistory(readerOriginSection||primarySection);currentIndex--;showDoc();buildToc()}
+  if(currentIndex>0){pushReaderHistory(historyTab());currentIndex--;showDoc();buildToc()}
 }
 $('prevBtn').onclick=readerPrev;
 $('nextBtn').onclick=readerNext;
