@@ -220,7 +220,7 @@ function applyI18n(){
     document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'))});
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{el.placeholder=t(el.getAttribute('data-i18n-placeholder'))});
     document.querySelectorAll('[data-i18n-title]').forEach(el=>{el.title=t(el.getAttribute('data-i18n-title'))});
-    const lb=document.getElementById('langBtn');if(lb){lb.textContent='🌐';lb.title=t('界面语言')+' · '+((UI_LANGS[uiLang]||UI_LANGS.zh).name||'')}
+    const lb=document.getElementById('langBtn');if(lb){lb.textContent=uiLang==='zh'?'中':uiLang==='en'?'EN':uiLang==='ja'?'日':uiLang==='ko'?'한':String(uiLang).toUpperCase();lb.title=t('界面语言')+' · '+((UI_LANGS[uiLang]||UI_LANGS.zh).name||'')}
     const cb=document.getElementById('contentLangBtn');if(cb)cb.textContent='文';
     const rb=document.getElementById('readerLangBtn');if(rb)rb.textContent=uiLang==='en'?'L':uiLang==='ko'?'언':uiLang==='ja'?'語':'语';
     const pb=document.getElementById('pronunciationBtn');if(pb)pb.textContent=uiLang==='zh'?'拼':uiLang==='en'?'P':uiLang==='ko'?'병':'ル';
