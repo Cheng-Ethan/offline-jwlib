@@ -1,0 +1,27 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Node / test artifacts
+node_modules/
+coverage/
+.nyc_output/
+*.log
+
+# Temporary / partial downloads
+*.part
+.tmp/
+.tmp-*
+
+# Local secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+
+# Optional: generated release checksums can be committed per release;
+# do not ignore SHA256SUMS.txt if you want it versioned.

@@ -1,0 +1,135 @@
+# 架构说明 / Architecture
+
+[English](en/ARCHITECTURE.md) · [使用指南](USAGE.md)
+
+## 1. 一句话架构
+
+> 构建期把六个 JS 模块拼成**一个共享作用域的 IIFE**，内嵌进单 HTML；运行时在浏览器内完成 JWPUB → ZIP → SQLite → 解密 → DOM → IndexedDB 的全链路，所有数据留在本机。
+
+```text
+src/index.template.html
+  ├── src/styles.css
+  ├── src/categories.json  → window.__CATEGORY_CONFIG__
+  ├── src/vendor/{jszip,pako,sql-wasm}.js
+  └── src/modules/00..05  ──拼接──▶ 单个 <script> IIFE
+                                      │
+                                      ▼
+                      offline_library.html（单文件产物）
+                                      │
+         JWPUB 导入 → ZIP → SQLite → 解密 → 清洗 → IndexedDB → 阅读器/笔记/备份
+```
+
+## 2. 模块职责
+
+| 文件 | 主要职责 |
+|---|---|
+| `00-core-db.js` | 全局状态、版本常量、i18n、诊断 API、加密解密、HTML 清洗、IndexedDB 打开与书籍持久化/迁移 |
+| `01-importer-security.js` | ZIP 魔数校验、损坏 ZIP 重建、JWPUB/SQLite 解析、文档解码与导入容错 |
+| `02-publication-catalog.js` | 分类规则、卡片渲染、栏目首页、自定义分类、笔记编辑器 |
+| `03-reader-links.js` | 阅读器、搜索、高亮、脚注/串珠、`jwpub://` 链接路由 |
+| `04-navigation-history.js` | 导入对话框、导航、返回栈、侧栏、翻页、事件绑定、语言包输入 |
+| `05-backup-startup.js` | 备份/恢复、Blob 打包、启动流程、设置与关于 |
+
+这六个文件**不是 ES Module**。它们被顺序拼进同一个 `<script>`，共享顶层变量与函数（见 `00-core-db.js` 开头的全局状态与结尾处 `05-backup-startup.js` 的启动 IIFE）。因此模块顺序由 `project.json` 的 `modules.order` 决定，不能随意调整。
+
+## 3. 启动流程
+
+`05-backup-startup.js` 末尾：
+
+```text
+applyI18n()
+  → openDB()
+  → ensureMigrated()
+  → ensureCategoryIds()
+  → renderBooks()
+```
+
+失败时弹出「本地存储不可用」。数据库名与版本来自 `project.json`：`OfflineJwLibrary` v5。
+
+## 4. 数据层
+
+### 4.1 Store
+
+`openDB()` 创建 12 个 object store：
+
+| Store | 用途 |
+|---|---|
+| `books` | 轻量书籍元数据索引 |
+| `bookMeta` | 书籍元数据（含 generation） |
+| `bookDocs` | 文档正文 |
+| `bookAssets` | 图片/字体/资源 |
+| `bookAux` | 原始 SQLite、辅助数据、导入报告 |
+| `notes` | 笔记 |
+| `bookmarks` | 书签 |
+| `history` | 阅读历史 |
+| `system` | 迁移标记、规范锚点缓存等 |
+| `bookMeta` / `categories` | 分类 |
+| `tags` | 标签 |
+| `highlights` | 高亮 |
+
+> 分类实际位于 `categories` store；上表中的重复项仅表示它在 UI/元数据中都有体现。
+
+### 4.2 元数据 + 分表 + generation
+
+- `buildBookMeta()` 生成轻量元数据；
+- `persistBook()` 把文档、资源、辅助数据拆到不同 store；
+- `loadBook()` 按 `gen` 重组整本书；
+- 再次导入同一本书成功提交后，`purgeOldGenerations()` 删除旧 `gen` 数据。
+
+这样可以在导入失败时保留旧版本，同时避免无限堆积历史资源。
+
+### 4.3 稳定 ID
+
+旧 ID 形如 `lang_symbol_year[_issue]`，同一出版物换年份会导致笔记错位。当前用 `legacyIdFor()` / `keySymbolFor()` / `idFor()` 生成稳定 ID，并在恢复旧备份时用 `buildRestoreIdMap()` + `remapUserDataIds()` 重映射笔记、高亮、书签与历史 ID。
+
+规范锚点 `ensureCanonicalAnchors()` 为跨语言高亮提供定位依据；恢复后通过删除缓存并重建来刷新。
+
+## 5. 导入链路
+
+1. `fileToBytes()` 读取文件；`zipHasEocd()` / `zipHasLocalHeader()` 校验；必要时 `rebuildZipFromLocalHeaders()` 修复缺失 central directory 的 ZIP。
+2. JSZip 打开 archive，读取 `manifest.json`，处理可能的 `contents` 内层 ZIP。
+3. sql-wasm 读取 SQLite，解析 `Document`、`BibleVerse`、`Hyperlink`、`Extract`、`Commentary`、`DatedText` 等表。
+4. `keyIv()` 由 `lang_symbol_year[issue]` 派生 key/iv，`decryptContentAny()` 依次尝试 `aes+zlib`、`aes+raw`、`plain+zlib`、`plain+raw`、`plain-text`。
+5. 生成目录、`bibleStructure`、按日期的每日经文文档，抽取图片/字体等资源。
+6. `persistBook()` 写入 IndexedDB，并生成导入报告。
+
+保护阈值（见 `01-importer-security.js` 顶部）：单文件 ≤ 380 MB、内部文件 ≤ 8000、单文档 ≤ 48 MB、失败率上限 0.6。
+
+## 6. 阅读与安全边界
+
+`cleanHtml()`（`00-core-db.js`）是正文进入 DOM 前的主要清洗器：
+
+- 移除 `script`、`iframe`、`object`、`embed`、`base`、`meta[http-equiv]`、远程 `<link>` 与远程图片；
+- 把 `video` / `audio` 换成离线提示；
+- 删除 `on*` 事件属性、`srcdoc`、`javascript:` URL；
+- 重写内联 CSS 的 `url()`，远程地址改为 `none`；
+- `jwpub://...` 转成 `data.jwlink`，外链转成 `data.externalLink`；
+- 未映射资源移除 `src` / `href`。
+
+`cleanHtml()` 目前是**黑名单模型**，且源码中仍有大量 `innerHTML`。已知需要优先修复的面：`03-reader-links.js` 中 `titleRich` / `subtitleRich` 直接插入 `innerHTML`，以及高亮颜色插入 `style` 属性。修复计划见 [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) P0。
+
+## 7. 诊断 API
+
+`window.__offlineLibrary` 暴露：
+
+| 成员 | 说明 |
+|---|---|
+| `version` | 应用版本 |
+| `cryptoMode` | `webcrypto` 或 `js-fallback` |
+| `diagnostics()` | 版本、存储用量、出版物摘要、导入报告、最近事件 |
+| `cleanOldGenerations()` | 清理旧 generation |
+| `pinyinDebug()` | 注音调试信息 |
+| `registerLanguagePack()` | 注册语言包 |
+| `setUiLanguage()` | 切换界面语言 |
+| `events()` | 最近诊断事件 |
+
+这是诊断接口，**不是插件 API**，也没有权限模型、事件订阅或沙箱。插件规划见 [PLUGINS.md](PLUGINS.md)。
+
+## 8. 明确不做的事
+
+- 没有服务端、账号或同步；
+- 没有 Service Worker / PWA 缓存；
+- 没有业务 `fetch` / XHR / WebSocket；
+- 没有运行时插件加载；
+- 不保存音视频，只显示离线提示；
+- 不验证 JWPUB 来源/签名；密钥派生用于格式兼容，不是机密性保护。
