@@ -87,7 +87,7 @@ $('backBtn').onclick=async()=>{
    $('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
    try{delete sectionViews[tab]}catch(e){}
    clearReaderHistory(tab)
-   await setPrimaryNav(tab,{skipRestore:true});
+   await setPrimaryNav(tab,{skipRestore:true,forceRender:true});
    await restoreReaderSearch(state);
    return;
  }
@@ -102,7 +102,7 @@ $('backBtn').onclick=async()=>{
    }
    $('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
    readerSessionTab=null;readerOriginSection=null;
-   setPrimaryNav(target.tab||'library',{skipRestore:true});return;
+   setPrimaryNav(target.tab||'library',{skipRestore:true,forceRender:true});return;
  }
  if(currentBook&&!bibleMode&&currentIndex>=0){const hd=currentBook.docs[currentIndex];if(hd)await recordHistory(currentBook,hd,$('readerBody').scrollTop)}
  const historySection=readerSessionTab||readerOriginSection||(bibleMode?'bible':(readerNavSection||primarySection));
@@ -122,7 +122,7 @@ $('backBtn').onclick=async()=>{
    // the section page again. Do not reopen the article on the next tab tap.
    try{delete sectionViews[ret]}catch(e){}
    clearReaderHistory(ret)
-   setPrimaryNav(ret,{skipRestore:true});return;
+   setPrimaryNav(ret,{skipRestore:true,forceRender:true});return;
  }
  renderBooks();
 };

@@ -294,7 +294,7 @@ function activateTab(tab,reset,opts={}){
   const readerOpen=$('reader').style.display==='block';
   const readerTab=readerSessionTab||readerNavSection;
   if(readerOpen&&!reset&&tab===readerTab&&!opts.skipRestore){document.querySelectorAll('#bottomNav button').forEach(x=>x.classList.toggle('active',x.dataset.primary===(tab==='more'||tab==='history'?'study':tab)));return Promise.resolve()}
-  if(prev===tab&&!reset&&!readerOpen){
+  if(prev===tab&&!reset&&!readerOpen&&!opts.forceRender){
     if(tab==='home'&&dailyHomeDirty)return renderSection();
     if(!opts.skipRestore&&!hadOpenEditor&&sectionViews[tab])return restoreSectionView(tab).then(ok=>{if(epoch!==tabEpoch)return;return ok?undefined:renderSection().then(()=>{if(epoch===tabEpoch)window.scrollTo(0,navScroll[tab]||0)})});
     return hadOpenEditor?renderSection():Promise.resolve();
