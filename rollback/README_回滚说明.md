@@ -1,6 +1,6 @@
 # 回滚说明
 
-> 补充：只有 `build.bat` / `build.ps1` 会自动生成这里的备份；`node build.mjs` 目前不会。详见 [安装与构建](../docs/INSTALL.md)。
+> 补充：只有 `build.bat` / `build.ps1` 会自动生成这里的备份；`node build.mjs` 目前不会。详见 [构建与产物](../docs/dev/BUILD.md)。
 
 每次运行 `build.bat` 前，如果项目根目录已有 `offline_library.html`，构建脚本会先把它复制到本目录，文件名带有构建时间。
 

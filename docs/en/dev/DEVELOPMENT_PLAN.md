@@ -1,6 +1,6 @@
 # Development plan
 
-[简体中文](../DEVELOPMENT_PLAN.md) · [Architecture](ARCHITECTURE.md) · [Testing](TESTING.md)
+[简体中文](../../dev/DEVELOPMENT_PLAN.md) · [Architecture](ARCHITECTURE.md) · [Testing](TESTING.md)
 
 > Based on the 0.13.0 code. Principle: **fix correctness and security first, then engineering/release, then plugins and refactoring.**
 
@@ -10,8 +10,8 @@
 - Documentation lags badly: historical docs say 0.4.0, code is 0.13.0.
 - Build/release governance is messy: `_cf` files are unexplained; `build.mjs` and `build.ps1` behave differently.
 - No automated tests; Sitecase has not been verified on device.
-- There is no plugin system yet.
-- The current local workspace was initialised from API-fetched files as a **single-commit snapshot**, so its Git history differs from the remote (see [FAQ.md](FAQ.md)).
+- No code-plugin system; data-type extensions (plugin v0) exist: user language packs and category rules.
+- The current local workspace was initialised from API-fetched files as a **single-commit snapshot**, so its Git history differs from the remote (see [BUILD.md](BUILD.md)).
 
 ---
 

@@ -1,6 +1,6 @@
 # 备份格式 / Backup format
 
-[English](en/BACKUP_FORMAT.md) · [使用指南](USAGE.md)
+[English](../en/dev/BACKUP_FORMAT.md) · [使用指南](../user/USAGE.md)
 
 ## 1. 格式标识
 
@@ -105,7 +105,7 @@
 - 改变字段语义：必须提升格式版本，例如 `offline-library-library-v2`。
 - 改变二进制包装：必须新增 `__offlineType`，不能复用旧值表达新含义。
 - 改变稳定 ID 算法：必须同时提供旧 → 新映射，否则历史笔记会错位。
-- 任何格式变更都要更新本文件和 [CHANGELOG.md](../CHANGELOG.md)。
+- 任何格式变更都要更新本文件和 [CHANGELOG.md](../../CHANGELOG.md)。
 
 ## 7. 用户注意事项
 

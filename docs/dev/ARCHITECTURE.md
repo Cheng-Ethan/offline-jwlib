@@ -1,6 +1,6 @@
 # 架构说明 / Architecture
 
-[English](en/ARCHITECTURE.md) · [使用指南](USAGE.md)
+[English](../en/dev/ARCHITECTURE.md) · [使用指南](../user/USAGE.md)
 
 ## 1. 一句话架构
 

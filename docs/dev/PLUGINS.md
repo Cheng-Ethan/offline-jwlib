@@ -1,19 +1,19 @@
 # 插件与扩展 / Plugins & extension points
 
-[English](en/PLUGINS.md) · [架构说明](ARCHITECTURE.md)
+[English](../en/dev/PLUGINS.md) · [架构说明](ARCHITECTURE.md)
 
 ## 1. 当前状态（重要）
 
-**当前版本没有正式插件系统。**
+**当前版本没有代码插件系统，但已有数据型扩展（插件 v0）：用户语言包与分类规则。**
 
-仓库中不存在插件清单、插件注册中心、生命周期、权限声明、钩子总线或沙箱。源码中也没有 `plugin` 相关的实现。请不要把下面这些机制误认为插件 API：
+仓库中不存在插件清单、插件注册中心、生命周期、权限声明、钩子总线或沙箱，也没有可执行第三方代码的能力。现有扩展点如下：
 
 - `window.__CATEGORY_CONFIG__`：构建期注入的分类规则数据；
-- `registerLanguagePack()`：语言包注册；
-- `window.__offlineLibrary`：诊断/调试接口；
+- `registerLanguagePack()`：**用户语言包（插件 v0）**，运行时注册 UI 字符串；
+- `window.__offlineLibrary`：诊断/调试接口，不是插件 API；
 - UI 中的自定义分类：用户数据，不是代码扩展。
 
-本节先如实记录**现有扩展点**，再给出**建议中的插件架构**。后者是规划，不是已实现功能。
+本节先如实记录**现有扩展点**，再给出**建议中的代码插件架构**。后者是规划，不是已实现功能。
 
 ## 2. 现有扩展点
 
@@ -58,16 +58,16 @@
 
 `classifyPublication()`（`02-publication-catalog.js`）先跑规则，未命中时用源码硬编码兜底。修改规则后必须重新构建 HTML。
 
-## 4. 语言包格式
+## 4. 语言包格式（插件 v0）
 
-见 [USAGE.md](USAGE.md#6-语言与分类) 的 JSON 示例。关键约束：
+见 [../user/USAGE.md](../user/USAGE.md#6-语言与分类) 的 JSON 示例。关键约束：
 
 - `code` / `lang`：`/^[a-z]{2,8}$/`；
 - `messages` / `strings`：键为应用内原始中文/英文 UI 文本；
 - 持久化 key：`offlineLibraryLanguagePacks`；
 - 界面语言 key：`offlineLibraryUiLang`。
 
-这与“翻译应用”相关，但**不是插件机制**：语言包不能注册代码、拦截事件或访问出版物数据。
+这是**插件 v0（数据型扩展）**：用户可以自定义 JSON 并导入后获得自己的界面语言。它不能注册代码、拦截事件或访问出版物数据；完整的代码插件系统尚未实现。
 
 ## 5. `window.__offlineLibrary` API（诊断，非插件）
 
@@ -164,4 +164,4 @@ export default {
 4. `window.__offlineLibrary` 现有方法签名；
 5. 备份格式标识（`offline-library-library-v1` 等）。
 
-任何破坏性变更都应提升 `moduleApiVersion` 或备份格式版本号，并在 [CHANGELOG.md](../CHANGELOG.md) 中说明。
+任何破坏性变更都应提升 `moduleApiVersion` 或备份格式版本号，并在 [CHANGELOG.md](../../CHANGELOG.md) 中说明。

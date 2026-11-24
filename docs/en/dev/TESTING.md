@@ -1,10 +1,10 @@
 # Testing
 
-[简体中文](../TESTING.md) · [Architecture](ARCHITECTURE.md)
+[简体中文](../../dev/TESTING.md) · [Architecture](ARCHITECTURE.md)
 
 ## 1. Current state
 
-There is **no automated test framework** yet (no `package.json`, no test scripts). [`验证记录.md`](../../验证记录.md) is a one-off 0.4.0-era record, not a repeatable suite. Building a test system is a P1 item in the development plan.
+There is **no automated test framework** yet (no `package.json`, no test scripts). [`验证记录.md`](../../../验证记录.md) is a one-off 0.4.0-era record, not a repeatable suite. Building a test system is a P1 item in the development plan.
 
 ## 2. Existing validation (historical record)
 

@@ -1,6 +1,6 @@
 # Architecture
 
-[简体中文](../ARCHITECTURE.md) · [Usage](USAGE.md)
+[简体中文](../../dev/ARCHITECTURE.md) · [Usage](../user/USAGE.md)
 
 ## 1. Architecture in one sentence
 

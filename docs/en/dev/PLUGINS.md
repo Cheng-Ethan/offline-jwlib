@@ -1,19 +1,19 @@
 # Plugins & extension points
 
-[简体中文](../PLUGINS.md) · [Architecture](ARCHITECTURE.md)
+[简体中文](../../dev/PLUGINS.md) · [Architecture](ARCHITECTURE.md)
 
 ## 1. Current state (important)
 
-**There is no formal plugin system in the current version.**
+**There is no code-plugin system, but there are data-type extensions (plugin v0): user language packs and category rules.**
 
-There is no plugin manifest, registry, lifecycle, permission model, hook bus or sandbox. No `plugin`-related implementation exists in the source. Do not mistake the following for plugin APIs:
+There is no plugin manifest, registry, lifecycle, permission model, hook bus or sandbox, and no ability to execute third-party code. Existing extension points:
 
 - `window.__CATEGORY_CONFIG__`: build-time category rule data;
-- `registerLanguagePack()`: language-pack registration;
-- `window.__offlineLibrary`: diagnostics/debug interface;
+- `registerLanguagePack()`: **user language pack (plugin v0)**, runtime UI strings;
+- `window.__offlineLibrary`: diagnostics/debug interface, not a plugin API;
 - custom categories in the UI: user data, not code extensions.
 
-This document first records the **existing extension points**, then proposes a **plugin architecture**. The latter is a roadmap item, not shipped functionality.
+This document first records the **existing extension points**, then proposes a **code-plugin architecture**. The latter is a roadmap item, not shipped functionality.
 
 ## 2. Existing extension points
 
@@ -56,16 +56,16 @@ This document first records the **existing extension points**, then proposes a *
 
 `classifyPublication()` (`02-publication-catalog.js`) runs rules first and falls back to hardcoded logic. Changing rules requires rebuilding the HTML.
 
-## 4. Language-pack format
+## 4. Language-pack format (plugin v0)
 
-See [USAGE.md](USAGE.md#6-language-and-categories) for a JSON example. Constraints:
+See [../user/USAGE.md](../user/USAGE.md#6-language-and-categories) for a JSON example. Constraints:
 
 - `code` / `lang`: `/^[a-z]{2,8}$/`;
 - `messages` / `strings`: keys are original UI strings;
 - persistence key: `offlineLibraryLanguagePacks`;
 - UI language key: `offlineLibraryUiLang`.
 
-This translates the app; it does **not** register code, intercept events or access book data.
+This is **plugin v0 (a data-type extension)**: users import their own JSON to get their own UI language. It cannot register code, intercept events or access book data. A full code-plugin system is not implemented.
 
 ## 5. `window.__offlineLibrary` API (diagnostics, not plugins)
 
@@ -162,4 +162,4 @@ Before a plugin system lands, freeze these contracts to avoid future breakage:
 4. existing `window.__offlineLibrary` method signatures;
 5. backup format identifiers (`offline-library-library-v1`, etc.).
 
-Any breaking change should bump `moduleApiVersion` or the backup format version and be documented in [CHANGELOG.md](../../CHANGELOG.md).
+Any breaking change should bump `moduleApiVersion` or the backup format version and be documented in [CHANGELOG.md](../../../CHANGELOG.md).

@@ -2,6 +2,8 @@
 
 [English](#english) · [简体中文](#简体中文)
 
+> 本文件不定义规则。动手前请先读 [AGENTS.md](AGENTS.md)——它是分支、版本、文档归属和提交约定的唯一规则源。
+
 ## 简体中文
 
 感谢你考虑参与 `offline-jwlib`。项目坚持本地优先、单文件、离线可用，任何改动都不应引入服务端依赖或业务网络请求。
@@ -11,12 +13,13 @@
 - 源码阅读：任意编辑器；
 - 构建：Windows 用 `build.bat`，其他平台用 `node build.mjs`；
 - 不需要 `npm install`，当前没有 npm 依赖；
-- 阅读 [ARCHITECTURE.md](docs/ARCHITECTURE.md) 和 [PLUGINS.md](docs/PLUGINS.md) 再动手。
+- 阅读 [ARCHITECTURE.md](docs/dev/ARCHITECTURE.md) 和 [PLUGINS.md](docs/dev/PLUGINS.md) 再动手。
 
 ### 分支与提交
 
-- 默认从 `main` 切出功能分支：`git checkout -b feature/xxx`；
-- 当前开发分支为 `develop`；
+- 规则以 [AGENTS.md](AGENTS.md) 为准；
+- 从 `develop` 切出功能分支：`git checkout -b feature/xxx`，完成后合回 `develop`；
+- `master` 由用户定期发布，不要直接 push；
 - 提交信息建议：`type: 简短描述`，例如 `fix: sanitize rich titles before innerHTML`；
 - 一个提交只做一件事；不要提交个人 JWPUB 样本或备份。
 
@@ -35,16 +38,18 @@
 - [ ] `node --check` 与占位符检查通过；
 - [ ] 相关文档同步更新（中英双语）；
 - [ ] 不引入业务网络请求；
-- [ ] 通过 [TESTING.md](docs/TESTING.md) 的相关用例。
+- [ ] 通过 [TESTING.md](docs/dev/TESTING.md) 的相关用例。
 
 ### 文档
 
-新增功能必须同时更新中文和英文文档。目录结构：
+新增功能必须同时更新中文和英文文档，并放入正确受众目录。目录结构：
 
 ```text
 README.md / README.en.md
-docs/*.md       中文文档
-docs/en/*.md    英文文档
+docs/user/*.md         中文用户文档
+docs/en/user/*.md      英文用户文档
+docs/dev/*.md          中文开发者文档
+docs/en/dev/*.md       英文开发者文档
 ```
 
 ---
@@ -58,12 +63,13 @@ Thanks for considering a contribution to `offline-jwlib`. The project is local-f
 - Any editor for source reading;
 - Build with `build.bat` on Windows or `node build.mjs` elsewhere;
 - No `npm install` — there are currently no npm dependencies;
-- Read [ARCHITECTURE.md](docs/en/ARCHITECTURE.md) and [PLUGINS.md](docs/en/PLUGINS.md) first.
+- Read [ARCHITECTURE.md](docs/en/dev/ARCHITECTURE.md) and [PLUGINS.md](docs/en/dev/PLUGINS.md) first.
 
 ### Branches and commits
 
-- Branch from `main`: `git checkout -b feature/xxx`;
-- The development branch is `develop`;
+- Rules are defined in [AGENTS.md](AGENTS.md);
+- Branch from `develop`: `git checkout -b feature/xxx`, merge back into `develop`;
+- `master` is published periodically by the user; do not push it directly;
 - Prefer `type: short description`, e.g. `fix: sanitize rich titles before innerHTML`;
 - Keep commits focused; never commit personal JWPUB samples or backups.
 
@@ -82,14 +88,16 @@ Thanks for considering a contribution to `offline-jwlib`. The project is local-f
 - [ ] `node --check` and placeholder checks pass;
 - [ ] Chinese and English docs updated;
 - [ ] No business network requests introduced;
-- [ ] Relevant [TESTING.md](docs/en/TESTING.md) cases pass.
+- [ ] Relevant [TESTING.md](docs/en/dev/TESTING.md) cases pass.
 
 ### Documentation
 
-Every feature must update both Chinese and English docs:
+Every feature must update both Chinese and English docs in the correct audience directory:
 
 ```text
 README.md / README.en.md
-docs/*.md       Chinese
-docs/en/*.md    English
+docs/user/*.md         Chinese user docs
+docs/en/user/*.md      English user docs
+docs/dev/*.md          Chinese developer docs
+docs/en/dev/*.md       English developer docs
 ```

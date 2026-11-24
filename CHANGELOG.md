@@ -1,8 +1,9 @@
 # 更新记录 / Changelog
 
-> 当前版本以 `project.json` 为准：**0.13.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/DEVELOPMENT_PLAN.md)。
+> 当前版本以 `project.json` 为准：**0.13.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
 
 ## 0.13.0（2026-11-24）
+- **基线版本**：本仓库以 0.13.0 作为初始版本，上游更早历史折叠；本次文档分层重构不升版本。开发规则见 [AGENTS.md](AGENTS.md)。
 - 圣经、出版物全文搜索；最近搜索与“返回结果”。
 - 补齐中英双语开源文档：README、安装、使用、架构、插件、备份格式、测试、发布与开发计划。
 - 新增 MIT 许可证、贡献指南、安全策略、行为准则与第三方声明。
@@ -54,7 +55,7 @@
 
 The current version is defined by `project.json`: **0.13.0**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
 
-- **0.13.0** — full-text search for Bible/publications, recent searches, return-to-results; bilingual open-source documentation (README, install, usage, architecture, plugins, backup format, testing, release, development plan); MIT licence, contributing guide, security policy, code of conduct and third-party notices.
+- **0.13.0** — baseline version (earlier upstream history collapsed; this docs restructure does not bump it; see [AGENTS.md](AGENTS.md)); full-text search for Bible/publications, recent searches, return-to-results; bilingual open-source documentation split into user/dev trees; MIT licence, contributing guide, security policy, code of conduct and third-party notices.
 - **0.12.0** — Bible concordance, verse info, single-verse copy and verse notes.
 - **0.11.0** — collapsible note editor, undo/redo and section scroll restoration.
 - **0.10.0** — stable category IDs, custom categories and category management.

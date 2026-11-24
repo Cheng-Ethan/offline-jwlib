@@ -1,6 +1,6 @@
 # Release process
 
-[简体中文](../RELEASING.md) · [Installation](INSTALL.md)
+[简体中文](../../dev/RELEASING.md) · [Installation](../user/INSTALL.md)
 
 ## 1. Versioning
 
@@ -21,7 +21,7 @@ Use `major.minor.patch` (currently `0.13.0`):
 
 1. Complete the [TESTING.md](TESTING.md) matrix and acceptance criteria.
 2. Confirm a clean `git status` and the intended release branch.
-3. Build with both Windows PowerShell and Node (see [INSTALL.md](INSTALL.md)).
+3. Build with both Windows PowerShell and Node (see [../user/INSTALL.md](../user/INSTALL.md)).
 4. Verify:
    - SHA-256 of `offline_library.html` and `dist/offline_library.html` match;
    - no `@@...@@` placeholders remain;

@@ -1,6 +1,6 @@
 # 发布流程 / Release process
 
-[English](en/RELEASING.md) · [安装与构建](INSTALL.md)
+[English](../en/dev/RELEASING.md) · [安装与构建](../user/INSTALL.md)
 
 ## 1. 版本号规则
 
@@ -21,7 +21,7 @@
 
 1. 完成 [TESTING.md](TESTING.md) 的矩阵与验收标准。
 2. 确认 `git status` 干净，当前分支为计划发布分支。
-3. 按 [INSTALL.md](INSTALL.md) 构建两种环境产物。
+3. 按 [../user/INSTALL.md](../user/INSTALL.md) 构建两种环境产物。
 4. 校验：
    - `offline_library.html` 与 `dist/offline_library.html` SHA-256 一致；
    - 模板无 `@@...@@` 残留；

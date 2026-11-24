@@ -1,6 +1,6 @@
 # Backup format
 
-[简体中文](../BACKUP_FORMAT.md) · [Usage](USAGE.md)
+[简体中文](../../dev/BACKUP_FORMAT.md) · [Usage](../user/USAGE.md)
 
 ## 1. Format identifiers
 
@@ -105,7 +105,7 @@ Legacy book IDs may be `lang_symbol_year[_issue]`. During restore:
 - Changing field semantics: bump the format version, e.g. `offline-library-library-v2`.
 - Changing binary packing: add a new `__offlineType`; never reuse an old value with new meaning.
 - Changing the stable-ID algorithm: always ship old → new mapping or history notes will drift.
-- Update this file and [CHANGELOG.md](../../CHANGELOG.md) for every format change.
+- Update this file and [CHANGELOG.md](../../../CHANGELOG.md) for every format change.
 
 ## 7. User notes
 

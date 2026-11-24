@@ -48,6 +48,16 @@
 - 双语言要求：中英都要有；
 - 不做未经验证的 App 背书，移动端方法要写明“需真机验证”。
 
+## 3.1 分支角色（用户已明确）
+
+| 分支 | 角色 |
+|---|---|
+| `develop` | 日常开发流；所有功能/文档提交先落在这里 |
+| `master` | 发布流；由用户定期按需从 `develop` push/merge，agent 不直接 push |
+| `main` | 通过 API 导入快照时留下的上游历史引用；仅作参考，不再从它切分支 |
+
+因此 `CONTRIBUTING.md` 现有的“从 `main` 切分支”必须改为“从 `develop` 切分支，PR 回到 `develop`”。`AGENTS.md` 会写明三者角色，避免不同 session 规则冲突。
+
 ## 4. 方案比较
 
 | 方案 | 做法 | 优点 | 缺点 |
@@ -60,7 +70,7 @@
 
 ## 5. 版本规则（写入 AGENTS.md）
 
-基线：`0.13.0`。本次文档重构属于基线的一部分，不额外升版本。
+基线：`0.13.0`。**用户已明确选择保留 0.13.0 作为初始版本。** 本次文档重构属于基线的一部分，不额外升版本，不修改 `project.json` 或 `APP_VERSION`，也不重建 HTML。`CHANGELOG.md` 只在 0.13.0 条目下补充“基线说明”，不新增版本号。从下一次实际改动开始才按本表升版本。
 
 | 变更类型 | 版本动作 | 例子 |
 |---|---|---|
@@ -98,6 +108,7 @@ docs/user/
 docs/en/user/                  # 对应英文
 
 docs/dev/
+  BUILD.md                     # 构建输入/占位符/rollback/发布校验/私有仓库 Git
   ARCHITECTURE.md
   PLUGINS.md                   # 扩展点 + 语言包 v0 + 插件规划
   BACKUP_FORMAT.md
@@ -138,7 +149,8 @@ docs/superpowers/specs/        # 设计文档归档
 - 能力：导入 JSON，替换界面语言字符串；
 - 边界：不能注册代码、不能拦截事件、不能访问出版物数据；
 - 位置：用户文档写“怎么用”，开发者文档写 `registerLanguagePack()` API 与持久化 key；
-- 不把它误称为完整插件系统。
+- 不把它误称为完整代码插件系统：它是**数据型扩展（插件 v0）**，不能注册代码、钩子或权限；
+- 现有 `PLUGINS.md` / `FAQ.md` 中“语言包不是插件机制”的表述改为“语言包是插件 v0；完整代码插件系统尚未实现”，消除矛盾。
 
 ## 9. AGENTS.md 内容大纲
 
@@ -170,3 +182,14 @@ docs/superpowers/specs/        # 设计文档归档
 - `AGENTS.md` 包含完整版本规则且被 CONTRIBUTING 引用；
 - 本地链接校验 0 失败；
 - 所有改动仅在 `develop`，未 push `master`。
+
+## 12. Reviewer 问题处理
+
+独立 reviewer 提出 4 个问题，处理如下：
+
+1. **本次文档重构是否升版本？** 用户已明确“保留 0.13.0 作为初始版本”。结论：不升版本，不改 `project.json` / `APP_VERSION`，不重建 HTML；CHANGELOG 只加基线说明。
+2. **`AGENTS.md` 是否要明确 `develop` / `main` / `master`？** 用户已明确“改动先放开发流，之后由我定期 push 到 master”。结论：明确三者角色（见 §3.1），并修正 `CONTRIBUTING.md` 的旧分支规则。
+3. **原 `docs/INSTALL.md` 里的开发者内容搬到哪里？** 这是结构细节，由实施者决定：新增 `docs/dev/BUILD.md`（中英各一份），承载构建输入、占位符、rollback、发布校验与私有仓库 Git；`docs/user/INSTALL.md` 只保留“拿到 HTML → 放到设备 → 升级/备份”。
+4. **语言包 v0 名称与“不是插件机制”旧表述如何共存？** 用户已把语言 JSON 视为插件方向。结论：改旧表述为“插件 v0（数据型扩展）”，同时明确它不是代码插件系统；不保留互相矛盾的说法。
+
+除以上外，reviewer 没有提出会改变方案的问题。

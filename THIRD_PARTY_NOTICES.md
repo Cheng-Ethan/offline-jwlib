@@ -22,7 +22,7 @@
 
 ### 待办
 
-见 [DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) P1-3：记录每个 vendor 的精确版本、许可证全文、来源 URL、SHA-256 与更新时间。
+见 [DEVELOPMENT_PLAN.md](docs/dev/DEVELOPMENT_PLAN.md) P1-3：记录每个 vendor 的精确版本、许可证全文、来源 URL、SHA-256 与更新时间。
 
 ---
 
@@ -46,4 +46,4 @@ Notes:
 
 ### TODO
 
-See [DEVELOPMENT_PLAN.md](docs/en/DEVELOPMENT_PLAN.md) P1-3: record exact version, licence text, source URL, SHA-256 and updated-at for every vendor file.
+See [DEVELOPMENT_PLAN.md](docs/en/dev/DEVELOPMENT_PLAN.md) P1-3: record exact version, licence text, source URL, SHA-256 and updated-at for every vendor file.

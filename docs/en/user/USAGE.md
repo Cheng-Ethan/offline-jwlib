@@ -1,6 +1,6 @@
 # Usage
 
-[简体中文](../USAGE.md) · [Installation](INSTALL.md)
+[简体中文](../../user/USAGE.md) · [Installation](INSTALL.md)
 
 ## 1. First run
 
@@ -9,7 +9,7 @@
 3. Select one or more `.jwpub` / `.pub` files. Batch import is supported.
 4. Open material from the Bible / Publications / Daily Text / Meetings sections.
 
-Import happens entirely locally: ZIP read (with repair for a missing central directory) → manifest → SQLite → decryption → document/asset extraction → IndexedDB persistence. Large imports show per-book progress; a single failing document is isolated and only a high failure rate aborts the run.
+Import happens entirely locally: ZIP read (with repair for a missing central directory) → manifest → SQLite → decryption → document/asset extraction → saved on device. Large imports show per-book progress; a single failing document is isolated and only a high failure rate aborts the run.
 
 ## 2. The five sections
 
@@ -41,7 +41,7 @@ Categories are derived from `src/categories.json` rules matching publication sym
 - Bookmarks save reading positions.
 - History keeps recent reads and scroll positions.
 
-> This data is stored unencrypted in local IndexedDB. Backup JSON is unencrypted too; avoid exporting sensitive data on shared devices.
+> This data is stored unencrypted on your device. Backup JSON is unencrypted too; avoid exporting sensitive data on shared devices.
 
 ## 5. Backup and restore
 
@@ -61,7 +61,7 @@ A confirmation appears above roughly 150 MB. The actual file is larger than the 
 
 Full-library restore uses `file.stream()`; unsupported browsers show an error — use desktop Chrome. Restore is not atomic, so back up current data first.
 
-See [BACKUP_FORMAT.md](BACKUP_FORMAT.md).
+See [../dev/BACKUP_FORMAT.md](../dev/BACKUP_FORMAT.md).
 
 ## 6. Language and categories
 
@@ -94,19 +94,19 @@ Packs persist in localStorage. You can also call `window.__offlineLibrary.regist
 
 ### Custom categories
 
-Use a publication card's ⋯ menu to move or create categories. Custom categories live in the IndexedDB `categories` store and do not alter built-in rules.
+Use a publication card's ⋯ menu to move or create categories. Custom categories stay on your device and do not alter built-in rules.
 
-Rule format: [PLUGINS.md](PLUGINS.md).
+Rule format: [../dev/PLUGINS.md](../dev/PLUGINS.md).
 
 ## 7. Common issues
 
 | Symptom | Action |
 |---|---|
-| "Local storage unavailable" | Use a browser with IndexedDB; verify Sitecase container permissions |
+| "Local storage unavailable" | Use a modern browser with local storage; verify Sitecase container permissions |
 | Import stalls/fails | Check the import report; skip a damaged file; try desktop Chrome |
 | Images missing | Verify the source JWPUB contains assets; complex fonts/layouts need device testing |
 | Books missing after upgrade | Export from the old project and restore in the new one |
 | External links do not open | By design: the offline app never goes online |
 | Large restore fails | Use a browser with `file.stream()`, or split backups |
 
-See [FAQ.md](FAQ.md) and [TESTING.md](TESTING.md).
+See [FAQ.md](FAQ.md) and [../dev/TESTING.md](../dev/TESTING.md).

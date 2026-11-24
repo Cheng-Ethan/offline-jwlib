@@ -1,6 +1,6 @@
 # 开发计划 / Development plan
 
-[English](en/DEVELOPMENT_PLAN.md) · [架构说明](ARCHITECTURE.md) · [测试与验证](TESTING.md)
+[English](../en/dev/DEVELOPMENT_PLAN.md) · [架构说明](ARCHITECTURE.md) · [测试与验证](TESTING.md)
 
 > 基于 0.13.0 代码现状制定。原则：**先修安全与准确性，再稳工程与发布，最后开插件与重构。**
 
@@ -10,8 +10,8 @@
 - 文档严重滞后：历史文档停留在 0.4.0，代码已到 0.13.0。
 - 构建与发布产物治理混乱：`_cf` 文件来源不明，`build.mjs` 与 `build.ps1` 行为不一致。
 - 无自动化测试，Sitecase 真机未验证。
-- 当前没有插件系统。
-- 当前本地开发工作区是通过 API 拉取文件初始化的**单提交快照**，与远端 Git 历史不一致（见 [FAQ.md](FAQ.md)）。
+- 没有代码插件系统；已有数据型扩展（插件 v0）：用户语言包与分类规则。
+- 当前本地开发工作区是通过 API 拉取文件初始化的**单提交快照**，与远端 Git 历史不一致（见 [BUILD.md](BUILD.md)）。
 
 ---
 
