@@ -522,7 +522,7 @@ async function renderLibrary(books,q){
   const totalShown=$('books').children.length+$('categories').children.length;
   $('count').textContent=`${totalShown} ${t('项')}`;
   const empty=totalShown===0;$('empty').style.display=empty?'block':'none';
-  if(empty){$('empty').innerHTML=books.length?t('没有找到匹配的出版物。'):t('这里还没有出版物。')}
+  if(empty){$('empty').innerHTML=books.length?t('没有找到匹配的出版物。'):t('这里还没有出版物。')+'<br>'+t('点击右上角「更多」（⚙），从您的设备选择 PUB 文件。')}
 }
 async function renderHome(books){
   dailyHomeDirty=false;

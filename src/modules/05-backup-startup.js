@@ -118,7 +118,7 @@ async function backupNotes(){
 async function backupLibrary(){
   try{
     const metas=await allBooks();const est=metas.reduce((n,m)=>n+Number(m.estimatedSize||0),0);
-    if(est>150*1048576&&!confirm(`本机资料约 ${Math.round(est/1048576)} MB，导出完整备份可能较慢或失败。继续吗？`))return;
+    if(est>150*1048576&&!confirm(`此设备上的资料约 ${Math.round(est/1048576)} MB，导出完整备份可能较慢或失败。继续吗？`))return;
     let done=0,lastPaint=0,bookCount=0;
     const paint=(label,force)=>{
       const now=Date.now();
@@ -162,7 +162,7 @@ async function backupLibrary(){
 // whole file. A 300-500 MB backup otherwise needs a full text copy plus the
 // parsed object tree at once, which crashes mobile/Sitecase tabs.
 async function streamLibraryBackup(file,opts={}){
-  if(!file||typeof file.stream!=='function')throw new Error('当前浏览器不支持流式恢复；请用桌面 Chrome，或改成分批备份。');
+  if(!file||typeof file.stream!=='function')throw new Error('当前浏览器不支持流式恢复；请换用较新的浏览器，或改成分批备份。');
   const reader=file.stream().getReader(),decoder=new TextDecoder();
   let buf='',eof=false,readBytes=0,lastYield=Date.now(),lastProgress=0,bookIndex=0;
   const pull=async()=>{
@@ -263,7 +263,7 @@ $('backupInput').onchange=async e=>{
       logDiag('info','恢复笔记备份',{format:d.format,notes:notes.length,tags:tags.length,highlights:highlights.length});
       return;
     }
-    if(!confirm('恢复整个图书馆会按出版物 ID 覆盖/合并本机记录，并导入笔记、标签、划线、书签和阅读历史。\n\n继续吗？'))return;
+    if(!confirm('恢复整个图书馆会按出版物 ID 覆盖/合并此设备上的记录，并导入笔记、标签、划线、书签和阅读历史。\n\n继续吗？'))return;
     say('正在恢复图书馆','正在读取备份文件…');await tick();
     let idMap=new Map(),bookCount=0,readBytes=0;
     const result=await streamLibraryBackup(f,{
@@ -324,5 +324,5 @@ async function showAbout(){
   }catch(e){say(t('设置与关于'),e.message||String(e))}
 }
 const _settingsBtn=$('settingsBtn');if(_settingsBtn)_settingsBtn.onclick=showAbout;
-(async()=>{try{applyI18n();await openDB();await ensureMigrated();await ensureCategoryIds();await renderBooks()}catch(e){say('本地存储不可用','当前 Sitecase 容器没有开放 IndexedDB，无法保存图书：'+e.message)}})();
+(async()=>{try{applyI18n();await openDB();await ensureMigrated();await ensureCategoryIds();await renderBooks()}catch(e){say('本地存储不可用','当前浏览器或容器未允许本地存储，无法保存图书：'+e.message)}})();
 })();

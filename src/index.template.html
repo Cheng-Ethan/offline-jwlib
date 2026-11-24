@@ -36,7 +36,7 @@
     <div class="library-heading"><h2 id="listHeading">按类型浏览</h2><span class="sub" id="count"></span><button class="section-help-btn" id="librarySearchBtn" data-i18n-title="搜索" title="搜索" aria-label="搜索" style="display:none"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.2 4.2"/></svg></button></div>
     <div class="category-grid" id="categories"></div>
     <div class="grid" id="books"></div>
-    <div class="empty" id="empty">这里还没有出版物。<br>点击「导入 PUB」，选择 iPhone「文件」中的 .pub 文件。</div>
+    <div class="empty" id="empty">这里还没有出版物。<br>点击右上角「更多」（⚙），从您的设备选择 PUB 文件。</div>
     
   </main>
   <div class="note-dock" id="noteDock"><button type="button" id="noteDockOpen"></button></div>
@@ -112,7 +112,7 @@
 <section class="import-dialog" id="importDialog" role="dialog" aria-modal="true" aria-labelledby="importDialogTitle">
   <div class="import-dialog-box">
     <div class="import-dialog-head"><h2 id="importDialogTitle" data-i18n="导入 PUB">导入 PUB</h2><button class="iconbtn" id="importDialogClose" aria-label="关闭">×</button></div>
-    <p class="sub" id="importDialogHint" data-i18n="已导入的文件显示为勾选；未导入的文件请点击勾选后导入。">已导入的文件显示为勾选；未导入的文件请点击勾选后导入。</p>
+    <p class="sub" id="importDialogHint" data-i18n="未导入的文件默认勾选；已导入的文件默认不勾选；如需覆盖重新解析，请勾选对应文件。">未导入的文件默认勾选；已导入的文件默认不勾选；如需覆盖重新解析，请勾选对应文件。</p>
     <div class="import-file-list" id="importFileList"></div>
     <div class="import-dialog-actions">
       <button class="btn secondary" id="importSelectNew" data-i18n="全选未导入">全选未导入</button>
