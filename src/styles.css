@@ -448,14 +448,14 @@ body.daily-reader .bottom-tools{display:none!important}
    like they selected everything. */
 .publication-content .v.verse-action-active,
 .publication-content .bible-verse.verse-action-active,
-.publication-content .block-action-active{background:rgba(88,122,145,.12);border-radius:3px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.publication-content .block-action-active{background:#d9e8f1;box-shadow:0 0 0 2px #8db4c8;border-radius:4px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 
 /* Notes live in the left gutter so the inline reading text stays untouched. */
 .publication-content .has-gutter-note{position:relative}
-.publication-content .hl-note-mark.hl-gutter-note{position:absolute;left:-20px;top:.04em;display:flex;align-items:center;justify-content:center;width:18px;height:18px;margin:0;padding:0;border:0;background:transparent;color:#4b555b;opacity:.95;font-size:0;vertical-align:baseline;z-index:1}
-.publication-content .hl-note-mark.hl-gutter-note::before{content:'';display:block;width:12px;height:12px;box-sizing:border-box;border:2px solid #4a565d;border-radius:2px;background:transparent;box-shadow:0 0 0 1px #fff}
+.publication-content .hl-note-mark.hl-gutter-note{position:absolute;left:-21px;top:.04em;display:flex;align-items:center;justify-content:center;width:20px;height:20px;margin:0;padding:0;border:0;background:transparent;color:#3f4d55;opacity:1;font-size:0;vertical-align:baseline;z-index:1}
+.publication-content .hl-note-mark.hl-gutter-note::before{content:'';display:block;width:15px;height:15px;border:0;border-radius:0;background:currentColor;box-shadow:none;filter:drop-shadow(0 0 1px #fff) drop-shadow(0 0 2px rgba(255,255,255,.85));-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E") center/contain no-repeat}
 .publication-content .hl-note-mark.hl-gutter-note.hl-note-foreign::after{content:''}
-.publication-content .hl-note-mark.hl-gutter-note:hover::before,.publication-content .hl-note-mark.hl-gutter-note:active::before{border-color:#1f2a2f}
+.publication-content .hl-note-mark.hl-gutter-note:hover::before,.publication-content .hl-note-mark.hl-gutter-note:active::before{background-color:#1d2b33}
 
 /* One contextual action bar for verses, text selections and highlights. */
 .context-actions{display:none;position:fixed;z-index:47;gap:8px;background:#fff;border:1px solid var(--line);border-radius:var(--radius-pill);padding:6px 11px;box-shadow:var(--shadow-2);align-items:center}
