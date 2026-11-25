@@ -1862,10 +1862,21 @@ async function publicationLinkPreview(href){
   }
   return null;
 }
+function linkLabelText(a,fallback){
+  try{
+    const clone=a&&a.cloneNode?a.cloneNode(true):null;
+    if(clone){
+      clone.querySelectorAll('rt,rp,.tt').forEach(n=>n.remove());
+      const text=String(clone.textContent||'').replace(/[\u200b-\u200d]/g,'').replace(/\s+/g,' ').trim();
+      if(text)return text;
+    }
+  }catch(e){}
+  return String(fallback||'').replace(/[\u200b-\u200d]/g,'').replace(/\s+/g,' ').trim();
+}
 async function publicationLinkSection(a,bibleState){
   const href=String(a&&a.dataset&&a.dataset.jwlink||'');
   if(!href)return null;
-  const fallback=String(a.textContent||'').trim()||t('相关链接');
+  const fallback=linkLabelText(a,t('相关链接'))||t('相关链接');
   const bible=parseBibleLink(href);
   if(bible){
     const range={book:bible.book,chapter:bible.chapter,verse:bible.verse,endChapter:bible.endChapter,endVerse:bible.endVerse};
@@ -1875,7 +1886,12 @@ async function publicationLinkSection(a,bibleState){
     return {label:t('相关经文'),html:`<p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(label)}</a></p>${found?found.html:'<p class="xref-empty">'+t('本地没有对应经文正文')+'</p>'}`};
   }
   const preview=await publicationLinkPreview(href);
-  if(preview)return {label:t('相关链接'),html:`<div class="verse-ref-target"><p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(preview.label||fallback)}</a></p><div class="linked-article-preview">${preview.html}</div></div>`};
+  if(preview){
+    // The link name is plain text; pinyin belongs only in the excerpt body and
+    // must follow the pronunciation toggle.
+    const linkName=plainTextFromHtml(preview.label||'').replace(/[\u200b-\u200d]/g,'').replace(/\s+/g,' ').trim()||fallback;
+    return {label:t('相关链接'),html:`<div class="verse-ref-target"><p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(linkName)}</a></p><div class="linked-article-preview">${preview.html}</div></div>`};
+  }
   return {label:t('相关链接'),html:`<p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(fallback)}</a></p>`};
 }
 function bibleBookNumForNode(el){
@@ -1924,7 +1940,7 @@ async function showBlockInfo(block){
       if(section)sections.push(section);
     }
     [...block.querySelectorAll('a[data-external-link]')].slice(0,5).forEach(a=>{
-      const label=String(a.textContent||'').trim()||t('相关链接');
+      const label=linkLabelText(a,t('相关链接'));
       sections.push({label:t('相关链接'),html:`<p>${safeText(label)}</p><p class="xref-empty">${t('这是一个外部网页链接，当前离线阅读器不会尝试联网打开。')}</p>`});
     });
     if(!sections.length){say(t('段落信息'),t('这一段没有可显示的脚注或相关链接。'));return}
@@ -2047,7 +2063,7 @@ async function showBibleVerseRefs(el){
     if(section)sections.push(section);
   }
   for(const a of [...region.querySelectorAll('a[data-external-link]')].slice(0,5)){
-    const label=String(a.textContent||'').trim()||t('相关链接');
+    const label=linkLabelText(a,t('相关链接'));
     sections.push({label:t('相关链接'),html:`<p>${safeText(label)}</p><p class="xref-empty">${t('这是一个外部网页链接，当前离线阅读器不会尝试联网打开。')}</p>`});
   }
   if(!sections.length){say(t('经文信息'),t('这一节没有可显示的脚注或相关经文。'));return}
