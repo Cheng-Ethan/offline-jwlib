@@ -338,6 +338,7 @@ const say=(title,msg,busy)=>{
   const m=$('modal');if(m&&m.style.display!=='flex')modalReturnFocus=document.activeElement;
   $('modalTitle').textContent=t(title);$('modalText').textContent=t(msg);
   const ok=$('modalOk');if(ok)ok.style.display=busy?'none':'';
+  const x=$('modalClose');if(x)x.style.display=busy?'none':'';
   m.style.display='flex';
   if(!busy)setTimeout(()=>focusSafely(ok),0);
 };
@@ -452,6 +453,7 @@ function pinyinDebug(){
 }
 
 $('modalOk').onclick=closeModal;
+const _modalClose=$('modalClose');if(_modalClose)_modalClose.onclick=closeModal;
 document.addEventListener('keydown',e=>{
   const cm=$('confirmModal'),m=$('modal');
   if(e.key==='Escape'){

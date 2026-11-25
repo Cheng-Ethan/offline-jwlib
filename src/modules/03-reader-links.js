@@ -507,7 +507,7 @@ async function showDoc(anchor=''){
   $('readerTitle').textContent=d.title;$('article').innerHTML='';
   const kind=readerKind(currentBook);$('article').className='reader-kind-'+kind;$('article').dataset.publicationKind=kind;
   document.body.classList.toggle('daily-reader',kind==='daily');
-  const bottomTools=document.querySelector('.bottom-tools');if(bottomTools)bottomTools.style.display=kind==='daily'?'none':'flex';
+  updateBottomTools();
   const map=await docAssetMap(currentBook,d.html);if(epoch!==tabEpoch)return false;
   const clean=cleanHtml(d.html,map),style=document.createElement('style');style.textContent=clean.styles||'';$('article').appendChild(style);
   const content=document.createElement('div');content.className='publication-content publication-content-'+kind;content.innerHTML=clean.body;
@@ -600,6 +600,19 @@ function chineseBibleBookName(data,book){
   const names=['','创世记','出埃及记','利未记','民数记','申命记','约书亚记','士师记','路得记','撒母耳记上','撒母耳记下','列王纪上','列王纪下','历代志上','历代志下','以斯拉记','尼希米记','以斯帖记','约伯记','诗篇','箴言','传道书','雅歌','以赛亚书','耶利米书','耶利米哀歌','以西结书','但以理书','何西阿书','约珥书','阿摩司书','俄巴底亚书','约拿书','弥迦书','那鸿书','哈巴谷书','西番雅书','哈该书','撒迦利亚书','玛拉基书','马太福音','马可福音','路加福音','约翰福音','使徒行传','罗马书','哥林多前书','哥林多后书','加拉太书','以弗所书','腓立比书','歌罗西书','帖撒罗尼迦前书','帖撒罗尼迦后书','提摩太前书','提摩太后书','提多书','腓利门书','希伯来书','雅各书','彼得前书','彼得后书','约翰一书','约翰二书','约翰三书','犹大书','启示录'];
   return names[book]||`第${book}卷`;
 }
+function readerToolsAllowed(){
+  if(bibleMode)return false;
+  const tab=readerSessionTab||readerOriginSection||primarySection||'home';
+  if(tab==='library'||tab==='meetings')return false;
+  try{
+    const kind=readerKind(currentBook);
+    return kind!=='daily'&&categoryPath(currentBook)[0]!=='meetings';
+  }catch(e){return true}
+}
+function updateBottomTools(){
+  const tools=document.querySelector('#reader .bottom-tools');
+  if(tools)tools.style.display=readerToolsAllowed()?'flex':'none';
+}
 function setBibleToolbar(on){
   try{$('reader').classList.toggle('bible-mode',!!on)}catch(e){}
   $('tocBtn').style.display=on?'none':'';
@@ -607,7 +620,7 @@ function setBibleToolbar(on){
   $('nextBtn').style.display=on?'none':'';
   $('bookmarkBtn').style.display=on?'none':'';
   $('noteBtn').style.display=on?'none':'';
-  const tools=$('prevBtn')&&$('prevBtn').closest('.bottom-tools');if(tools)tools.style.display=on?'none':'flex';
+  updateBottomTools();
 }
 async function openBibleChapterReader(bookId,bookNum,chapter,verse=0,origin=null){
   const epoch=tabEpoch;
@@ -2367,6 +2380,8 @@ document.addEventListener('click',e=>{
   // The desktop side panel is persistent; it is closed with its own button or Esc.
   if(linkPanelDocked())return;
   if(e.target.closest&&e.target.closest('.link-popover'))return;
+  // Closing a warning from inside the popover must not also close the popover.
+  if(e.target.closest&&e.target.closest('.modal,#modal,#confirmModal'))return;
   if(e.target.closest&&e.target.closest('a[data-jwlink]'))return;
   closeLinkPopover();
   dismissRegionSelection();
@@ -2383,7 +2398,7 @@ document.addEventListener('click',e=>{
   if($('article')&&$('article').contains(e.target))return;
   dismissRegionSelection();
 },true);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLinkPopover();dismissRegionSelection()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(($('modal')&&$('modal').style.display==='flex')||($('confirmModal')&&$('confirmModal').style.display==='flex'))return;closeLinkPopover();dismissRegionSelection()}});
 let linkPanelDockedAt=linkPanelDocked();
 window.addEventListener('resize',()=>{const docked=linkPanelDocked();if(docked!==linkPanelDockedAt){closeLinkPopover();linkPanelDockedAt=docked}else if(!docked&&linkPopovers.length){linkPopovers.forEach((entry,index)=>positionLinkPopover(entry.anchor,index))}});
 
