@@ -315,8 +315,6 @@ function applyI18n(){
     document.querySelectorAll('[data-i18n-aria-label]').forEach(el=>{el.setAttribute('aria-label',t(el.getAttribute('data-i18n-aria-label')))});
     const lb=document.getElementById('langBtn');if(lb){lb.textContent=uiLang==='zh'?'中':uiLang==='en'?'EN':uiLang==='ja'?'日':uiLang==='ko'?'한':String(uiLang).toUpperCase();lb.title=t('界面语言')+' · '+((UI_LANGS[uiLang]||UI_LANGS.zh).name||'')}
     const cb=document.getElementById('contentLangBtn');if(cb)cb.textContent='文';
-    const rb=document.getElementById('readerLangBtn');if(rb)rb.textContent=uiLang==='en'?'L':uiLang==='ko'?'언':uiLang==='ja'?'語':'语';
-    const pb=document.getElementById('pronunciationBtn');if(pb)pb.textContent=uiLang==='zh'?'拼':uiLang==='en'?'P':uiLang==='ko'?'병':'ル';
   }catch(e){}
 }
 const XOR='11cbb5587e32846d4c26790c633da289f66fe5842a3a585ce1bc3a294af5ada7';

@@ -15,7 +15,7 @@ function buildToc(){
     if(desktop){const copy=el.cloneNode(true);copy.onclick=el.onclick;desktop.appendChild(copy)}
   });
 }
-const _contentLangBtn=$('contentLangBtn');if(_contentLangBtn)_contentLangBtn.onclick=()=>showContentLangMenu(_contentLangBtn);$('langBtn').onclick=()=>showLangMenu($('langBtn'));$('readerLangBtn').onclick=()=>showReaderLangMenu($('readerLangBtn'));$('historyBtn').onclick=()=>showHistoryPanel();const _libSearchBtn=$('librarySearchBtn');if(_libSearchBtn)_libSearchBtn.onclick=()=>openReaderSearch({kind:'publications',tab:'library'});$('languagePackInput').onchange=async e=>{try{const f=e.target.files&&e.target.files[0];if(!f)return;const pack=JSON.parse(await f.text());const code=pack.code||pack.lang;const messages=pack.messages||pack.strings;if(!code||!messages||typeof messages!=='object')throw new Error(t('语言包格式不正确'));const meta={name:pack.name,locale:pack.locale,button:pack.button};if(!registerLanguagePack(code,meta,messages))throw new Error(t('语言包格式不正确'));setUiLang(String(code).toLowerCase());say(t('导入语言包'),t('语言包已导入')+': '+code)}catch(err){say(t('语言包导入失败'),err.message||String(err))}finally{e.target.value=''}};$('importToolbar').style.display='none';$('sectionDashboard').style.display='none';try{pronunciationOn=localStorage.getItem('offlineLibraryPronunciation')==='1'}catch(e){}setPinyin(pronunciationOn);$('pronunciationBtn').onclick=()=>setPinyin(!pronunciationOn);
+const _contentLangBtn=$('contentLangBtn');if(_contentLangBtn)_contentLangBtn.onclick=()=>showContentLangMenu(_contentLangBtn);$('langBtn').onclick=()=>showLangMenu($('langBtn'));$('readerLangBtn').onclick=()=>showReaderLangMenu($('readerMoreBtn'));$('historyBtn').onclick=()=>showHistoryPanel();const _libSearchBtn=$('librarySearchBtn');if(_libSearchBtn)_libSearchBtn.onclick=()=>openReaderSearch({kind:'publications',tab:'library'});$('languagePackInput').onchange=async e=>{try{const f=e.target.files&&e.target.files[0];if(!f)return;const pack=JSON.parse(await f.text());const code=pack.code||pack.lang;const messages=pack.messages||pack.strings;if(!code||!messages||typeof messages!=='object')throw new Error(t('语言包格式不正确'));const meta={name:pack.name,locale:pack.locale,button:pack.button};if(!registerLanguagePack(code,meta,messages))throw new Error(t('语言包格式不正确'));setUiLang(String(code).toLowerCase());say(t('导入语言包'),t('语言包已导入')+': '+code)}catch(err){say(t('语言包导入失败'),err.message||String(err))}finally{e.target.value=''}};$('importToolbar').style.display='none';$('sectionDashboard').style.display='none';try{pronunciationOn=localStorage.getItem('offlineLibraryPronunciation')==='1'}catch(e){}setPinyin(pronunciationOn);$('pronunciationBtn').onclick=()=>setPinyin(!pronunciationOn);
 $('importBtn').onclick=()=>$('fileInput').click();
 $('fileInput').onchange=async e=>{const files=[...(e.target.files||[])];e.target.value='';if(files.length)await openImportDialog(files)};
 let importStagingFiles=[];
@@ -234,3 +234,24 @@ $('fontDown').onclick=()=>{fontSize=Math.max(15,fontSize-1);$('article').style.f
 $('fontUp').onclick=()=>{fontSize=Math.min(27,fontSize+1);$('article').style.fontSize=fontSize+'px'};
 $('bookmarkBtn').onclick=async()=>{if(bibleMode||currentIndex<0)return;const d=currentBook.docs[currentIndex],id=`${currentBook.id}:${d.id}`,old=await getOne('bookmarks',id);if(old){await reqP(tx('bookmarks','readwrite').delete(id));renderBookmarkButton(false)}else{await saveOne('bookmarks',{id,bookId:currentBook.id,docId:d.id,title:d.title,createdAt:Date.now()});renderBookmarkButton(true)}};
 $('noteBtn').onclick=()=>{if(bibleMode||currentIndex<0)return;openChapterNotes()};
+function closeReaderToolsMenu(){
+  const menu=$('readerToolsMenu'),btn=$('readerMoreBtn');
+  if(menu)menu.classList.remove('show');
+  if(btn)btn.setAttribute('aria-expanded','false');
+}
+function toggleReaderToolsMenu(){
+  const menu=$('readerToolsMenu'),btn=$('readerMoreBtn');
+  if(!menu||!btn)return;
+  const open=!menu.classList.contains('show');
+  if(open){menu.classList.add('show');btn.setAttribute('aria-expanded','true')}
+  else closeReaderToolsMenu();
+}
+$('readerMoreBtn').onclick=e=>{e.stopPropagation();toggleReaderToolsMenu()};
+$('readerToolsMenu').addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#readerLangBtn,#tocBtn,#readerSearchBtn,#noteBtn'))closeReaderToolsMenu()});
+document.addEventListener('click',e=>{
+  const menu=$('readerToolsMenu');
+  if(!menu||!menu.classList.contains('show'))return;
+  if(e.target.closest&&e.target.closest('#readerToolsMenu,#readerMoreBtn'))return;
+  closeReaderToolsMenu();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeReaderToolsMenu()});
