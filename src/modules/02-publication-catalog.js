@@ -292,6 +292,9 @@ function activateTab(tab,reset,opts={}){
   const hadOpenEditor=!!(noteEditorState&&!noteEditorState.minimized);
   if(hadOpenEditor)minimizeNoteEditor(prev===tab);
   const readerOpen=$('reader').style.display==='block';
+  // A hidden reader has no active tab. Leaving a stale session here is what
+  // allowed a later back arrow to look up another tab's reading history.
+  if(!readerOpen){readerSessionTab=null;readerOriginSection=null;}
   const readerTab=readerSessionTab||readerNavSection;
   if(readerOpen&&!reset&&tab===readerTab&&!opts.skipRestore){document.querySelectorAll('#bottomNav button').forEach(x=>x.classList.toggle('active',x.dataset.primary===(tab==='more'||tab==='history'?'study':tab)));return Promise.resolve()}
   if(prev===tab&&!reset&&!readerOpen&&!opts.forceRender){
@@ -306,9 +309,10 @@ function activateTab(tab,reset,opts={}){
     const sourceTab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;
     storeReaderView(sourceTab,true);cancelReaderPositionRestore();
     hideVerseActions();closeLinkPopover();clearUrls();bibleMode=false;bibleReturn=null;setBibleToolbar(false);readerReturnSection=null;readerOriginSection=null;readerSessionTab=null;readerReturnTarget=null;readerSearchReturn=null;
-    // Keep the old reader visible while the target tab's article loads. Hiding
-    // it first made the section list flash between the two articles.
-    if(!willRestore){$('reader').style.display='none';$('home').style.display='block'}
+    // Hide the old tab's article immediately. Keeping it visible while the
+    // target tab's article loaded made the old article look like part of the
+    // new tab and confused both the back history and the reading position.
+    $('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
   }
   primarySection=tab;
   const isHome=tab==='home';
@@ -776,6 +780,8 @@ async function renderWatchtowerMeetings(books){
   }
 }
 async function renderMeetings(books){
+  $('libraryTitle').textContent=t('聚会');
+  $('librarySubtitle').textContent=t('本周聚会安排、聚会工作手册和其他聚会资料。');
   const today=new Date();
   const dateLabel=today.toLocaleDateString(uiLocale(),{year:'numeric',month:'long',day:'numeric',weekday:'long'});
   const items=books.filter(b=>categoryPath(b)[0]==='meetings').sort((a,b)=>Number(b.year||0)-Number(a.year||0)||Number(b.issue||0)-Number(a.issue||0)||Number(b.importedAt||0)-Number(a.importedAt||0));

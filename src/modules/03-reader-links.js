@@ -71,17 +71,30 @@ async function updateReaderLanguageButton(){
   if(currentBook&&(currentBook.bibleData||currentBook.hasBible)){btn.style.display='none';return}
   try{const list=await readerSiblingEditions(currentBook);btn.style.display=list.length?'':'none';btn.title=list.length?t('切换语言版本'):t('语言版本')}catch(e){btn.style.display='none'}
 }
-let readerRestoreToken=0,readerRestoreActive=false,readerActiveView=null,pendingReaderView=null;
+let readerRestoreToken=0,readerRestoreActive=false,readerActiveView=null,pendingReaderView=null,sectionRestoreSeq=0;
 function cancelReaderPositionRestore(){readerRestoreToken++;readerRestoreActive=false}
 function readerViewSnapshot(){
   const body=$('readerBody'),doc=currentBook&&currentBook.docs&&currentBook.docs[currentIndex];
   if(!body||!doc)return null;
-  const pid=readerVisiblePid();
-  let anchorOffset=0;
-  if(pid){
-    try{const el=$('article').querySelector('[data-pid="'+CSS.escape(String(pid))+'"]');if(el)anchorOffset=el.getBoundingClientRect().top-body.getBoundingClientRect().top}catch(e){}
-  }
-  return {bookId:String(currentBook.id),docId:String(doc.id),scrollTop:Number(body.scrollTop||0),pid,anchorOffset};
+  let pid=readerVisiblePid(),el=null,anchorOffset=0,blockIndex=-1;
+  try{
+    const blocks=hlBlocks(hlRoot());
+    if(pid)el=$('article').querySelector('[data-pid="'+CSS.escape(String(pid))+'"]');
+    if(el)blockIndex=blocks.indexOf(el);
+    if(!el){
+      // Publications without paragraph ids still need a stable anchor, or a
+      // late-loading image can clamp the saved scroll offset to the top.
+      const threshold=body.getBoundingClientRect().top+72;
+      for(let i=0;i<blocks.length;i++){
+        const r=blocks[i].getBoundingClientRect();
+        if(r.height<=0)continue;
+        if((r.top<=threshold&&r.bottom>threshold)||r.top>threshold){el=blocks[i];blockIndex=i;break}
+      }
+      pid=el&&el.getAttribute?el.getAttribute('data-pid')||'':'';
+    }
+    if(el)anchorOffset=el.getBoundingClientRect().top-body.getBoundingClientRect().top;
+  }catch(e){}
+  return {bookId:String(currentBook.id),docId:String(doc.id),scrollTop:Number(body.scrollTop||0),pid,anchorOffset,blockIndex};
 }
 const READER_HISTORY_LIMIT=30;
 let readerHistoryRestoring=false;
@@ -92,12 +105,18 @@ function pushReaderHistory(tab){
   const list=sectionPageHistory[tab]||(sectionPageHistory[tab]=[]);
   const last=list[list.length-1];
   if(last&&String(last.bookId)===String(snap.bookId)&&String(last.docId)===String(snap.docId)&&Math.abs(Number(last.scrollTop||0)-Number(snap.scrollTop||0))<2)return;
-  list.push(snap);
+  list.push({...snap,tab});
   if(list.length>READER_HISTORY_LIMIT)list.shift();
 }
 function popReaderHistory(tab){
-  const list=sectionPageHistory[tab||historyTab()];
-  return list&&list.length?list.pop():null;
+  const key=tab||historyTab();
+  const list=sectionPageHistory[key];
+  // Never let an entry recorded for another tab open that tab's article here.
+  while(list&&list.length){
+    const item=list.pop();
+    if(item&&(!item.tab||item.tab===key))return item;
+  }
+  return null;
 }
 function clearReaderHistory(tab){
   if(tab&&sectionPageHistory[tab])sectionPageHistory[tab]=[];
@@ -128,14 +147,16 @@ function restoreReaderPosition(view,tab){
     if(token!==readerRestoreToken)return;
     try{
       let usedAnchor=false;
-      if(view.pid){
-        const el=$('article').querySelector('[data-pid="'+CSS.escape(String(view.pid))+'"]');
-        if(el){
-          const bodyTop=body.getBoundingClientRect().top;
-          const delta=el.getBoundingClientRect().top-bodyTop-Number(view.anchorOffset||0);
-          if(Math.abs(delta)>1)body.scrollTop=Math.max(0,body.scrollTop+delta);
-          usedAnchor=true;
-        }
+      let el=null;
+      if(view.pid){el=$('article').querySelector('[data-pid="'+CSS.escape(String(view.pid))+'"]')}
+      // Fall back to the block position when ids change or the publication
+      // has no usable paragraph id; this is still much better than top of page.
+      if(!el&&Number.isFinite(Number(view.blockIndex))&&Number(view.blockIndex)>=0)el=hlBlocks(hlRoot())[Number(view.blockIndex)]||null;
+      if(el){
+        const bodyTop=body.getBoundingClientRect().top;
+        const delta=el.getBoundingClientRect().top-bodyTop-Number(view.anchorOffset||0);
+        if(Math.abs(delta)>1)body.scrollTop=Math.max(0,body.scrollTop+delta);
+        usedAnchor=true;
       }
       if(!usedAnchor)body.scrollTop=target;
       else if(Math.abs(body.scrollTop-target)<2)body.scrollTop=target;
@@ -143,8 +164,10 @@ function restoreReaderPosition(view,tab){
     }catch(e){}
   };
   apply();requestAnimationFrame(apply);
-  [80,240,500,900,1500,2500].forEach(ms=>setTimeout(apply,ms));
-  setTimeout(()=>{if(token===readerRestoreToken)readerRestoreActive=false},2600);
+  // Late images/fonts can still change the article height. Keep re-applying
+  // the anchor until the user touches or scrolls, which cancels the token.
+  [80,240,500,900,1500,2500,3500,4500].forEach(ms=>setTimeout(apply,ms));
+  setTimeout(()=>{if(token===readerRestoreToken)readerRestoreActive=false},3600);
   try{$('article').querySelectorAll('img').forEach(img=>{if(!img.complete)img.addEventListener('load',()=>{if(token===readerRestoreToken)apply()},{once:true})})}catch(e){}
 }
 function readerVisiblePid(){
@@ -201,10 +224,14 @@ async function switchReaderLanguage(sibling){
 }
 async function restoreSectionView(tab){
   const epoch=tabEpoch;
-  const v=sectionViews[tab];if(!v||!v.bookId||!v.docId)return false;
+  const saved=sectionViews[tab];if(!saved||!saved.bookId||!saved.docId)return false;
+  const v={...saved};
   const m=String(v.docId).match(/^bible-(\d+)-(\d+)$/);
   let ok=false;
-  pendingReaderView=v;
+  const seq=++sectionRestoreSeq;
+  // Restore from a copy: sectionViews[tab] is also updated by the scroll
+  // listener while the new article is being laid out.
+  pendingReaderView={...v};
   // Restoring a tab is not navigation inside the reader. The previous tab's
   // article is still on screen while this one loads, so it must not be pushed
   // into the target tab's back history or be mistaken for the source of a
@@ -215,8 +242,11 @@ async function restoreSectionView(tab){
   try{
     if(m){ok=await openBibleChapterReader(v.bookId,Number(m[1]),Number(m[2]),0,tab)===true;}
     else{const book=(currentBook&&String(currentBook.id)===String(v.bookId))?currentBook:await loadBook(v.bookId);if(!book||epoch!==tabEpoch)return false;ok=await openDocInBook(book,v.docId,'',tab);}
-  }finally{pendingReaderView=null;readerHistoryRestoring=false}
-  if(!ok||epoch!==tabEpoch)return false;
+  }finally{
+    // A newer tab restore owns these globals now; do not clear them under it.
+    if(seq===sectionRestoreSeq){pendingReaderView=null;readerHistoryRestoring=false}
+  }
+  if(!ok||epoch!==tabEpoch||seq!==sectionRestoreSeq)return false;
   restoreReaderPosition(v,tab);
   return true;
 }
@@ -376,6 +406,12 @@ async function showDoc(anchor=''){
   hideVerseActions();
   bibleMode=false;setBibleToolbar(false);
   const d=currentBook.docs[currentIndex];if(!d)return;
+  // Take the pending restore snapshot before touching the DOM. Replacing the
+  // article clamps readerBody.scrollTop to the new content height, and the
+  // scroll listener would write that value back into the same object we are
+  // about to restore from, losing the paragraph the user was reading.
+  const pendingView=pendingReaderView?{...pendingReaderView}:null;
+  if(pendingView){readerRestoreActive=true;readerActiveView={...pendingView}}
   $('readerTitle').textContent=d.title;$('article').innerHTML='';
   const kind=readerKind(currentBook);$('article').className='reader-kind-'+kind;$('article').dataset.publicationKind=kind;
   const map=await docAssetMap(currentBook,d.html);if(epoch!==tabEpoch)return false;
@@ -395,8 +431,6 @@ async function showDoc(anchor=''){
   await applyCrossLanguageNotes(currentBook,d);
   await setupAnswerFields(currentBook.id,d.id);
   if(epoch!==tabEpoch)return false;
-  const pendingView=pendingReaderView;
-  if(pendingView){readerRestoreActive=true;readerActiveView={...pendingView}}
   const saved=pendingView?null:await getOne('history',`${currentBook.id}:${d.id}`);
   const restore=pendingView?Number(pendingView.scrollTop||0):Number(saved&&saved.scrollTop||0);
   const historyRestoreToken=++readerRestoreToken;
@@ -1909,7 +1943,7 @@ $('article').addEventListener('click',e=>{
 });
 $('article').addEventListener('click',async e=>{const mark=e.target.closest&&e.target.closest('.hl-note-mark');if(mark){const hlId=mark.dataset.hlId,noteId=mark.dataset.noteId;if(!hlId&&!noteId)return;e.preventDefault();e.stopPropagation();if(noteId)await openVerseNote(noteId);else await openHighlightNote(hlId);return}const span=e.target.closest&&e.target.closest('.hl');if(!span)return;e.preventDefault();e.stopPropagation();await showHighlightActions(span,span.dataset.hlId);},true);
 ['touchstart','wheel','pointerdown'].forEach(ev=>$('readerBody').addEventListener(ev,()=>{readerRestoreToken++;readerRestoreActive=false},{passive:true}));
-$('readerBody').addEventListener('scroll',()=>{if(!currentBook||currentIndex<0)return;if(readerRestoreActive)return;const tab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;if(tab&&sectionViews[tab]){sectionViews[tab].scrollTop=Number($('readerBody').scrollTop||0);sectionViews[tab].pid='';sectionViews[tab].anchorOffset=0}if(bibleMode)return;const now=Date.now();if(now-historyWriteAt<1200)return;historyWriteAt=now;const d=currentBook.docs[currentIndex];if(d)recordHistory(currentBook,d,$('readerBody').scrollTop).catch(()=>{})},{passive:true});
+$('readerBody').addEventListener('scroll',()=>{if($('reader').style.display!=='block')return;if(!currentBook||currentIndex<0)return;if(readerRestoreActive)return;const tab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;if(tab&&sectionViews[tab]){sectionViews[tab].scrollTop=Number($('readerBody').scrollTop||0);sectionViews[tab].pid='';sectionViews[tab].anchorOffset=0}if(bibleMode)return;const now=Date.now();if(now-historyWriteAt<1200)return;historyWriteAt=now;const d=currentBook.docs[currentIndex];if(d)recordHistory(currentBook,d,$('readerBody').scrollTop).catch(()=>{})},{passive:true});
 const handleLinkPanelClick=async e=>{const fn=e.target.closest&&e.target.closest('.fn[data-fnid]');if(fn){e.preventDefault();e.stopPropagation();await showFootnote(fn);return}await handleLinkedContentClick(e)};
 $('linkPopoverBody').addEventListener('click',handleLinkPanelClick);
 const _readerSidePanelBody=$('readerSidePanelBody');if(_readerSidePanelBody)_readerSidePanelBody.addEventListener('click',handleLinkPanelClick);
