@@ -313,13 +313,24 @@ function positionLinkPopover(anchorEl){
   top=Math.max(62,Math.min(top,vh-h-10));
   panel.style.left=left+'px';panel.style.top=top+'px';
 }
-async function showLinkPopover(title,rawHtml,book,anchorEl,anchor=''){
+function setLinkPanelTitle(title,onClick){
+  const el=linkPanelTitleEl();if(!el)return;
+  el.textContent='';
+  el.classList.toggle('has-link-title',!!onClick);
+  if(onClick){
+    const btn=document.createElement('button');btn.type='button';btn.className='link-panel-title-link';
+    btn.textContent=title||t('链接内容');
+    btn.onclick=async e=>{e.preventDefault();e.stopPropagation();if(btn.disabled)return;btn.disabled=true;try{await onClick()}finally{btn.disabled=false}};
+    el.appendChild(btn);
+  }else el.textContent=title||t('链接内容');
+}
+async function showLinkPopover(title,rawHtml,book,anchorEl,anchor='',opts={}){
   hideVerseActions();
   closeLinkPopover(false);
   const docked=linkPanelDocked();
   const map=await docAssetMap(book,String(rawHtml||''));
   const clean=cleanHtml(String(rawHtml||''),map);
-  const titleEl=linkPanelTitleEl();if(titleEl)titleEl.textContent=title||t('链接内容');
+  setLinkPanelTitle(title,opts&&opts.onTitleClick);
   const body=linkPanelBodyEl();if(!body)return;
   body.innerHTML='';body.scrollTop=0;
   if(clean.styles){const style=document.createElement('style');style.textContent=clean.styles;body.appendChild(style);}
@@ -1437,30 +1448,13 @@ async function findExactExtract(pub,href,currentDocId,anchorPid){
   }
   return null;
 }
-async function openPublicationReference(href,anchorEl){
-  const pub=parsePublicationLink(href);if(!pub)return false;
-  const anchorPid=Number(anchorEl&&anchorEl.closest&&anchorEl.closest('[data-pid]')?.getAttribute('data-pid')||0);
-  const currentDoc=currentBook&&currentBook.docs&&currentBook.docs[currentIndex];
-  const currentDocId=currentDoc?currentDoc.id:0;
-  const sourceLang=Number(currentBook&&currentBook.lang)||0;
+async function openPublicationDocument(pub){
+  if(!pub)return false;
   const metas=await allBooks();
   const metaById=new Map(metas.map(m=>[String(m.id),m]));
+  const sourceLang=Number(currentBook&&currentBook.lang)||0;
   const sameLanguage=bookId=>String(bookId)===String(currentBook&&currentBook.id)||!sourceLang||Number((metaById.get(String(bookId))||{}).lang)===sourceLang;
-  const wholeDoc=publicationLinkIsDocumentLink(pub);
   const anchor=pub.anchor||(pub.paragraph?`p${pub.paragraph}`:'');
-  // A paragraph citation prefers the packaged excerpt (a temporary reference).
-  // Without an excerpt it still jumps into the real document below.
-  if(!wholeDoc){
-    const exact=await findExactExtract(pub,href,currentDocId,anchorPid);
-    if(exact&&exact.extract.html){
-      const targetLang=Number((exact.meta&&exact.meta.lang)||(exact.book&&exact.book.lang)||0)||0;
-      await openExtractInReader(exact.book,exact.extract,anchorEl,languageFallbackNotice(sourceLang,targetLang));
-      return true;
-    }
-  }
-  // Whole-document links, and citations whose excerpt is not packaged, open the
-  // target document in the reader. Try the primary address first, then the
-  // `$p/` alternatives some publications list for the same reference.
   const targets=(pub.targets&&pub.targets.length?pub.targets:[pub]);
   for(const target of targets){
     const hits=await findDocsByMeps(target.docId);
@@ -1485,26 +1479,60 @@ async function openPublicationReference(href,anchorEl){
       return true;
     }
   }
+  return false;
+}
+async function openLinkedPublication(href){
+  const pub=parsePublicationLink(normalizePubHref(href));
+  if(!pub)return false;
+  return await openPublicationDocument(pub);
+}
+async function openPublicationReference(href,anchorEl){
+  const pub=parsePublicationLink(href);if(!pub)return false;
+  const anchorPid=Number(anchorEl&&anchorEl.closest&&anchorEl.closest('[data-pid]')?.getAttribute('data-pid')||0);
+  const currentDoc=currentBook&&currentBook.docs&&currentBook.docs[currentIndex];
+  const currentDocId=currentDoc?currentDoc.id:0;
+  const sourceLang=Number(currentBook&&currentBook.lang)||0;
+  const wholeDoc=publicationLinkIsDocumentLink(pub);
+  // A paragraph citation prefers the packaged excerpt (a temporary reference).
+  // Without an excerpt it still jumps into the real document below.
+  if(!wholeDoc){
+    const exact=await findExactExtract(pub,href,currentDocId,anchorPid);
+    if(exact&&exact.extract.html){
+      const targetLang=Number((exact.meta&&exact.meta.lang)||(exact.book&&exact.book.lang)||0)||0;
+      await openExtractInReader(exact.book,exact.extract,anchorEl,languageFallbackNotice(sourceLang,targetLang),{linkHref:href});
+      return true;
+    }
+  }
+  // Whole-document links, and citations whose excerpt is not packaged, open the
+  // target document in the reader. Try the primary address first, then the
+  // `$p/` alternatives some publications list for the same reference.
+  if(await openPublicationDocument(pub))return true;
   // Some whole-document links exist only as an Extract (for example a song
   // packaged as an excerpt). Show that preview instead of a dead end.
   if(wholeDoc){
     const exact=await findExactExtract(pub,href,currentDocId,anchorPid);
     if(exact){
       const targetLang=Number((exact.meta&&exact.meta.lang)||(exact.book&&exact.book.lang)||0)||0;
-      await openExtractInReader(exact.book,exact.extract,anchorEl,languageFallbackNotice(sourceLang,targetLang));
+      await openExtractInReader(exact.book,exact.extract,anchorEl,languageFallbackNotice(sourceLang,targetLang),{linkHref:href});
       return true;
     }
   }
   say('本地没有这条链接的正文',`出版物链接标识：${pub.prefix||''}:${pub.docId}\n目标段落：${pub.paragraph||'未指定'}\n已检查当前导入出版物的正文、圣经书卷文档和 Extract 摘录数据，但没有找到对应内容。没有尝试打开外部网页。`);
   return true;
 }
-async function openExtractInReader(book,extract,anchorEl,notice=''){
+async function openExtractInReader(book,extract,anchorEl,notice='',opts={}){
   const title=extract.captionText||String(extract.caption||'').replace(/<[^>]+>/g,' ').replace(/[\s\u200b]+/g,' ').trim()||t('链接内容');
+  const linkHref=String(opts.linkHref||extract.sourceLink||extract.link||'');
+  const titleAction=linkHref?async()=>{
+    const ok=await openLinkedPublication(linkHref);
+    if(!ok)say(t('相关链接'),t('本地没有这篇相关文章的正文。'));
+  }:null;
+  const popupOpts=titleAction?{onTitleClick:titleAction}:undefined;
   if(!extract.html){
-    await showLinkPopover(title,'<p>'+t('这条相关文章的正文没有保存在本机。')+'</p><p>'+t('它很可能是在旧版（0.5.1 及更早）导入的；旧版只保存了链接和标题，没有保存 Extract 正文。请重新导入这份 PUB，或从包含正文的备份恢复后再试。')+'</p>',book,anchorEl);
+    await showLinkPopover(title,'<p>'+t('这条相关文章的正文没有保存在本机。')+'</p><p>'+t('它很可能是在旧版（0.5.1 及更早）导入的；旧版只保存了链接和标题，没有保存 Extract 正文。请重新导入这份 PUB，或从包含正文的备份恢复后再试。')+'</p>',book,anchorEl,'',popupOpts);
     return;
   }
-  await showLinkPopover(title,(notice||'')+extract.html,book,anchorEl);
+  await showLinkPopover(title,(notice||'')+extract.html,book,anchorEl,'',popupOpts);
 }
 async function openDocInPopover(book,doc,anchorEl,anchor='',notice=''){
   await showLinkPopover(doc.title||t('文章章节'),(notice||'')+doc.html,book,anchorEl,anchor);
