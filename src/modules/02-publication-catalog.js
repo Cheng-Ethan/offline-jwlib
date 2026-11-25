@@ -315,6 +315,7 @@ function activateTab(tab,reset,opts={}){
     $('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
   }
   primarySection=tab;
+  scheduleReaderCacheSave();
   const isHome=tab==='home';
   const topBar=document.querySelector('.top');if(topBar)topBar.style.display=isHome?'flex':'none';
   document.body.classList.toggle('section-mode',!isHome);
@@ -344,6 +345,7 @@ function onNavTap(tab){
 function resetSectionState(tab){
   try{delete sectionViews[tab]}catch(e){}
   try{clearReaderHistory(tab)}catch(e){}
+  scheduleReaderCacheSave();
   if(tab==='bible'){bibleSelectedBook=null;bibleSection='正文';}
   else if(tab==='library'){libraryTab='publications';categoryTrail=[];}
   else if(tab==='meetings'){meetingBookId=null;meetingWeekDocId=null;meetingsExpanded=true;}

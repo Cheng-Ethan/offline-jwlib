@@ -14,6 +14,32 @@ let studyState={books:[],tags:[],notes:[],query:'',tagFilter:new Set()};
 let noteEditorState=null;
 let sectionViews={};
 let sectionPageHistory={home:[],bible:[],library:[],meetings:[],study:[]};
+const READER_CACHE_ID='readerPanelCache';
+let readerCacheTimer=null,readerCacheLoaded=false,readerCacheTab='home';
+function readerCachePayload(){return {id:READER_CACHE_ID,views:sectionViews,history:sectionPageHistory,tab:primarySection,updatedAt:Date.now()}}
+function scheduleReaderCacheSave(){
+  if(!readerCacheLoaded||readerCacheTimer)return;
+  readerCacheTimer=setTimeout(()=>{readerCacheTimer=null;saveReaderCache().catch(()=>{})},500);
+}
+async function saveReaderCache(){if(!idb)return;try{await saveOne('system',readerCachePayload())}catch(e){}}
+async function loadReaderCache(){
+  try{
+    const rec=await getOne('system',READER_CACHE_ID);
+    if(rec){
+      if(rec.views&&typeof rec.views==='object'&&!Array.isArray(rec.views)){
+        for(const [tab,view] of Object.entries(rec.views))if(view&&view.bookId&&view.docId)sectionViews[tab]=view;
+      }
+      if(rec.history&&typeof rec.history==='object'){
+        for(const key of Object.keys(sectionPageHistory)){
+          const list=rec.history[key];
+          if(Array.isArray(list))sectionPageHistory[key]=list.filter(x=>x&&x.bookId&&x.docId&&x.tab===key).slice(-30);
+        }
+      }
+      if(rec.tab)readerCacheTab=String(rec.tab);
+    }
+  }catch(e){}
+  readerCacheLoaded=true;
+}
 const bookLoadCache=new Map();
 const BOOK_LOAD_CACHE_MAX=3;
 

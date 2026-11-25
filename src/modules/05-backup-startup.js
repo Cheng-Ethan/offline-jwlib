@@ -325,5 +325,18 @@ async function showAbout(){
   }catch(e){say(t('设置与关于'),e.message||String(e))}
 }
 const _settingsBtn=$('settingsBtn');if(_settingsBtn)_settingsBtn.onclick=showAbout;
-(async()=>{try{applyI18n();await openDB();await ensureMigrated();await ensureCategoryIds();await renderBooks()}catch(e){say('本地存储不可用','当前浏览器或容器未允许本地存储，无法保存图书：'+e.message)}})();
+window.addEventListener('pagehide',()=>{saveReaderCache().catch(()=>{})});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveReaderCache().catch(()=>{})});
+(async()=>{
+  try{
+    applyI18n();await openDB();await ensureMigrated();await ensureCategoryIds();
+    await loadReaderCache();
+    await renderBooks();
+    // Resume the tab the user was in. If that tab had an article open, its
+    // saved paragraph position is restored instead of starting at the top.
+    const startTab=readerCacheTab||'home';
+    if(startTab!=='home')await setPrimaryNav(startTab,{});
+    else if(sectionViews.home)await activateTab('home',false,{});
+  }catch(e){say('本地存储不可用','当前浏览器或容器未允许本地存储，无法保存图书：'+e.message)}
+})();
 })();

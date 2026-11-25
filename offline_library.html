@@ -1231,6 +1231,32 @@ let studyState={books:[],tags:[],notes:[],query:'',tagFilter:new Set()};
 let noteEditorState=null;
 let sectionViews={};
 let sectionPageHistory={home:[],bible:[],library:[],meetings:[],study:[]};
+const READER_CACHE_ID='readerPanelCache';
+let readerCacheTimer=null,readerCacheLoaded=false,readerCacheTab='home';
+function readerCachePayload(){return {id:READER_CACHE_ID,views:sectionViews,history:sectionPageHistory,tab:primarySection,updatedAt:Date.now()}}
+function scheduleReaderCacheSave(){
+  if(!readerCacheLoaded||readerCacheTimer)return;
+  readerCacheTimer=setTimeout(()=>{readerCacheTimer=null;saveReaderCache().catch(()=>{})},500);
+}
+async function saveReaderCache(){if(!idb)return;try{await saveOne('system',readerCachePayload())}catch(e){}}
+async function loadReaderCache(){
+  try{
+    const rec=await getOne('system',READER_CACHE_ID);
+    if(rec){
+      if(rec.views&&typeof rec.views==='object'&&!Array.isArray(rec.views)){
+        for(const [tab,view] of Object.entries(rec.views))if(view&&view.bookId&&view.docId)sectionViews[tab]=view;
+      }
+      if(rec.history&&typeof rec.history==='object'){
+        for(const key of Object.keys(sectionPageHistory)){
+          const list=rec.history[key];
+          if(Array.isArray(list))sectionPageHistory[key]=list.filter(x=>x&&x.bookId&&x.docId&&x.tab===key).slice(-30);
+        }
+      }
+      if(rec.tab)readerCacheTab=String(rec.tab);
+    }
+  }catch(e){}
+  readerCacheLoaded=true;
+}
 const bookLoadCache=new Map();
 const BOOK_LOAD_CACHE_MAX=3;
 
@@ -3274,6 +3300,7 @@ function activateTab(tab,reset,opts={}){
     $('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
   }
   primarySection=tab;
+  scheduleReaderCacheSave();
   const isHome=tab==='home';
   const topBar=document.querySelector('.top');if(topBar)topBar.style.display=isHome?'flex':'none';
   document.body.classList.toggle('section-mode',!isHome);
@@ -3303,6 +3330,7 @@ function onNavTap(tab){
 function resetSectionState(tab){
   try{delete sectionViews[tab]}catch(e){}
   try{clearReaderHistory(tab)}catch(e){}
+  scheduleReaderCacheSave();
   if(tab==='bible'){bibleSelectedBook=null;bibleSection='正文';}
   else if(tab==='library'){libraryTab='publications';categoryTrail=[];}
   else if(tab==='meetings'){meetingBookId=null;meetingWeekDocId=null;meetingsExpanded=true;}
@@ -4230,6 +4258,7 @@ function pushReaderHistory(tab){
   if(last&&String(last.bookId)===String(snap.bookId)&&String(last.docId)===String(snap.docId)&&Math.abs(Number(last.scrollTop||0)-Number(snap.scrollTop||0))<2)return;
   list.push({...snap,tab});
   if(list.length>READER_HISTORY_LIMIT)list.shift();
+  scheduleReaderCacheSave();
 }
 function popReaderHistory(tab){
   const key=tab||historyTab();
@@ -4237,12 +4266,12 @@ function popReaderHistory(tab){
   // Never let an entry recorded for another tab open that tab's article here.
   while(list&&list.length){
     const item=list.pop();
-    if(item&&(!item.tab||item.tab===key))return item;
+    if(item&&item.tab===key){scheduleReaderCacheSave();return item}
   }
   return null;
 }
 function clearReaderHistory(tab){
-  if(tab&&sectionPageHistory[tab])sectionPageHistory[tab]=[];
+  if(tab&&sectionPageHistory[tab]){sectionPageHistory[tab]=[];scheduleReaderCacheSave()}
 }
 function readerSnapshotSame(a,b){return a&&b&&String(a.bookId)===String(b.bookId)&&String(a.docId)===String(b.docId)}
 async function openReaderSnapshot(view,tab){
@@ -4259,6 +4288,7 @@ function storeReaderView(tab,useTarget){
   if(useTarget&&readerRestoreActive&&readerActiveView&&doc&&String(readerActiveView.bookId)===String(currentBook.id)&&String(readerActiveView.docId)===String(doc.id))snap={...readerActiveView};
   if(!snap)snap=readerViewSnapshot();
   if(snap)sectionViews[tab]=snap;
+  scheduleReaderCacheSave();
 }
 function restoreReaderPosition(view,tab){
   if(!view)return;
@@ -4283,7 +4313,7 @@ function restoreReaderPosition(view,tab){
       }
       if(!usedAnchor)body.scrollTop=target;
       else if(Math.abs(body.scrollTop-target)<2)body.scrollTop=target;
-      if(tab&&sectionViews[tab]&&String(sectionViews[tab].docId)===String(view.docId))sectionViews[tab].scrollTop=Number(body.scrollTop||0);
+      if(tab&&sectionViews[tab]&&String(sectionViews[tab].docId)===String(view.docId)){sectionViews[tab].scrollTop=Number(body.scrollTop||0);scheduleReaderCacheSave()}
     }catch(e){}
   };
   apply();requestAnimationFrame(apply);
@@ -4582,6 +4612,7 @@ async function showDoc(anchor=''){
     if(pendingView)sectionViews[viewTab]={...pendingView};
     else if(oldView&&String(oldView.bookId)===String(currentBook.id)&&String(oldView.docId)===String(d.id))sectionViews[viewTab]=oldView;
     else sectionViews[viewTab]={bookId:String(currentBook.id),docId:String(d.id),scrollTop:restore,pid:'',anchorOffset:0};
+    scheduleReaderCacheSave();
   }
   renderBookmarkButton(!!await getOne('bookmarks',`${currentBook.id}:${d.id}`));
   try{syncPager()}catch(e){}
@@ -6239,7 +6270,7 @@ $('article').addEventListener('click',e=>{
 });
 $('article').addEventListener('click',async e=>{const mark=e.target.closest&&e.target.closest('.hl-note-mark');if(mark){const hlId=mark.dataset.hlId,noteId=mark.dataset.noteId;if(!hlId&&!noteId)return;e.preventDefault();e.stopPropagation();if(noteId)await openVerseNote(noteId);else await openHighlightNote(hlId);return}const span=e.target.closest&&e.target.closest('.hl');if(!span)return;e.preventDefault();e.stopPropagation();await showHighlightActions(span,span.dataset.hlId);},true);
 ['touchstart','wheel','pointerdown'].forEach(ev=>$('readerBody').addEventListener(ev,()=>{readerRestoreToken++;readerRestoreActive=false},{passive:true}));
-$('readerBody').addEventListener('scroll',()=>{if($('reader').style.display!=='block')return;if(!currentBook||currentIndex<0)return;if(readerRestoreActive)return;const tab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;if(tab&&sectionViews[tab]){sectionViews[tab].scrollTop=Number($('readerBody').scrollTop||0);sectionViews[tab].pid='';sectionViews[tab].anchorOffset=0}if(bibleMode)return;const now=Date.now();if(now-historyWriteAt<1200)return;historyWriteAt=now;const d=currentBook.docs[currentIndex];if(d)recordHistory(currentBook,d,$('readerBody').scrollTop).catch(()=>{})},{passive:true});
+$('readerBody').addEventListener('scroll',()=>{if($('reader').style.display!=='block')return;if(!currentBook||currentIndex<0)return;if(readerRestoreActive)return;const tab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;if(tab&&sectionViews[tab]){sectionViews[tab].scrollTop=Number($('readerBody').scrollTop||0);sectionViews[tab].pid='';sectionViews[tab].anchorOffset=0;sectionViews[tab].blockIndex=-1;scheduleReaderCacheSave()}if(bibleMode)return;const now=Date.now();if(now-historyWriteAt<1200)return;historyWriteAt=now;const d=currentBook.docs[currentIndex];if(d)recordHistory(currentBook,d,$('readerBody').scrollTop).catch(()=>{})},{passive:true});
 const handleLinkPanelClick=async e=>{const fn=e.target.closest&&e.target.closest('.fn[data-fnid]');if(fn){e.preventDefault();e.stopPropagation();await showFootnote(fn);return}await handleLinkedContentClick(e)};
 $('linkPopoverBody').addEventListener('click',handleLinkPanelClick);
 const _readerSidePanelBody=$('readerSidePanelBody');if(_readerSidePanelBody)_readerSidePanelBody.addEventListener('click',handleLinkPanelClick);
@@ -6948,7 +6979,20 @@ async function showAbout(){
   }catch(e){say(t('设置与关于'),e.message||String(e))}
 }
 const _settingsBtn=$('settingsBtn');if(_settingsBtn)_settingsBtn.onclick=showAbout;
-(async()=>{try{applyI18n();await openDB();await ensureMigrated();await ensureCategoryIds();await renderBooks()}catch(e){say('本地存储不可用','当前浏览器或容器未允许本地存储，无法保存图书：'+e.message)}})();
+window.addEventListener('pagehide',()=>{saveReaderCache().catch(()=>{})});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveReaderCache().catch(()=>{})});
+(async()=>{
+  try{
+    applyI18n();await openDB();await ensureMigrated();await ensureCategoryIds();
+    await loadReaderCache();
+    await renderBooks();
+    // Resume the tab the user was in. If that tab had an article open, its
+    // saved paragraph position is restored instead of starting at the top.
+    const startTab=readerCacheTab||'home';
+    if(startTab!=='home')await setPrimaryNav(startTab,{});
+    else if(sectionViews.home)await activateTab('home',false,{});
+  }catch(e){say('本地存储不可用','当前浏览器或容器未允许本地存储，无法保存图书：'+e.message)}
+})();
 })();
 </script>
 </body>
