@@ -1014,7 +1014,7 @@ function versesFromChapterHtml(html){
 }
 function hideContextActions(){
   const bar=$('contextActions');
-  if(bar){bar.classList.remove('show','mode-verse','mode-selection','mode-highlight','colors-open');const ct=bar.querySelector('.ctx-color-toggle');if(ct)ct.setAttribute('aria-expanded','false');bar.querySelectorAll('[data-context-color]').forEach(b=>b.classList.remove('active'))}
+  if(bar){bar.classList.remove('show','mode-verse','mode-selection','mode-highlight','mode-block','colors-open');const ct=bar.querySelector('.ctx-color-toggle');if(ct)ct.setAttribute('aria-expanded','false');bar.querySelectorAll('[data-context-color]').forEach(b=>b.classList.remove('active'))}
   if(verseActionTarget&&verseActionTarget.classList)verseActionTarget.classList.remove('verse-action-active');
   if(blockActionTarget&&blockActionTarget.classList)blockActionTarget.classList.remove('block-action-active');
   const content=hlRoot();if(content)content.classList.remove('context-spotlight');
@@ -1657,41 +1657,76 @@ async function publicationLinkPreview(href){
   }
   return null;
 }
+function bibleBookNumForNode(el){
+  try{
+    const v=el&&el.closest?el.closest('.v'):null;
+    if(v){const ctx=verseContext(v);if(ctx)return ctx.bookNum}
+    const d=currentBook&&currentBook.docs&&currentBook.docs[currentIndex];
+    const m=String(d&&d.id||'').match(/^bible-(\d+)-(\d+)$/);
+    if(m)return Number(m[1]);
+  }catch(e){}
+  return 0;
+}
 async function showBlockInfo(block){
-  const scope=hlRoot();const sections=[];const seenFn=new Set();
-  block.querySelectorAll('.fn[data-fnid]').forEach(node=>{
-    const id=String(node.getAttribute('data-fnid')||'');if(!id||seenFn.has(id))return;seenFn.add(id);
-    const target=footnoteTarget(scope,id);
-    sections.push({label:(node.dataset.fnSymbol||'*')+' '+t('脚注'),html:target?footnoteBodyHtml(target):'<p class="xref-empty">'+t('没有找到对应的脚注正文。')+'</p>'});
-  });
-  const links=[...block.querySelectorAll('a[data-jwlink]')].slice(0,8),seenLinks=new Set(),bibleState={loaded:new Map(),metas:null};
-  for(const a of links){
-    const href=String(a.dataset.jwlink||'');if(!href||seenLinks.has(href))continue;seenLinks.add(href);
-    const bible=parseBibleLink(href);
-    if(bible){
-      const range={book:bible.book,chapter:bible.chapter,verse:bible.verse,endChapter:bible.endChapter,endVerse:bible.endVerse};
-      const found=await localBibleRange(range,bibleState);
-      const data=found?found.book.bibleData:{};
-      const label=bibleRangeTitle(data,range);
-      const link=`<p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(label)}</a></p>`;
-      sections.push({label:t('相关经文'),html:link+(found?found.html:'<p class="xref-empty">'+t('本地没有对应经文正文')+'</p>')});
-      continue;
+  if(!block)return;
+  try{
+    const scope=hlRoot()||$('article');const sections=[];const seenFn=new Set(),bibleState={loaded:new Map(),metas:null};
+    [...block.querySelectorAll('.fn[data-fnid]')].slice(0,20).forEach(node=>{
+      const id=String(node.getAttribute('data-fnid')||'');if(!id||seenFn.has(id))return;seenFn.add(id);
+      const target=footnoteTarget(scope,id)||footnoteTarget($('article'),id);
+      sections.push({label:(node.dataset.fnSymbol||'*')+' '+t('脚注'),html:target?footnoteBodyHtml(target):'<p class="xref-empty">'+t('没有找到对应的脚注正文。')+'</p>'});
+    });
+    // Bible cross-reference markers ("串珠") keep their references in the
+    // publication's block index, not in an anchor. Resolve them here so a
+    // paragraph shows the same reference label plus verse text as a verse does.
+    const data=currentBook&&currentBook.bibleData||null;
+    const bookNum=bibleBookNumForNode(block);
+    const seenXref=new Set();
+    for(const node of [...block.querySelectorAll('.m[data-mid]')].slice(0,8)){
+      const mid=String(node.getAttribute('data-mid')||'');if(!mid||seenXref.has(mid))continue;seenXref.add(mid);
+      const refs=bookNum&&data?(data.blockRefs||{})[`${bookNum}:${mid}`]||[]:[];
+      if(!refs.length)continue;
+      let out='';
+      for(const item of refs.slice(0,8)){
+        const range={book:item.b,chapter:item.c,verse:item.v,endChapter:Number(item.ec)||item.c,endVerse:Number(item.e)||item.v};
+        const found=await localBibleRange(range,bibleState);
+        const label=xrefLabel({data:found?found.book.bibleData:data||{}},item);
+        out+=`<div class="verse-ref-target"><p class="xref-ref"><a data-jwlink="${String(xrefHref({data:found?found.book.bibleData:data||{}},item)).replace(/"/g,'&quot;')}">${safeText(label)}</a></p>${found?found.html:'<p class="xref-empty">'+t('本地没有对应经文正文')+'</p>'}</div>`;
+      }
+      sections.push({label:t('相关经文'),html:out});
     }
-    const preview=await publicationLinkPreview(href);
-    if(preview){
-      sections.push({label:preview.label||t('相关链接'),html:`<p><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(preview.label||t('相关链接'))}</a></p><p>${safeText(preview.text)}</p>`});
-    }else{
+    const links=[...block.querySelectorAll('a[data-jwlink]')].slice(0,8),seenLinks=new Set();
+    for(const a of links){
+      const href=String(a.dataset.jwlink||'');if(!href||seenLinks.has(href))continue;seenLinks.add(href);
+      const bible=parseBibleLink(href);
+      if(bible){
+        const range={book:bible.book,chapter:bible.chapter,verse:bible.verse,endChapter:bible.endChapter,endVerse:bible.endVerse};
+        const found=await localBibleRange(range,bibleState);
+        const labelData=found?found.book.bibleData:null;
+        const label=labelData?bibleRangeTitle(labelData,range):`${bible.book}:${bible.chapter}:${bible.verse}`;
+        const link=`<p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(label)}</a></p>`;
+        sections.push({label:t('相关经文'),html:link+(found?found.html:'<p class="xref-empty">'+t('本地没有对应经文正文')+'</p>')});
+        continue;
+      }
+      const preview=await publicationLinkPreview(href);
+      if(preview){
+        sections.push({label:preview.label||t('相关链接'),html:`<p><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(preview.label||t('相关链接'))}</a></p><p>${safeText(preview.text)}</p>`});
+      }else{
+        const label=String(a.textContent||'').trim()||t('相关链接');
+        sections.push({label:t('相关链接'),html:`<p><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(label)}</a></p>`});
+      }
+    }
+    [...block.querySelectorAll('a[data-external-link]')].slice(0,5).forEach(a=>{
       const label=String(a.textContent||'').trim()||t('相关链接');
-      sections.push({label:t('相关链接'),html:`<p><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(label)}</a></p>`});
-    }
+      sections.push({label:t('相关链接'),html:`<p>${safeText(label)}</p><p class="xref-empty">${t('这是一个外部网页链接，当前离线阅读器不会尝试联网打开。')}</p>`});
+    });
+    if(!sections.length){say(t('段落信息'),t('这一段没有可显示的脚注或相关链接。'));return}
+    const html=sections.map(x=>`<div class="verse-ref-section"><p class="verse-ref-label">${safeText(x.label)}</p>${x.html}</div>`).join('');
+    await showLinkPopover(t('段落信息'),html,currentBook,block);
+  }catch(e){
+    try{console.warn('paragraph info failed',e)}catch(_e){}
+    say(t('段落信息'),t('无法读取这一段的信息。'));
   }
-  block.querySelectorAll('a[data-external-link]').slice(0,5).forEach(a=>{
-    const label=String(a.textContent||'').trim()||t('相关链接');
-    sections.push({label:t('相关链接'),html:`<p>${safeText(label)}</p><p class="xref-empty">${t('这是一个外部网页链接，当前离线阅读器不会尝试联网打开。')}</p>`});
-  });
-  if(!sections.length){say(t('段落信息'),t('这一段没有可显示的脚注或相关链接。'));return}
-  const html=sections.map(x=>`<div class="verse-ref-section"><p class="verse-ref-label">${safeText(x.label)}</p>${x.html}</div>`).join('');
-  await showLinkPopover(t('段落信息'),html,currentBook,block);
 }
 async function doBlockAction(act){
   const state=blockActionState;if(!state||!state.el)return;
@@ -1770,7 +1805,14 @@ async function showBibleBlockRefs(el,mid){
   await showBibleRefList(refs,el,t('相关经文'));
 }
 async function showBibleVerseRefs(el){
-  const v=el.closest('.v');const ctx=verseContext(v);if(!ctx)return;
+  const v=el&&el.closest?el.closest('.v'):null;
+  const ctx=v?verseContext(v):null;
+  if(!ctx){
+    // Some editions wrap verse numbers differently. Never leave the tap with
+    // no response: fall back to the paragraph information panel instead.
+    await showBlockInfo(el&&el.closest?el.closest('p,li,blockquote,[data-pid]')||el:el);
+    return;
+  }
   const scope=el.closest('.publication-content')||$('article');
   const sections=[],fillers=[],seenFn=new Set();
   for(const node of v.querySelectorAll('.fn[data-fnid],.m[data-mid]')){
@@ -1838,7 +1880,15 @@ $('article').addEventListener('click',async e=>{
   const num=e.target.closest&&e.target.closest('.v .cl');
   if(fn||marker||num)hideVerseActions();
   if(fn){e.preventDefault();e.stopPropagation();await showFootnote(fn);return}
-  if(marker){e.preventDefault();e.stopPropagation();await showBibleBlockRefs(marker,marker.getAttribute('data-mid'));return}
+  if(marker){
+    e.preventDefault();e.stopPropagation();
+    // A "串珠"/margin marker in a non-Bible publication has no book index to
+    // resolve; show the surrounding paragraph's information instead of an
+    // explanatory dead end.
+    if(currentBook&&currentBook.bibleData)await showBibleBlockRefs(marker,marker.getAttribute('data-mid'));
+    else await showBlockInfo(marker.closest('p,li,blockquote,[data-pid]')||marker);
+    return;
+  }
   if(num){e.preventDefault();e.stopPropagation();await showBibleVerseRefs(num);return}
 },true);
 $('article').addEventListener('click',handleLinkedContentClick);
