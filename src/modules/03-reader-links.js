@@ -293,31 +293,80 @@ async function docAssetMap(book,html){
   return map;
 }
 function linkPanelDocked(){return window.innerWidth>=1100}
-function linkPanelTitleEl(){return linkPanelDocked()?$('readerSidePanelTitle'):$('linkPopoverTitle')}
-function linkPanelBodyEl(){return linkPanelDocked()?$('readerSidePanelBody'):$('linkPopoverBody')}
-function linkPanelOpen(){return linkPanelDocked()?document.body.classList.contains('reader-panel-open'):($('linkPopover')&&$('linkPopover').style.display==='block')}
+let linkPopovers=[];
+function topLinkPopover(){return linkPopovers[linkPopovers.length-1]||null}
+function linkPanelTitleEl(){return linkPanelDocked()?$('readerSidePanelTitle'):(topLinkPopover()&&topLinkPopover().titleEl||null)}
+function linkPanelBodyEl(){return linkPanelDocked()?$('readerSidePanelBody'):(topLinkPopover()&&topLinkPopover().bodyEl||null)}
+function linkPanelOpen(){return linkPanelDocked()?document.body.classList.contains('reader-panel-open'):linkPopovers.length>0}
+function newLinkPopover(){
+  const base=$('linkPopover');if(!base)return null;
+  const root=base.cloneNode(true);
+  root.removeAttribute('id');
+  root.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+  root.classList.add('link-popover-stacked');
+  root.style.display='block';
+  const close=root.querySelector('.link-popover-close');
+  if(close)close.onclick=e=>{e.preventDefault();e.stopPropagation();closeTopLinkPopover()};
+  const body=root.querySelector('.link-popover-body');
+  if(body)body.addEventListener('click',handleLinkPanelClick);
+  document.body.appendChild(root);
+  return {root,titleEl:root.querySelector('.link-popover-title'),bodyEl:body,anchor:null};
+}
+function ensureLinkPopover(){
+  if(linkPopovers.length)return topLinkPopover();
+  const root=$('linkPopover');if(!root)return null;
+  root.style.display='block';
+  const entry={root,titleEl:$('linkPopoverTitle'),bodyEl:$('linkPopoverBody'),anchor:null};
+  linkPopovers=[entry];
+  return entry;
+}
+function closeTopLinkPopover(){
+  const entry=linkPopovers.pop();if(!entry)return false;
+  if(entry.bodyEl)entry.bodyEl.innerHTML='';
+  if(entry.root&&entry.root.id==='linkPopover')entry.root.style.display='none';
+  else if(entry.root&&entry.root.parentNode)entry.root.parentNode.removeChild(entry.root);
+  restorePanelFocus(entry.root);
+  if(!linkPopovers.length)document.body.classList.remove('reader-panel-open');
+  return true;
+}
 function closeLinkPopover(restore=true){
+  const pop=$('linkPopover');
+  while(linkPopovers.length)closeTopLinkPopover();
   document.body.classList.remove('reader-panel-open');
-  const pop=$('linkPopover');if(pop){pop.style.display='none';if(restore)restorePanelFocus(pop)}
+  if(pop){pop.style.display='none';if(restore)restorePanelFocus(pop)}
   const popBody=$('linkPopoverBody');if(popBody)popBody.innerHTML='';
   const sideBody=$('readerSidePanelBody');if(sideBody)sideBody.innerHTML='';
 }
-function positionLinkPopover(anchorEl){
-  const panel=$('linkPopover'),w=panel.offsetWidth,h=panel.offsetHeight;
+function positionLinkPopover(anchorEl,index){
+  const root=(index!==undefined&&linkPopovers[index]&&linkPopovers[index].root)||$('linkPopover');
+  if(!root)return;
+  const w=root.offsetWidth,h=root.offsetHeight;
   const vw=window.innerWidth,vh=window.innerHeight;
   const rect=anchorEl?.getBoundingClientRect?.();
-  let left=rect?rect.left:Math.max(12,(vw-w)/2);
+  const prev=(index!==undefined&&index>0&&linkPopovers[index-1])?linkPopovers[index-1].root:null;
+  let left=0,top=0;
+  if(prev){
+    // Cascade each popup up and slightly right from the one below it, so the
+    // previous popup stays visible at the edge instead of being fully covered.
+    const pr=prev.getBoundingClientRect();
+    left=pr.left+20;
+    top=pr.top-18;
+  }else{
+    left=rect?rect.left:Math.max(12,(vw-w)/2);
+    top=rect?rect.bottom+8:Math.max(70,(vh-h)/2);
+    if(rect&&top+h>vh-12)top=rect.top-h-8;
+  }
   left=Math.max(10,Math.min(left,vw-w-10));
-  let top=rect?rect.bottom+8:Math.max(70,(vh-h)/2);
-  if(rect&&top+h>vh-12)top=rect.top-h-8;
   top=Math.max(62,Math.min(top,vh-h-10));
-  panel.style.left=left+'px';panel.style.top=top+'px';
+  root.style.left=left+'px';root.style.top=top+'px';
 }
-function setLinkPanelTitle(title,onClick){
+function setLinkPanelTitle(title,onClick,disabled){
   const el=linkPanelTitleEl();if(!el)return;
   el.textContent='';
-  el.classList.toggle('has-link-title',!!onClick);
-  if(onClick){
+  el.classList.toggle('has-link-title',!!onClick&&!disabled);
+  el.classList.toggle('is-disabled',!!disabled);
+  if(disabled)el.setAttribute('aria-disabled','true');else el.removeAttribute('aria-disabled');
+  if(onClick&&!disabled){
     const btn=document.createElement('button');btn.type='button';btn.className='link-panel-title-link';
     btn.textContent=title||t('链接内容');
     btn.onclick=async e=>{e.preventDefault();e.stopPropagation();if(btn.disabled)return;btn.disabled=true;try{await onClick()}finally{btn.disabled=false}};
@@ -326,21 +375,37 @@ function setLinkPanelTitle(title,onClick){
 }
 async function showLinkPopover(title,rawHtml,book,anchorEl,anchor='',opts={}){
   hideVerseActions();
-  closeLinkPopover(false);
   const docked=linkPanelDocked();
   const map=await docAssetMap(book,String(rawHtml||''));
   const clean=cleanHtml(String(rawHtml||''),map);
-  setLinkPanelTitle(title,opts&&opts.onTitleClick);
-  const body=linkPanelBodyEl();if(!body)return;
+  // Desktop keeps one persistent side panel. On touch widths every link inside
+  // a popover opens a new popup stacked above the current one.
+  let entry=null;
+  if(!docked){
+    if(linkPopovers.length){
+      entry=newLinkPopover();
+      if(entry)linkPopovers.push(entry);
+    }else entry=ensureLinkPopover();
+  }
+  if(!docked&&!entry)return null;
+  const body=docked?$('readerSidePanelBody'):entry.bodyEl;
+  if(!body)return null;
+  setLinkPanelTitle(title,opts&&opts.onTitleClick,!!(opts&&opts.titleDisabled));
   body.innerHTML='';body.scrollTop=0;
   if(clean.styles){const style=document.createElement('style');style.textContent=clean.styles;body.appendChild(style);}
   const content=document.createElement('div');content.className='publication-content publication-content-'+readerKind(book);content.innerHTML=clean.body||('<p>'+t('没有可显示的内容。')+'</p>');body.appendChild(content);
   applyFootnoteMarkers(content);
   applyPinyinDom(body);
   if(docked)document.body.classList.add('reader-panel-open');
-  else {rememberPanelFocus($('linkPopover'));$('linkPopover').style.display='block';setTimeout(()=>focusSafely($('linkPopoverClose')),0)}
+  else {
+    entry.anchor=anchorEl||null;
+    const index=linkPopovers.length-1;
+    entry.root.style.zIndex=String(40+index);
+    rememberPanelFocus(entry.root);
+    setTimeout(()=>focusSafely(entry.root.querySelector('.link-popover-close')),0);
+  }
   requestAnimationFrame(()=>{
-    if(!docked)positionLinkPopover(anchorEl);
+    if(!docked)positionLinkPopover(entry.anchor,linkPopovers.length-1);
     if(anchor){
       const value=decodeURIComponent(String(anchor).replace(/^#/,''));
       let target=body.querySelector('#'+CSS.escape(value));
@@ -351,6 +416,7 @@ async function showLinkPopover(title,rawHtml,book,anchorEl,anchor='',opts={}){
       if(target)target.scrollIntoView({block:'start'});
     }
   });
+  return body;
 }
 function findAnchorTarget(anchor){
   if(!anchor)return null;
@@ -1343,7 +1409,9 @@ async function openBibleVersions(versions,range,href,anchorEl){
     html+=`<div class="bible-version-block"><h3>${safeText(v.displayTitle||v.title)}</h3>${r.html}</div>`;
   }
   if(!html){say('没有经文正文','已检查本机导入的圣经译本，但没有找到这段经文的可显示正文。');return}
-  await showLinkPopover(bibleRangeTitle(titleData,range),html,first,anchorEl);
+  const tab=readerSessionTab||readerOriginSection||primarySection||'bible';
+  const titleAction=async()=>{closeLinkPopover();await openBibleChapterReader(first.id,range.book,range.chapter,range.verse,tab)};
+  await showLinkPopover(bibleRangeTitle(titleData,range),html,first,anchorEl,'',{onTitleClick:titleAction});
 }
 
 function normalizePubHref(value){
@@ -1448,8 +1516,8 @@ async function findExactExtract(pub,href,currentDocId,anchorPid){
   }
   return null;
 }
-async function openPublicationDocument(pub){
-  if(!pub)return false;
+async function findPublicationDocumentTarget(pub){
+  if(!pub)return null;
   const metas=await allBooks();
   const metaById=new Map(metas.map(m=>[String(m.id),m]));
   const sourceLang=Number(currentBook&&currentBook.lang)||0;
@@ -1470,23 +1538,44 @@ async function openPublicationDocument(pub){
         if(seen.has(key))continue;seen.add(key);
         const full=(String(hit.bookId)===String(currentBook?.id)&&Array.isArray(currentBook.docs))?currentBook:await loadBook(hit.bookId);
         const found=full&&full.docs&&full.docs.find(d=>normMepsId(d.mepsId)===normMepsId(target.docId));
-        if(full&&found){await openDocInBook(full,found.id,target.paragraph?`p${target.paragraph}`:anchor);return true}
+        if(full&&found)return {full,doc:found,anchor:target.paragraph?`p${target.paragraph}`:anchor};
       }
     }
     const bibleTarget=await findBibleBookDocTarget(target.docId);
-    if(bibleTarget){
-      await openBibleChapterReader(bibleTarget.bookId,bibleTarget.bookNum,1,0,readerSessionTab||readerOriginSection||primarySection||'bible');
-      return true;
-    }
+    if(bibleTarget)return {bibleTarget};
   }
-  return false;
+  return null;
+}
+async function openPublicationDocument(pub){
+  const target=await findPublicationDocumentTarget(pub);if(!target)return false;
+  if(target.bibleTarget){
+    await openBibleChapterReader(target.bibleTarget.bookId,target.bibleTarget.bookNum,1,0,readerSessionTab||readerOriginSection||primarySection||'bible');
+    return true;
+  }
+  await openDocInBook(target.full,target.doc.id,target.anchor);return true;
+}
+async function openPublicationDocumentInPopover(pub,anchorEl){
+  const target=await findPublicationDocumentTarget(pub);if(!target)return false;
+  if(target.bibleTarget){
+    const full=await loadBook(target.bibleTarget.bookId);if(!full||!full.bibleData)return false;
+    const range={book:target.bibleTarget.bookNum,chapter:1,verse:1,endChapter:1,endVerse:1};
+    await openBibleVersions([full],range,'',anchorEl);
+    return true;
+  }
+  await openDocInPopover(target.full,target.doc,anchorEl,target.anchor);
+  return true;
 }
 async function openLinkedPublication(href){
   const pub=parsePublicationLink(normalizePubHref(href));
   if(!pub)return false;
   return await openPublicationDocument(pub);
 }
-async function openPublicationReference(href,anchorEl){
+async function publicationLinkResolvable(href){
+  const pub=parsePublicationLink(normalizePubHref(href));
+  if(!pub)return false;
+  return !!(await findPublicationDocumentTarget(pub));
+}
+async function openPublicationReference(href,anchorEl,opts={}){
   const pub=parsePublicationLink(href);if(!pub)return false;
   const anchorPid=Number(anchorEl&&anchorEl.closest&&anchorEl.closest('[data-pid]')?.getAttribute('data-pid')||0);
   const currentDoc=currentBook&&currentBook.docs&&currentBook.docs[currentIndex];
@@ -1504,9 +1593,11 @@ async function openPublicationReference(href,anchorEl){
     }
   }
   // Whole-document links, and citations whose excerpt is not packaged, open the
-  // target document in the reader. Try the primary address first, then the
-  // `$p/` alternatives some publications list for the same reference.
-  if(await openPublicationDocument(pub))return true;
+  // target document. Inside a popover, stay in a popover instead of leaving the
+  // current reading page.
+  if(opts.inPopover){
+    if(await openPublicationDocumentInPopover(pub,anchorEl))return true;
+  }else if(await openPublicationDocument(pub))return true;
   // Some whole-document links exist only as an Extract (for example a song
   // packaged as an excerpt). Show that preview instead of a dead end.
   if(wholeDoc){
@@ -1523,11 +1614,13 @@ async function openPublicationReference(href,anchorEl){
 async function openExtractInReader(book,extract,anchorEl,notice='',opts={}){
   const title=extract.captionText||String(extract.caption||'').replace(/<[^>]+>/g,' ').replace(/[\s\u200b]+/g,' ').trim()||t('链接内容');
   const linkHref=String(opts.linkHref||extract.sourceLink||extract.link||'');
-  const titleAction=linkHref?async()=>{
+  const publicationLink=!!parsePublicationLink(normalizePubHref(linkHref));
+  const available=publicationLink?await publicationLinkResolvable(linkHref):false;
+  const titleAction=available?async()=>{
     const ok=await openLinkedPublication(linkHref);
     if(!ok)say(t('相关链接'),t('本地没有这篇相关文章的正文。'));
   }:null;
-  const popupOpts=titleAction?{onTitleClick:titleAction}:undefined;
+  const popupOpts={onTitleClick:titleAction,titleDisabled:publicationLink&&!available};
   if(!extract.html){
     await showLinkPopover(title,'<p>'+t('这条相关文章的正文没有保存在本机。')+'</p><p>'+t('它很可能是在旧版（0.5.1 及更早）导入的；旧版只保存了链接和标题，没有保存 Extract 正文。请重新导入这份 PUB，或从包含正文的备份恢复后再试。')+'</p>',book,anchorEl,'',popupOpts);
     return;
@@ -1535,7 +1628,8 @@ async function openExtractInReader(book,extract,anchorEl,notice='',opts={}){
   await showLinkPopover(title,(notice||'')+extract.html,book,anchorEl,'',popupOpts);
 }
 async function openDocInPopover(book,doc,anchorEl,anchor='',notice=''){
-  await showLinkPopover(doc.title||t('文章章节'),(notice||'')+doc.html,book,anchorEl,anchor);
+  const titleAction=async()=>{await openDocInBook(book,doc.id)};
+  await showLinkPopover(doc.title||t('文章章节'),(notice||'')+doc.html,book,anchorEl,anchor,{onTitleClick:titleAction});
 }
 async function routeBibleChapterLink(href,anchorEl){
   const m=String(href||'').match(/^jwpub:\/\/c\/([A-Za-z0-9_-]+):(\d+)\/(\d+):(\d+)(?:-(\d+):(\d+))?(?:\$p\/([A-Za-z0-9_-]+):(\d+)\/([^#?]*))?/i);
@@ -1604,10 +1698,10 @@ async function routeCommentaryLink(href,anchorEl){
  }
  say('本地没有对应的研究注释',`链接：${href}\n\n已检查本机导入出版物中的 ParagraphCommentary、VerseCommentary 和 Extract 数据，但没有找到能够可靠匹配的注释。没有尝试联网。若你能提供包含这条链接的 PUB 样本，可以进一步确认它的具体地址结构。`);
 }
-async function routeJwpubLink(href,anchorEl){
+async function routeJwpubLink(href,anchorEl,opts={}){
   href=normalizePubHref(href);
   const pub=parsePublicationLink(href);
-  if(pub){await openPublicationReference(href,anchorEl);return}
+  if(pub){await openPublicationReference(href,anchorEl,opts);return}
   const bible=parseBibleLink(href);
   if(bible){
     const books=await allBooks();
@@ -2031,10 +2125,9 @@ async function showBibleRefList(items,anchor,title){
     return `<div class="xref-entry"><p class="xref-ref"><a href="${String(href).replace(/"/g,'&quot;')}">${safeText(label)}</a></p><div class="xref-content" data-xref-index="${i}"><p class="xref-empty">${t('正在读取…')}</p></div></div>`;
   });
   if(items.length>20)out.push(`<p class="xref-more">${t('仅显示前 20 条')}</p>`);
-  await showLinkPopover(title,out.join(''),currentBook,anchor);
-  const body=linkPanelBodyEl();
+  const body=await showLinkPopover(title,out.join(''),currentBook,anchor);
   for(let i=0;i<shown.length;i++){
-    if(!body||!linkPanelOpen())return;
+    if(!body||!body.isConnected||!linkPanelOpen())return;
     const item=shown[i];
     const range={book:item.b,chapter:item.c,verse:item.v,endChapter:Number(item.ec)||item.c,endVerse:Number(item.e)||item.v};
     let content='';
@@ -2097,10 +2190,12 @@ async function showBibleVerseRefs(el){
   if(!sections.length){say(t('经文信息'),t('这一节没有可显示的脚注或相关经文。'));return}
   const data=ctx.data;
   const html=sections.map(x=>`<div class="verse-ref-section"><p class="verse-ref-label">${safeText(x.label)}</p>${x.html}</div>`).join('');
-  await showLinkPopover(t('经文信息'),html,currentBook,region);
-  const body=linkPanelBodyEl();
+  const tab=readerSessionTab||readerOriginSection||primarySection||'bible';
+  const titleAction=async()=>{closeLinkPopover();await openBibleChapterReader(currentBook.id,ctx.bookNum,ctx.chapter,ctx.verseNum,tab)};
+  const titleText=`${chineseBibleBookName(ctx.data,ctx.bookNum)} ${ctx.chapter}:${ctx.verseNum}`;
+  const body=await showLinkPopover(titleText,html,currentBook,region,'',{onTitleClick:titleAction});
   for(const fill of fillers){
-    if(!body||!linkPanelOpen())return;
+    if(!body||!body.isConnected||!linkPanelOpen())return;
     let out='';
     for(const item of fill.refs.slice(0,20)){
       const range={book:item.b,chapter:item.c,verse:item.v,endChapter:Number(item.ec)||item.c,endVerse:Number(item.e)||item.v};
@@ -2133,10 +2228,11 @@ async function doVerseAction(act){
     try{if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(text);else await copyText(text);say(t('已复制'),t('经文已复制。'))}catch(e){say(t('复制失败'),e.message||String(e))}
   }
 }
-async function handleLinkedContentClick(e){
+async function handleLinkedContentClick(e,opts={}){
   const a=e.target.closest('a');if(!a)return;
   hideVerseActions();
-  if(a.dataset.jwlink){e.preventDefault();e.stopPropagation();await routeJwpubLink(a.dataset.jwlink,a);return;}
+  if(!opts.inPopover&&linkPanelOpen())closeLinkPopover();
+  if(a.dataset.jwlink){e.preventDefault();e.stopPropagation();await routeJwpubLink(a.dataset.jwlink,a,opts);return;}
   if(a.dataset.externalLink){e.preventDefault();say('离线链接不可用','这是一个外部网页链接，当前离线阅读器不会尝试联网打开。');return;}
 }
 $('article').addEventListener('click',async e=>{
@@ -2172,10 +2268,10 @@ $('article').addEventListener('click',e=>{
 $('article').addEventListener('click',async e=>{const mark=e.target.closest&&e.target.closest('.hl-note-mark');if(mark){const hlId=mark.dataset.hlId,noteId=mark.dataset.noteId;if(!hlId&&!noteId)return;e.preventDefault();e.stopPropagation();if(noteId)await openVerseNote(noteId);else await openHighlightNote(hlId);return}const span=e.target.closest&&e.target.closest('.hl');if(!span)return;e.preventDefault();e.stopPropagation();await showHighlightActions(span,span.dataset.hlId);},true);
 ['touchstart','wheel','pointerdown'].forEach(ev=>$('readerBody').addEventListener(ev,()=>{readerRestoreToken++;readerRestoreActive=false},{passive:true}));
 $('readerBody').addEventListener('scroll',()=>{if($('reader').style.display!=='block')return;if(!currentBook||currentIndex<0)return;if(readerRestoreActive)return;const tab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;if(tab&&sectionViews[tab]){sectionViews[tab].scrollTop=Number($('readerBody').scrollTop||0);sectionViews[tab].pid='';sectionViews[tab].anchorOffset=0;sectionViews[tab].blockIndex=-1;scheduleReaderCacheSave()}if(bibleMode)return;const now=Date.now();if(now-historyWriteAt<1200)return;historyWriteAt=now;const d=currentBook.docs[currentIndex];if(d)recordHistory(currentBook,d,$('readerBody').scrollTop).catch(()=>{})},{passive:true});
-const handleLinkPanelClick=async e=>{const fn=e.target.closest&&e.target.closest('.fn[data-fnid]');if(fn){e.preventDefault();e.stopPropagation();await showFootnote(fn);return}await handleLinkedContentClick(e)};
+const handleLinkPanelClick=async e=>{const fn=e.target.closest&&e.target.closest('.fn[data-fnid]');if(fn){e.preventDefault();e.stopPropagation();await showFootnote(fn);return}await handleLinkedContentClick(e,{inPopover:true})};
 $('linkPopoverBody').addEventListener('click',handleLinkPanelClick);
 const _readerSidePanelBody=$('readerSidePanelBody');if(_readerSidePanelBody)_readerSidePanelBody.addEventListener('click',handleLinkPanelClick);
-$('linkPopoverClose').onclick=closeLinkPopover;
+$('linkPopoverClose').onclick=()=>closeTopLinkPopover();
 const _readerSidePanelClose=$('readerSidePanelClose');if(_readerSidePanelClose)_readerSidePanelClose.onclick=closeLinkPopover;
 $('annotationsClose').onclick=closeAnnotationsPanel;
 $('annotationClose').onclick=closeAnnotationEditor;
@@ -2270,7 +2366,7 @@ document.addEventListener('click',e=>{
   if(!linkPanelOpen())return;
   // The desktop side panel is persistent; it is closed with its own button or Esc.
   if(linkPanelDocked())return;
-  if($('linkPopover').contains(e.target))return;
+  if(e.target.closest&&e.target.closest('.link-popover'))return;
   if(e.target.closest&&e.target.closest('a[data-jwlink]'))return;
   closeLinkPopover();
   dismissRegionSelection();
@@ -2289,7 +2385,7 @@ document.addEventListener('click',e=>{
 },true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLinkPopover();dismissRegionSelection()}});
 let linkPanelDockedAt=linkPanelDocked();
-window.addEventListener('resize',()=>{const docked=linkPanelDocked();if(docked!==linkPanelDockedAt){closeLinkPopover();linkPanelDockedAt=docked}else if(!docked&&$('linkPopover').style.display==='block')positionLinkPopover(null)});
+window.addEventListener('resize',()=>{const docked=linkPanelDocked();if(docked!==linkPanelDockedAt){closeLinkPopover();linkPanelDockedAt=docked}else if(!docked&&linkPopovers.length){linkPopovers.forEach((entry,index)=>positionLinkPopover(entry.anchor,index))}});
 
 function cleanTocTitle(v){return String(v||'').replace(/[\u200b-\u200d\ufeff]/g,'').trim()}
 function bibleTocBookNumber(title){

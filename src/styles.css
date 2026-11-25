@@ -55,6 +55,7 @@ h1{font-size:var(--text-3xl);line-height:1.2;margin:7px 0 8px}h2{font-size:var(-
 .link-panel-title-link{display:block;max-width:100%;padding:0;border:0;background:none;font:inherit;color:var(--green);text-align:left;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .link-panel-title-link:active{opacity:.65}
 .link-panel-title-link:disabled{cursor:default;opacity:.6}
+.link-popover-title.is-disabled,.reader-sidepanel-title.is-disabled{color:var(--muted);opacity:.55;cursor:default}
 .link-popover-close{width:40px;height:40px;border-radius:50%;background:#e9eef1;color:#44545d;font-size:var(--text-2xl);line-height:1}
 .link-popover-body{padding:14px 16px 18px;overflow:auto;max-height:calc(62vh - 46px);overscroll-behavior:contain;font-family:var(--font-serif);font-size:var(--text-lg);line-height:1.75;color:#292f33}
 .link-popover-body p{margin:0 0 1em}
