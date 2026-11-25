@@ -3273,6 +3273,7 @@ function activateTab(tab,reset,opts={}){
     return restoreSectionView(tab).then(ok=>{
       if(epoch!==tabEpoch)return;
       if(ok)return;
+      readerSessionTab=null;readerOriginSection=null;readerReturnTarget=null;readerReturnSection=null;
       $('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
       return renderSection().then(()=>{if(epoch===tabEpoch)window.scrollTo(0,navScroll[tab]||0)});
     });
@@ -4306,10 +4307,17 @@ async function restoreSectionView(tab){
   const m=String(v.docId).match(/^bible-(\d+)-(\d+)$/);
   let ok=false;
   pendingReaderView=v;
+  // Restoring a tab is not navigation inside the reader. The previous tab's
+  // article is still on screen while this one loads, so it must not be pushed
+  // into the target tab's back history or be mistaken for the source of a
+  // Bible jump. Otherwise the back arrow of this tab would reopen the article
+  // that was being read in the other tab.
+  readerSessionTab=tab;readerOriginSection=tab;
+  readerHistoryRestoring=true;
   try{
     if(m){ok=await openBibleChapterReader(v.bookId,Number(m[1]),Number(m[2]),0,tab)===true;}
     else{const book=(currentBook&&String(currentBook.id)===String(v.bookId))?currentBook:await loadBook(v.bookId);if(!book||epoch!==tabEpoch)return false;ok=await openDocInBook(book,v.docId,'',tab);}
-  }finally{pendingReaderView=null}
+  }finally{pendingReaderView=null;readerHistoryRestoring=false}
   if(!ok||epoch!==tabEpoch)return false;
   restoreReaderPosition(v,tab);
   return true;
@@ -6243,7 +6251,7 @@ $('backBtn').onclick=async()=>{
    setPrimaryNav(target.tab||'library',{skipRestore:true,forceRender:true});return;
  }
  if(currentBook&&!bibleMode&&currentIndex>=0){const hd=currentBook.docs[currentIndex];if(hd)await recordHistory(currentBook,hd,$('readerBody').scrollTop)}
- const historySection=readerSessionTab||readerOriginSection||(bibleMode?'bible':(readerNavSection||primarySection));
+ const historySection=readerSessionTab||readerOriginSection||primarySection||(bibleMode?'bible':(readerNavSection||'home'));
  let previousPage=popReaderHistory(historySection);
  while(previousPage){
    readerHistoryRestoring=true;
@@ -6252,7 +6260,7 @@ $('backBtn').onclick=async()=>{
    previousPage=popReaderHistory(historySection);
  }
  if(bibleMode&&bibleReturn){const r=bibleReturn;bibleMode=false;bibleReturn=null;setBibleToolbar(false);const b=await loadBook(r.bookId);if(b){await openDocInBook(b,r.docId||b.docs[0]?.id);return;}}
- const ret=readerSessionTab||readerOriginSection||(bibleMode?'bible':(readerNavSection||readerReturnSection));
+ const ret=readerSessionTab||readerOriginSection||primarySection||(bibleMode?'bible':(readerNavSection||readerReturnSection));
  readerReturnSection=null;readerOriginSection=null;readerSessionTab=null;readerReturnTarget=null;readerSearchReturn=null;
  clearUrls();bibleMode=false;bibleReturn=null;setBibleToolbar(false);$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
  if(ret){

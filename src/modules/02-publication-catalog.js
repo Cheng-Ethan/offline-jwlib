@@ -321,6 +321,7 @@ function activateTab(tab,reset,opts={}){
     return restoreSectionView(tab).then(ok=>{
       if(epoch!==tabEpoch)return;
       if(ok)return;
+      readerSessionTab=null;readerOriginSection=null;readerReturnTarget=null;readerReturnSection=null;
       $('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
       return renderSection().then(()=>{if(epoch===tabEpoch)window.scrollTo(0,navScroll[tab]||0)});
     });

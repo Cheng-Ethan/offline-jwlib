@@ -205,10 +205,17 @@ async function restoreSectionView(tab){
   const m=String(v.docId).match(/^bible-(\d+)-(\d+)$/);
   let ok=false;
   pendingReaderView=v;
+  // Restoring a tab is not navigation inside the reader. The previous tab's
+  // article is still on screen while this one loads, so it must not be pushed
+  // into the target tab's back history or be mistaken for the source of a
+  // Bible jump. Otherwise the back arrow of this tab would reopen the article
+  // that was being read in the other tab.
+  readerSessionTab=tab;readerOriginSection=tab;
+  readerHistoryRestoring=true;
   try{
     if(m){ok=await openBibleChapterReader(v.bookId,Number(m[1]),Number(m[2]),0,tab)===true;}
     else{const book=(currentBook&&String(currentBook.id)===String(v.bookId))?currentBook:await loadBook(v.bookId);if(!book||epoch!==tabEpoch)return false;ok=await openDocInBook(book,v.docId,'',tab);}
-  }finally{pendingReaderView=null}
+  }finally{pendingReaderView=null;readerHistoryRestoring=false}
   if(!ok||epoch!==tabEpoch)return false;
   restoreReaderPosition(v,tab);
   return true;

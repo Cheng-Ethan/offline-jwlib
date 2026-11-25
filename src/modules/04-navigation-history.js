@@ -105,7 +105,7 @@ $('backBtn').onclick=async()=>{
    setPrimaryNav(target.tab||'library',{skipRestore:true,forceRender:true});return;
  }
  if(currentBook&&!bibleMode&&currentIndex>=0){const hd=currentBook.docs[currentIndex];if(hd)await recordHistory(currentBook,hd,$('readerBody').scrollTop)}
- const historySection=readerSessionTab||readerOriginSection||(bibleMode?'bible':(readerNavSection||primarySection));
+ const historySection=readerSessionTab||readerOriginSection||primarySection||(bibleMode?'bible':(readerNavSection||'home'));
  let previousPage=popReaderHistory(historySection);
  while(previousPage){
    readerHistoryRestoring=true;
@@ -114,7 +114,7 @@ $('backBtn').onclick=async()=>{
    previousPage=popReaderHistory(historySection);
  }
  if(bibleMode&&bibleReturn){const r=bibleReturn;bibleMode=false;bibleReturn=null;setBibleToolbar(false);const b=await loadBook(r.bookId);if(b){await openDocInBook(b,r.docId||b.docs[0]?.id);return;}}
- const ret=readerSessionTab||readerOriginSection||(bibleMode?'bible':(readerNavSection||readerReturnSection));
+ const ret=readerSessionTab||readerOriginSection||primarySection||(bibleMode?'bible':(readerNavSection||readerReturnSection));
  readerReturnSection=null;readerOriginSection=null;readerSessionTab=null;readerReturnTarget=null;readerSearchReturn=null;
  clearUrls();bibleMode=false;bibleReturn=null;setBibleToolbar(false);$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid';
  if(ret){
