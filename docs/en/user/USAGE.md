@@ -23,6 +23,8 @@ Import happens entirely locally: ZIP read (with repair for a missing central dir
 
 Categories are derived from `src/categories.json` rules matching publication symbols, types and titles. Source-code fallbacks apply when no rule matches. Users can also set custom categories from a card menu.
 
+The Daily Text reader stays minimal: no previous/next day, bookmark or bottom note bar. Use the language button in the header to switch to another language edition from the same year. To write a note, tap a paragraph or verse and use its toolbar.
+
 ## 3. Reader
 
 - TOC: drawer on mobile; three-pane layout at ≥1100px (nav / TOC / article).

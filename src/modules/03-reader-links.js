@@ -52,11 +52,19 @@ async function openDocInBook(book,docId,anchor='',returnSection=null){
 let readerLangCache={key:'',at:0,list:[]};
 async function readerSiblingEditions(book){
   if(!book)return [];
-  const key=seriesKeyFor(book);
+  const daily=isDailyTextPublication(book);
+  const year=Number(book.year)||0;
+  const series=seriesKeyFor(book);
+  // Daily-text editions are separate yearly publications. Keep other-language
+  // daily texts of the same year available even when their symbol differs.
+  const key=series+(daily?`#daily:${year}`:'');
   if(readerLangCache.key===key&&Date.now()-readerLangCache.at<3000)return readerLangCache.list;
   const all=await allBooks(),byLang=new Map();
   for(const b of all){
-    if(String(b.id)===String(book.id)||String(b.lang)===String(book.lang)||seriesKeyFor(b)!==key)continue;
+    if(String(b.id)===String(book.id)||String(b.lang)===String(book.lang))continue;
+    const sameSeries=seriesKeyFor(b)===series;
+    const sameDaily=daily&&isDailyTextPublication(b)&&year>0&&Number(b.year||0)===year;
+    if(!sameSeries&&!sameDaily)continue;
     const k=String(b.lang),prev=byLang.get(k);
     if(!prev||Number(b.importedAt||b.year||0)>Number(prev.importedAt||prev.year||0))byLang.set(k,b);
   }
@@ -214,7 +222,12 @@ async function switchReaderLanguage(sibling){
   const full=await loadBook(sibling.id);
   if(!full){say(t('语言版本'),t('找不到该出版物的数据。'));return}
   let target=null;
-  if(doc&&doc.mepsId)target=full.docs.find(d=>String(d.mepsId)===String(doc.mepsId));
+  // Daily-text documents are keyed by date, not by MEPS id (which is 0).
+  if(doc&&(doc.datedText||doc.dateKey)){
+    target=full.docs.find(d=>d.datedText&&String(d.dateKey)===String(doc.dateKey));
+    if(!target&&doc.dateOffset!==undefined)target=full.docs.find(d=>d.datedText&&Number(d.dateOffset)===Number(doc.dateOffset));
+  }
+  if(!target&&doc&&doc.mepsId)target=full.docs.find(d=>String(d.mepsId)===String(doc.mepsId));
   if(!target&&doc)target=full.docs.find(d=>normId(d.title)===normId(doc.title));
   if(!target)target=full.docs[Math.min(Math.max(0,currentIndex),full.docs.length-1)];
   if(!target){say(t('语言版本'),t('找不到对应的文章。'));return}
@@ -414,6 +427,8 @@ async function showDoc(anchor=''){
   if(pendingView){readerRestoreActive=true;readerActiveView={...pendingView}}
   $('readerTitle').textContent=d.title;$('article').innerHTML='';
   const kind=readerKind(currentBook);$('article').className='reader-kind-'+kind;$('article').dataset.publicationKind=kind;
+  document.body.classList.toggle('daily-reader',kind==='daily');
+  const bottomTools=document.querySelector('.bottom-tools');if(bottomTools)bottomTools.style.display=kind==='daily'?'none':'flex';
   const map=await docAssetMap(currentBook,d.html);if(epoch!==tabEpoch)return false;
   const clean=cleanHtml(d.html,map),style=document.createElement('style');style.textContent=clean.styles||'';$('article').appendChild(style);
   const content=document.createElement('div');content.className='publication-content publication-content-'+kind;content.innerHTML=clean.body;
@@ -1782,14 +1797,17 @@ function publicationPreviewHtml(raw,paragraph){
     if(blocks.length===1)target=blocks[0];
   }
   const clone=target.cloneNode(true);
-  // Keep the paragraph text and any ruby annotations for the pinyin toggle;
-  // drop media and marker glyphs that only make sense in the article itself.
-  clone.querySelectorAll('script,style,img,picture,video,audio,figure,iframe,object,embed,.fn,.m,.vl,.cl,.tt').forEach(n=>n.remove());
-  if(visibleText(clone).length>1500){
+  // An article preview is a compact excerpt: remove media, marker glyphs and
+  // ruby annotations so the excerpt never carries pinyin.
+  clone.querySelectorAll('script,style,img,picture,video,audio,figure,iframe,object,embed,.fn,.m,.vl,.cl,.tt,rt,rp').forEach(n=>n.remove());
+  // Use the reader's own text styling instead of the source article's inline
+  // colours and classes, so an article preview matches a verse link.
+  [clone,...clone.querySelectorAll('*')].forEach(n=>{n.removeAttribute('style');n.removeAttribute('class')});
+  if(visibleText(clone).length>800){
     let total=0;
     for(const child of [...clone.children]){
       const length=visibleText(child).length;
-      if(total+length>1500){child.remove();continue}
+      if(total+length>800){child.remove();continue}
       total+=length;
     }
   }
@@ -1799,11 +1817,42 @@ function publicationPreviewHtml(raw,paragraph){
   const probe=document.createElement('div');probe.innerHTML=html;
   return visibleText(probe).trim()?html:'';
 }
+const publicationLangCache=new Map();
+async function publicationBookLang(bookId){
+  const key=String(bookId);
+  if(publicationLangCache.has(key))return publicationLangCache.get(key);
+  let lang='';
+  try{const meta=await getBookMeta(bookId);lang=String(meta&&meta.lang!==undefined?meta.lang:'')}catch(e){}
+  publicationLangCache.set(key,lang);
+  return lang;
+}
+function uiContentLangHint(){
+  // Only the indexes that are unambiguous in this build; other UI languages
+  // fall back to the current publication's language.
+  const map={en:0,zh:279,ja:7};
+  return map[uiLang]===undefined?null:map[uiLang];
+}
+async function preferredPublicationHit(hits){
+  if(!hits||!hits.length)return null;
+  const currentLang=currentBook&&currentBook.lang!==undefined?String(currentBook.lang):'';
+  const uiHint=uiContentLangHint();
+  let best=hits[0],bestScore=-Infinity;
+  for(const hit of hits){
+    const lang=await publicationBookLang(hit.bookId);
+    let score=0;
+    if(currentBook&&String(hit.bookId)===String(currentBook.id))score+=100;
+    if(currentLang&&lang===currentLang)score+=40;
+    if(contentLangFilter!=='all'&&lang===String(contentLangFilter))score+=20;
+    if(uiHint!==null&&lang===String(uiHint))score+=10;
+    if(score>bestScore){bestScore=score;best=hit}
+  }
+  return best;
+}
 async function publicationLinkPreview(href){
   const pub=parsePublicationLink(href);if(!pub)return null;
   for(const target of (pub.targets&&pub.targets.length?pub.targets:[pub])){
     const hits=await findDocsByMeps(target.docId);if(!hits.length)continue;
-    const hit=hits.find(h=>String(h.bookId)===String(currentBook&&currentBook.id))||hits[0];
+    const hit=await preferredPublicationHit(hits);if(!hit)continue;
     const doc=await getBookDoc(hit.bookId,hit.docId);if(!doc)continue;
     const html=publicationPreviewHtml(doc.html,target.paragraph);
     if(html)return {label:doc.title||'',html,text:plainTextFromHtml(html).slice(0,500)};
@@ -1823,7 +1872,7 @@ async function publicationLinkSection(a,bibleState){
     return {label:t('相关经文'),html:`<p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(label)}</a></p>${found?found.html:'<p class="xref-empty">'+t('本地没有对应经文正文')+'</p>'}`};
   }
   const preview=await publicationLinkPreview(href);
-  if(preview)return {label:preview.label||t('相关链接'),html:`<p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(preview.label||fallback)}</a></p><div class="linked-article-preview">${preview.html}</div>`};
+  if(preview)return {label:t('相关链接'),html:`<div class="verse-ref-target"><p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(preview.label||fallback)}</a></p><div class="linked-article-preview">${preview.html}</div></div>`};
   return {label:t('相关链接'),html:`<p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(fallback)}</a></p>`};
 }
 function bibleBookNumForNode(el){
