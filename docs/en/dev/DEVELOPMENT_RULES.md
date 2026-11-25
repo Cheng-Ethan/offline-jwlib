@@ -28,7 +28,7 @@ When bumping, sync: `project.json` → version constant in `src/modules/00-core-
 - Developers: `docs/dev/` (build, architecture, plugins, backup, testing, release, plan, rules)
 - English: `docs/en/user/`, `docs/en/dev/`
 
-Keep user docs free of developer jargon. Every doc change must update both languages and the README tables.
+Keep user docs free of developer jargon. Every doc change must update both languages and the README tables. Every new or changed user-visible behaviour must also update `CHANGELOG.md`, the relevant user/dev docs and their English mirrors; code-only changes are not enough.
 
 ## Language pack = plugin v0
 

@@ -23,23 +23,28 @@ Import happens entirely locally: ZIP read (with repair for a missing central dir
 
 Categories are derived from `src/categories.json` rules matching publication symbols, types and titles. Source-code fallbacks apply when no rule matches. Users can also set custom categories from a card menu.
 
-The Daily Text reader stays minimal: no previous/next day, bookmark or bottom note bar. Use the language button in the header to switch to another language edition from the same year. To write a note, tap a paragraph or verse and use its toolbar.
+The Daily Text reader stays minimal: no bottom action bar; paging is labelled previous/next day, and reading settings live in the three-dot header menu. To write a note, tap a paragraph or verse and use its toolbar.
 
 ## 3. Reader
 
+- Header: back, a two-line title (publication name + current chapter/article) and a three-dot menu.
+- Three-dot menu: table of contents, search, previous/next section (previous/next day for the Daily Text), bookmark, notes, language version, pronunciation and font size.
 - TOC: drawer on mobile; three-pane layout at ≥1100px (nav / TOC / article).
-- Font size and pronunciation controls in the reader toolbar.
-- Swipe/button page turning with restored scroll position.
-- Tapping a verse or paragraph marks only that verse/paragraph; tap it again or tap beside it to clear the mark. Page margins and gaps between blocks do not select anything.
-- The book button in the toolbar shows that verse/paragraph's footnotes, cross-references and cited articles; cited article text follows the pronunciation toggle for pinyin.
+- Tapping a verse or paragraph gives that verse/paragraph a clear blue block highlight; tap it again or tap beside it to clear it. Page margins and gaps between blocks do not select anything.
+- The “information” button shows that verse/paragraph's footnotes, cross-references and cited articles, including reference labels and text; external links state that they are unavailable offline.
+- A link popover is titled with the link name. Clicking the title opens the target article at the referenced paragraph and records the jump in the current tab's back history, so back returns to the publication you came from.
+- If a link inside the popover needs the internet, the warning appears above every panel; its X closes only the warning and leaves the main popover open.
 - Search within the current book, all publications or the Bible; recent searches and "return to results" are supported.
 - Internal links: `jwpub://p/` (publication), `jwpub://b/` (Bible) and `jwpub://c/` (commentary) resolve locally; unresolved links explain the reason and **never go online**.
 - External links show a "will not open online" notice.
 - Remote images/CSS are stripped when sanitising article HTML.
+- Tabs are independent: each bottom tab keeps its own article, back history and paragraph-level reading position. Reopening the HTML file or importing publications resumes each tab where it was.
 
 ## 4. Notes, highlights and bookmarks
 
-- Select text in the article to open the annotation toolbar and create a highlight. Highlights use block index + offsets and stay aligned across language/year changes via stable IDs.
+- Select text in the article to open the annotation toolbar and create a highlight by opening the four-colour discs icon and choosing one of four large dots (yellow, green, blue, red). Highlights use block index + offsets and stay aligned across language/year changes via stable IDs.
+- A paragraph with a note shows a pencil marker in the left gutter.
+- Selecting highlighted text draws one merged rounded outline per line instead of boxing every character.
 - The collapsible note editor supports undo/redo; verse notes can be saved per verse.
 - Tags organise notes and highlights.
 - Bookmarks save reading positions.

@@ -95,6 +95,14 @@ Limits at the top of `01-importer-security.js`: 380 MB per file, 8000 internal f
 
 ## 6. Reader and security boundary
 
+### 6.1 Reader state and interface
+
+- The header is now back button, a two-line title (publication + current chapter/article) and a three-dot menu; TOC, search, paging, bookmark, notes, language version, pronunciation and font size live in that menu, and the old bottom action bar is gone.
+- `sectionViews` and `sectionPageHistory` are stored in the `readerPanelCache` record of the IndexedDB `system` store, isolated per tab. Startup calls `loadReaderCache()` before rendering and resumes the last tab and paragraph.
+- A link popover title is clickable and calls `openPublicationDocument()` to open the target paragraph; `openDocInBook()` pushes the current article into the current tab's back history.
+- Offline warnings inside a popover use `#modal`, layered above the link popover; dismissing a warning does not trigger the popover's outside-click close.
+- Gutter pencil markers and the active verse/paragraph block highlight are CSS-only. `showHighlightOutline()` merges the active highlight into one absolutely positioned rounded box per visual line.
+
 `cleanHtml()` (`00-core-db.js`) sanitises article HTML before insertion:
 
 - removes `script`, `iframe`, `object`, `embed`, `base`, `meta[http-equiv]`, remote `<link>` and remote images;

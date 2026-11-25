@@ -55,9 +55,13 @@ Prepare at least:
 1. TOC navigation, back stack, return-to-search-results;
 2. local routing for `jwpub://p/`, `jwpub://b/`, `jwpub://c/`;
 3. unresolved links explain the reason and never go online;
-4. external link clicks are intercepted;
+4. external link clicks are intercepted; the warning sits above the link popover and closes independently;
 5. remote images/CSS produce no network requests;
-6. desktop three-pane and mobile full-screen transitions.
+6. desktop three-pane and mobile full-screen transitions;
+7. TOC, search, paging, bookmark, notes, language, pronunciation and font size in the three-dot menu;
+8. switching tabs resumes the same paragraph, and reload/reopen/import preserves position and history;
+9. link-preview titles navigate to the target article and back returns to the source publication;
+10. pencil note markers, active block highlight, and one merged outline per highlighted line.
 
 ### Data
 

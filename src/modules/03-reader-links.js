@@ -709,7 +709,7 @@ function bibleRangeTitle(data,range){
   return `${name} ${range.chapter}:${range.verse}${range.endChapter!==range.chapter?`–${range.endChapter}:${range.endVerse}`:range.endVerse!==range.verse?`–${range.endVerse}`:''}`;
 }
 const HL_SELECTOR='[data-pid],p,h1,h2,h3,h4,li,blockquote,.bible-verse';
-let hlPendingRange=null,hlToolbarTimer=null,hlActiveId=null,annotationState=null;
+let hlPendingRange=null,hlToolbarTimer=null,hlActiveId=null,hlOutlineEls=[],annotationState=null;
 let contextActionState=null,verseActionState=null,verseActionTarget=null,blockActionState=null,blockActionTarget=null,contextToolbarRect=null,contextBarGuardUntil=0;
 let readerSearchRunId=0,readerSearchTimer=null;
 let readerSearchBook=null,readerSearchKind='publications',readerSearchTab='library',readerSearchReturn=null;
@@ -1161,11 +1161,57 @@ function versesFromChapterHtml(html){
   for(const [v,parts] of byVerse)out.push({v,text:parts.join(' ')});
   return out;
 }
+function highlightLineRects(id){
+  const spans=[...document.querySelectorAll('.hl[data-hl-id="'+CSS.escape(String(id))+'"]')];
+  const rects=[];
+  for(const span of spans){
+    try{for(const r of span.getClientRects())if(r.width>1&&r.height>1)rects.push({left:r.left,right:r.right,top:r.top,bottom:r.bottom})}catch(e){}
+  }
+  rects.sort((a,b)=>a.top-b.top||a.left-b.left);
+  const lines=[];
+  for(const r of rects){
+    let line=lines.find(l=>Math.abs(l.top-r.top)<4&&Math.abs(l.bottom-r.bottom)<6);
+    if(!line){line={...r};lines.push(line)}
+    else{line.left=Math.min(line.left,r.left);line.right=Math.max(line.right,r.right);line.top=Math.min(line.top,r.top);line.bottom=Math.max(line.bottom,r.bottom)}
+  }
+  lines.sort((a,b)=>a.top-b.top||a.left-b.left);
+  const merged=[];
+  for(const line of lines){
+    const prev=merged[merged.length-1];
+    if(prev&&Math.abs(prev.top-line.top)<5&&line.left<=prev.right+3&&line.right>=prev.left-3){
+      prev.left=Math.min(prev.left,line.left);prev.right=Math.max(prev.right,line.right);
+      prev.top=Math.min(prev.top,line.top);prev.bottom=Math.max(prev.bottom,line.bottom);
+    }else merged.push({...line});
+  }
+  return merged;
+}
+function removeHighlightOutline(){
+  for(const el of hlOutlineEls)el.remove();
+  hlOutlineEls=[];
+}
+function showHighlightOutline(id){
+  removeHighlightOutline();
+  if(!id)return;
+  const body=$('readerBody');
+  const bodyRect=body?body.getBoundingClientRect():{top:0,bottom:window.innerHeight};
+  const head=$('reader')&&$('reader').querySelector('.reader-head');
+  const topLimit=head?head.getBoundingClientRect().bottom:0;
+  for(const r of highlightLineRects(id)){
+    const top=Math.max(r.top-2,topLimit),bottom=Math.min(r.bottom+2,bodyRect.bottom);
+    if(bottom-top<6)continue;
+    const box=document.createElement('div');
+    box.className='hl-active-outline';
+    box.style.left=(r.left-3)+'px';box.style.top=top+'px';
+    box.style.width=(r.right-r.left+6)+'px';box.style.height=(bottom-top)+'px';
+    document.body.appendChild(box);hlOutlineEls.push(box);
+  }
+}
 function hideContextActions(){
   const bar=$('contextActions');
   if(bar){bar.classList.remove('show','mode-verse','mode-selection','mode-highlight','mode-block','colors-open');const ct=bar.querySelector('.ctx-color-toggle');if(ct)ct.setAttribute('aria-expanded','false');bar.querySelectorAll('[data-context-color]').forEach(b=>b.classList.remove('active'))}
   if(verseActionTarget&&verseActionTarget.classList)verseActionTarget.classList.remove('verse-action-active');
   if(blockActionTarget&&blockActionTarget.classList)blockActionTarget.classList.remove('block-action-active');
+  removeHighlightOutline();
   document.querySelectorAll('.hl.context-highlight-active').forEach(el=>el.classList.remove('context-highlight-active'));
   contextActionState=null;verseActionTarget=null;verseActionState=null;blockActionState=null;blockActionTarget=null;hlPendingRange=null;hlActiveId=null;contextToolbarRect=null;
 }
@@ -1224,7 +1270,7 @@ function showContextActions(state,rect){
     if(verseActionTarget&&verseActionTarget.classList)verseActionTarget.classList.add('verse-action-active');
   }else if(state.kind==='highlight'){
     hlActiveId=String(state.highlightId);
-    try{document.querySelectorAll('.hl[data-hl-id="'+CSS.escape(String(state.highlightId))+'"]').forEach(el=>el.classList.add('context-highlight-active'))}catch(e){}
+    showHighlightOutline(state.highlightId);
     bar.querySelectorAll('[data-context-color]').forEach(b=>b.classList.toggle('active',String(b.getAttribute('data-context-color')).toLowerCase()===String(state.color||'').toLowerCase()));
   }else if(state.kind==='selection'){
     hlPendingRange=state.range;

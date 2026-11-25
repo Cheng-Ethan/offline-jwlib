@@ -34,7 +34,8 @@
 1. 先判断受众，放进对应目录；
 2. 中英双语同步；
 3. 更新 README 的两张文档表；
-4. 跑本地 Markdown 链接校验，确保 0 失效。
+4. 跑本地 Markdown 链接校验，确保 0 失效；
+5. 每次新增或改变用户可见行为，必须同步更新 `CHANGELOG.md`、对应的用户/开发文档及英文镜像，不能只改代码。
 
 `README_使用说明.md`、`验证记录.md`、`rollback/README_回滚说明.md` 是历史文档，只保留指针，不作为规则来源。
 
@@ -93,7 +94,7 @@
 
 - Initial baseline is **0.13.0**; the current version is `appVersion` in `project.json`.
 - `develop` is the development stream; `master` is published periodically by the user; `main` is only an upstream reference.
-- User docs live in `docs/user/`; developer docs in `docs/dev/`; both have English mirrors.
+- User docs live in `docs/user/`; developer docs in `docs/dev/`; both have English mirrors. Every user-visible change must update `CHANGELOG.md` and the relevant docs in both languages.
 - Version rules: major for breaking changes, minor for new capabilities, patch for non-breaking improvements, **no bump for pure bug fixes**. `project.json` → version constant → CHANGELOG → READMEs must stay in sync.
 - Language JSON is **user language pack (plugin v0)** — a data-only extension, not a code plugin API.
 - Never commit personal JWPUB samples/backups or secrets. Report vulnerabilities privately per `SECURITY.md`.

@@ -97,6 +97,14 @@ applyI18n()
 
 ## 6. 阅读与安全边界
 
+### 6.1 阅读器状态与界面
+
+- 题头统一为返回按钮、两行标题（出版物名 + 当前章节/文章）和三个点菜单；目录、搜索、上一节/下一节、书签、笔记、语言版本、拼音、字号都在菜单内，旧底部操作栏已移除。
+- `sectionViews` 与 `sectionPageHistory` 保存在 IndexedDB `system` store 的 `readerPanelCache` 记录中，按栏目隔离；启动时先 `loadReaderCache()` 再渲染，并恢复上次所在栏目与段落。
+- 相关链接浮窗的题头可点击，通过 `openPublicationDocument()` 打开目标文章段落；`openDocInBook()` 会把当前文章压入当前栏目的返回历史。
+- 浮窗内的离线警告使用 `#modal`，层级高于链接浮窗；关闭警告不会触发浮窗的 outside-click 关闭。
+- 笔记边栏铅笔标记、选中经文/段落的整块高亮由 CSS 实现；点击已上色文字时 `showHighlightOutline()` 按视觉行合并为一个绝对定位圆角框。
+
 `cleanHtml()`（`00-core-db.js`）是正文进入 DOM 前的主要清洗器：
 
 - 移除 `script`、`iframe`、`object`、`embed`、`base`、`meta[http-equiv]`、远程 `<link>` 与远程图片；
