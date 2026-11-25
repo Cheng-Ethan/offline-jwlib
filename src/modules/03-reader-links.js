@@ -1058,9 +1058,18 @@ function hideContextActions(){
   if(bar){bar.classList.remove('show','mode-verse','mode-selection','mode-highlight','mode-block','colors-open');const ct=bar.querySelector('.ctx-color-toggle');if(ct)ct.setAttribute('aria-expanded','false');bar.querySelectorAll('[data-context-color]').forEach(b=>b.classList.remove('active'))}
   if(verseActionTarget&&verseActionTarget.classList)verseActionTarget.classList.remove('verse-action-active');
   if(blockActionTarget&&blockActionTarget.classList)blockActionTarget.classList.remove('block-action-active');
-  const content=hlRoot();if(content)content.classList.remove('context-spotlight');
   document.querySelectorAll('.hl.context-highlight-active').forEach(el=>el.classList.remove('context-highlight-active'));
   contextActionState=null;verseActionTarget=null;verseActionState=null;blockActionState=null;blockActionTarget=null;hlPendingRange=null;hlActiveId=null;contextToolbarRect=null;
+}
+function clearNativeArticleSelection(){
+  try{
+    const sel=window.getSelection();
+    if(sel&&!sel.isCollapsed&&$('article')&&$('article').contains(sel.anchorNode))sel.removeAllRanges();
+  }catch(e){}
+}
+function dismissRegionSelection(){
+  hideContextActions();
+  clearNativeArticleSelection();
 }
 function hideVerseActions(){hideContextActions()}
 function hideHighlightToolbar(){hideContextActions()}
@@ -1105,7 +1114,6 @@ function showContextActions(state,rect){
   if(state.kind==='verse'){
     verseActionState=state.ctx;verseActionTarget=state.ctx.el;
     if(verseActionTarget&&verseActionTarget.classList)verseActionTarget.classList.add('verse-action-active');
-    const content=hlRoot();if(content)content.classList.add('context-spotlight');
   }else if(state.kind==='highlight'){
     hlActiveId=String(state.highlightId);
     try{document.querySelectorAll('.hl[data-hl-id="'+CSS.escape(String(state.highlightId))+'"]').forEach(el=>el.classList.add('context-highlight-active'))}catch(e){}
@@ -1612,20 +1620,92 @@ function verseContext(el){
   const label=String(verseNum);
   return {el,d,data,bookNum,chapter,verseNum,label,key:`${bookNum}:${chapter}:${verseNum}`};
 }
-function showVerseActions(el){
-  const ctx=verseContext(el);if(!ctx)return;
-  showContextActions({kind:'verse',ctx},el.getBoundingClientRect());
+function showVerseActions(el,rect){
+  const region=el&&el.closest?el.closest('.bible-verse,.v')||el:el;
+  const ctx=verseContext(region);if(!ctx)return;
+  showContextActions({kind:'verse',ctx},rect||region.getBoundingClientRect());
 }
 function blockActionCandidate(target){
   const el=target&&target.nodeType===1?target:(target&&target.parentElement);
   if(!el||!el.closest)return null;
-  if(el.closest('a,button,input,textarea,select,.hl,.hl-note-mark,.fn,.m[data-mid],.vl'))return null;
+  if(el.closest('a,button,input,textarea,select,.hl,.hl-note-mark,.fn,.m[data-mid]'))return null;
   const block=el.closest('p,li,blockquote,h1,h2,h3,h4,[data-pid]');
   if(!block||!hlRoot().contains(block))return null;
   if(block.closest('.v,.bible-verse'))return null;
-  if(block.matches('[data-pid]')&&block.querySelector('p,li,blockquote'))return null;
+  if(block.matches('[data-pid],li,blockquote')&&block.querySelector('p,li,blockquote,[data-pid]'))return null;
   if(!visibleText(block).trim())return null;
   return block;
+}
+function pointInsideRect(x,y,rect,pad){
+  if(!rect)return false;
+  const p=Number.isFinite(pad)?pad:1;
+  return x>=rect.left-p&&x<=rect.right+p&&y>=rect.top-p&&y<=rect.bottom+p;
+}
+function caretRangeAtPoint(x,y){
+  try{
+    if(document.caretRangeFromPoint)return document.caretRangeFromPoint(x,y);
+    if(document.caretPositionFromPoint){
+      const pos=document.caretPositionFromPoint(x,y);
+      if(pos&&pos.offsetNode){const range=document.createRange();range.setStart(pos.offsetNode,pos.offset);range.collapse(true);return range}
+    }
+  }catch(e){}
+  return null;
+}
+function elementFromNode(node){return node&&(node.nodeType===1?node:node.parentElement)||null}
+function nearestVerseIn(host,y){
+  let best=null,bestDistance=Infinity;
+  for(const verse of host.querySelectorAll('.v,.bible-verse')){
+    for(const rect of verse.getClientRects()){
+      if(!rect.width&&!rect.height)continue;
+      const distance=y<rect.top?rect.top-y:(y>rect.bottom?y-rect.bottom:0);
+      if(distance<bestDistance){bestDistance=distance;best=verse}
+    }
+  }
+  return best;
+}
+function verseAtPoint(x,y){
+  const range=caretRangeAtPoint(x,y);
+  const el=elementFromNode(range&&range.startContainer);
+  const verse=el&&el.closest?el.closest('.v,.bible-verse'):null;
+  if(verse&&verseContext(verse)){
+    const host=verse.closest('p,li,blockquote,.bible-verse')||verse;
+    // The caret can sit on a verse while the finger is in the blank part of
+    // its line; accept the verse as long as the tap is inside its block box.
+    if(pointInsideRect(x,y,host.getBoundingClientRect(),3))return verse;
+  }
+  const host=el&&el.closest?el.closest('p,li,blockquote,.bible-verse'):null;
+  if(host&&pointInsideRect(x,y,host.getBoundingClientRect(),3)){
+    const near=nearestVerseIn(host,y);
+    if(near&&verseContext(near))return near;
+  }
+  return null;
+}
+function blockAtPoint(x,y){
+  const range=caretRangeAtPoint(x,y);
+  const el=elementFromNode(range&&range.startContainer);
+  if(!el||!el.closest)return null;
+  const verse=el.closest('.v,.bible-verse');
+  if(verse&&verseContext(verse))return null;
+  const block=el.closest('p,li,blockquote,h1,h2,h3,h4,[data-pid]');
+  if(!block||!hlRoot().contains(block))return null;
+  if(!pointInsideRect(x,y,block.getBoundingClientRect(),3))return null;
+  if(block.closest('a,.hl,.hl-note-mark,.fn,.m[data-mid],.vl'))return null;
+  if(!visibleText(block).trim())return null;
+  if(block.matches('[data-pid],li,blockquote')&&block.querySelector('p,li,blockquote,[data-pid]'))return null;
+  return block;
+}
+function regionAtPoint(e){
+  const x=Number(e.clientX),y=Number(e.clientY);
+  if(Number.isFinite(x)&&Number.isFinite(y)&&(x||y)){
+    const verse=verseAtPoint(x,y);
+    if(verse)return {kind:'verse',el:verse};
+    const block=blockAtPoint(x,y);
+    return block?{kind:'block',el:block}:null;
+  }
+  const verse=e.target&&e.target.closest?e.target.closest('.bible-verse,.v'):null;
+  if(verse&&verseContext(verse))return {kind:'verse',el:verse};
+  const block=blockActionCandidate(e.target);
+  return block?{kind:'block',el:block}:null;
 }
 function pointLineRect(x,y,fallback){
   try{
@@ -1687,16 +1767,64 @@ async function localBibleRange(range,state){
   }
   return null;
 }
+function publicationPreviewHtml(raw,paragraph){
+  const box=document.createElement('div');box.innerHTML=String(raw||'');
+  let target=null;
+  const p=Number(paragraph)||0;
+  if(p){
+    try{target=box.querySelector('[data-pid="'+p+'"],[data-pnum="'+p+'"],[id="p'+p+'"],[id="par'+p+'"]')}catch(e){}
+  }
+  if(!target)target=[...box.querySelectorAll('p,li,blockquote,h1,h2,h3,h4')].find(el=>visibleText(el).trim())||null;
+  if(!target)target=[...box.querySelectorAll('[data-pid]')].find(el=>visibleText(el).trim())||null;
+  if(!target)return '';
+  if(target.matches&&target.matches('[data-pid]')){
+    const blocks=[...target.querySelectorAll('p,li,blockquote')];
+    if(blocks.length===1)target=blocks[0];
+  }
+  const clone=target.cloneNode(true);
+  // Keep the paragraph text and any ruby annotations for the pinyin toggle;
+  // drop media and marker glyphs that only make sense in the article itself.
+  clone.querySelectorAll('script,style,img,picture,video,audio,figure,iframe,object,embed,.fn,.m,.vl,.cl,.tt').forEach(n=>n.remove());
+  if(visibleText(clone).length>1500){
+    let total=0;
+    for(const child of [...clone.children]){
+      const length=visibleText(child).length;
+      if(total+length>1500){child.remove();continue}
+      total+=length;
+    }
+  }
+  let html='';
+  try{html=cleanHtml(clone.outerHTML,{}).body||''}catch(e){html=''}
+  if(!html)return '';
+  const probe=document.createElement('div');probe.innerHTML=html;
+  return visibleText(probe).trim()?html:'';
+}
 async function publicationLinkPreview(href){
   const pub=parsePublicationLink(href);if(!pub)return null;
   for(const target of (pub.targets&&pub.targets.length?pub.targets:[pub])){
     const hits=await findDocsByMeps(target.docId);if(!hits.length)continue;
     const hit=hits.find(h=>String(h.bookId)===String(currentBook&&currentBook.id))||hits[0];
     const doc=await getBookDoc(hit.bookId,hit.docId);if(!doc)continue;
-    const text=plainTextFromHtml(doc.html).slice(0,500);
-    if(text)return {label:doc.title||'',text};
+    const html=publicationPreviewHtml(doc.html,target.paragraph);
+    if(html)return {label:doc.title||'',html,text:plainTextFromHtml(html).slice(0,500)};
   }
   return null;
+}
+async function publicationLinkSection(a,bibleState){
+  const href=String(a&&a.dataset&&a.dataset.jwlink||'');
+  if(!href)return null;
+  const fallback=String(a.textContent||'').trim()||t('相关链接');
+  const bible=parseBibleLink(href);
+  if(bible){
+    const range={book:bible.book,chapter:bible.chapter,verse:bible.verse,endChapter:bible.endChapter,endVerse:bible.endVerse};
+    const found=await localBibleRange(range,bibleState);
+    const labelData=found?found.book.bibleData:null;
+    const label=labelData?bibleRangeTitle(labelData,range):`${bible.book}:${bible.chapter}:${bible.verse}`;
+    return {label:t('相关经文'),html:`<p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(label)}</a></p>${found?found.html:'<p class="xref-empty">'+t('本地没有对应经文正文')+'</p>'}`};
+  }
+  const preview=await publicationLinkPreview(href);
+  if(preview)return {label:preview.label||t('相关链接'),html:`<p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(preview.label||fallback)}</a></p><div class="linked-article-preview">${preview.html}</div>`};
+  return {label:t('相关链接'),html:`<p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(fallback)}</a></p>`};
 }
 function bibleBookNumForNode(el){
   try{
@@ -1736,26 +1864,12 @@ async function showBlockInfo(block){
       }
       sections.push({label:t('相关经文'),html:out});
     }
-    const links=[...block.querySelectorAll('a[data-jwlink]')].slice(0,8),seenLinks=new Set();
+    const links=[...block.querySelectorAll('a[data-jwlink]')].slice(0,12),seenLinks=new Set();
     for(const a of links){
+      if(a.closest('.m[data-mid],.fn'))continue;
       const href=String(a.dataset.jwlink||'');if(!href||seenLinks.has(href))continue;seenLinks.add(href);
-      const bible=parseBibleLink(href);
-      if(bible){
-        const range={book:bible.book,chapter:bible.chapter,verse:bible.verse,endChapter:bible.endChapter,endVerse:bible.endVerse};
-        const found=await localBibleRange(range,bibleState);
-        const labelData=found?found.book.bibleData:null;
-        const label=labelData?bibleRangeTitle(labelData,range):`${bible.book}:${bible.chapter}:${bible.verse}`;
-        const link=`<p class="xref-ref"><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(label)}</a></p>`;
-        sections.push({label:t('相关经文'),html:link+(found?found.html:'<p class="xref-empty">'+t('本地没有对应经文正文')+'</p>')});
-        continue;
-      }
-      const preview=await publicationLinkPreview(href);
-      if(preview){
-        sections.push({label:preview.label||t('相关链接'),html:`<p><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(preview.label||t('相关链接'))}</a></p><p>${safeText(preview.text)}</p>`});
-      }else{
-        const label=String(a.textContent||'').trim()||t('相关链接');
-        sections.push({label:t('相关链接'),html:`<p><a data-jwlink="${href.replace(/"/g,'&quot;')}">${safeText(label)}</a></p>`});
-      }
+      const section=await publicationLinkSection(a,bibleState);
+      if(section)sections.push(section);
     }
     [...block.querySelectorAll('a[data-external-link]')].slice(0,5).forEach(a=>{
       const label=String(a.textContent||'').trim()||t('相关链接');
@@ -1830,7 +1944,7 @@ async function showBibleRefList(items,anchor,title){
     let content='';
     try{const r=await bibleRangeHtml(currentBook,range);content=r.html||''}catch(e){}
     const box=body.querySelector('[data-xref-index="'+i+'"]');
-    if(box)box.innerHTML=content||`<p class="xref-empty">${t('没有找到经文正文。')}</p>`;
+    if(box){box.innerHTML=content||`<p class="xref-empty">${t('没有找到经文正文。')}</p>`;applyPinyinDom(box)}
     await new Promise(r=>setTimeout(r,0));
   }
 }
@@ -1846,17 +1960,18 @@ async function showBibleBlockRefs(el,mid){
   await showBibleRefList(refs,el,t('相关经文'));
 }
 async function showBibleVerseRefs(el){
-  const v=el&&el.closest?el.closest('.v'):null;
-  const ctx=v?verseContext(v):null;
+  const region=el&&el.closest?el.closest('.bible-verse,.v')||el:el;
+  const ctx=verseContext(region);
   if(!ctx){
     // Some editions wrap verse numbers differently. Never leave the tap with
     // no response: fall back to the paragraph information panel instead.
     await showBlockInfo(el&&el.closest?el.closest('p,li,blockquote,[data-pid]')||el:el);
     return;
   }
-  const scope=el.closest('.publication-content')||$('article');
-  const sections=[],fillers=[],seenFn=new Set();
-  for(const node of v.querySelectorAll('.fn[data-fnid],.m[data-mid]')){
+  const scope=region.closest('.publication-content')||$('article');
+  const sections=[],fillers=[],seenFn=new Set(),seenLinks=new Set();
+  const bibleState={loaded:new Map(),metas:null};
+  for(const node of region.querySelectorAll('.fn[data-fnid],.m[data-mid]')){
     if(node.classList.contains('fn')){
       const id=String(node.getAttribute('data-fnid')||'');if(!id||seenFn.has(id))continue;seenFn.add(id);
       const target=footnoteTarget(scope,id);
@@ -1872,10 +1987,21 @@ async function showBibleVerseRefs(el){
   }
   const verseRefs=(ctx.data.crossRefs||{})[ctx.key]||[];
   if(verseRefs.length){const idx=sections.length;sections.push({label:t('整节经文')+' '+t('相关经文'),html:`<div data-verse-ref="${idx}"><p class="xref-empty">${t('正在读取…')}</p></div>`});fillers.push({idx,refs:verseRefs});}
+  // Links written directly in this verse: Bible references and cited articles.
+  for(const a of [...region.querySelectorAll('a[data-jwlink]')].slice(0,12)){
+    if(a.closest('.m[data-mid],.fn'))continue;
+    const href=String(a.dataset.jwlink||'');if(!href||seenLinks.has(href))continue;seenLinks.add(href);
+    const section=await publicationLinkSection(a,bibleState);
+    if(section)sections.push(section);
+  }
+  for(const a of [...region.querySelectorAll('a[data-external-link]')].slice(0,5)){
+    const label=String(a.textContent||'').trim()||t('相关链接');
+    sections.push({label:t('相关链接'),html:`<p>${safeText(label)}</p><p class="xref-empty">${t('这是一个外部网页链接，当前离线阅读器不会尝试联网打开。')}</p>`});
+  }
   if(!sections.length){say(t('经文信息'),t('这一节没有可显示的脚注或相关经文。'));return}
   const data=ctx.data;
   const html=sections.map(x=>`<div class="verse-ref-section"><p class="verse-ref-label">${safeText(x.label)}</p>${x.html}</div>`).join('');
-  await showLinkPopover(t('经文信息'),html,currentBook,el);
+  await showLinkPopover(t('经文信息'),html,currentBook,region);
   const body=linkPanelBodyEl();
   for(const fill of fillers){
     if(!body||!linkPanelOpen())return;
@@ -1883,11 +2009,13 @@ async function showBibleVerseRefs(el){
     for(const item of fill.refs.slice(0,20)){
       const range={book:item.b,chapter:item.c,verse:item.v,endChapter:Number(item.ec)||item.c,endVerse:Number(item.e)||item.v};
       let content='';try{const r=await bibleRangeHtml(currentBook,range);content=r.html||''}catch(e){}
-      out+=`<div class="verse-ref-target"><p><a href="${String(xrefHref({data},item)).replace(/"/g,'&quot;')}">${safeText(xrefLabel({data},item))}</a></p>${content||'<p class="xref-empty">'+t('没有找到经文正文。')+'</p>'}</div>`;
+      // These links are inserted after showLinkPopover has sanitised the panel,
+      // so write data-jwlink directly to keep them routed by the offline reader.
+      out+=`<div class="verse-ref-target"><p><a data-jwlink="${String(xrefHref({data},item)).replace(/"/g,'&quot;')}" role="link" style="cursor:pointer">${safeText(xrefLabel({data},item))}</a></p>${content||'<p class="xref-empty">'+t('没有找到经文正文。')+'</p>'}</div>`;
       await new Promise(r=>setTimeout(r,0));
     }
     if(fill.refs.length>20)out+=`<p class="xref-more">${t('仅显示前 20 条')}</p>`;
-    const box=body.querySelector('[data-verse-ref="'+fill.idx+'"]');if(box)box.innerHTML=out||`<p class="xref-empty">${t('没有找到相关经文。')}</p>`;
+    const box=body.querySelector('[data-verse-ref="'+fill.idx+'"]');if(box){box.innerHTML=out||`<p class="xref-empty">${t('没有找到相关经文。')}</p>`;applyPinyinDom(box)}
   }
 }
 async function doVerseAction(act){
@@ -1935,11 +2063,15 @@ $('article').addEventListener('click',async e=>{
 $('article').addEventListener('click',handleLinkedContentClick);
 $('article').addEventListener('click',e=>{
   if(window.getSelection&&!window.getSelection().isCollapsed)return;
-  if(e.target.closest('a,.hl,.hl-note-mark,.m[data-mid],.vl,.fn'))return;
-  const v=e.target.closest('.bible-verse,.v');
-  if(v){showVerseActions(v);return}
-  const block=blockActionCandidate(e.target);
-  if(block)showBlockActions(block,pointLineRect(e.clientX,e.clientY,null));
+  if(e.target.closest&&e.target.closest('a,.hl,.hl-note-mark,.m[data-mid],.fn,.v .cl'))return;
+  // When a verse or paragraph is already marked, any inert tap in the article
+  // abandons it. The tap must not turn into a new operation target: selecting
+  // again takes a fresh tap.
+  if(contextActionState){dismissRegionSelection();return}
+  const hit=regionAtPoint(e);
+  if(!hit)return;
+  if(hit.kind==='verse'){showVerseActions(hit.el,pointLineRect(e.clientX,e.clientY,null));return}
+  showBlockActions(hit.el,pointLineRect(e.clientX,e.clientY,null));
 });
 $('article').addEventListener('click',async e=>{const mark=e.target.closest&&e.target.closest('.hl-note-mark');if(mark){const hlId=mark.dataset.hlId,noteId=mark.dataset.noteId;if(!hlId&&!noteId)return;e.preventDefault();e.stopPropagation();if(noteId)await openVerseNote(noteId);else await openHighlightNote(hlId);return}const span=e.target.closest&&e.target.closest('.hl');if(!span)return;e.preventDefault();e.stopPropagation();await showHighlightActions(span,span.dataset.hlId);},true);
 ['touchstart','wheel','pointerdown'].forEach(ev=>$('readerBody').addEventListener(ev,()=>{readerRestoreToken++;readerRestoreActive=false},{passive:true}));
@@ -2045,9 +2177,21 @@ document.addEventListener('click',e=>{
   if($('linkPopover').contains(e.target))return;
   if(e.target.closest&&e.target.closest('a[data-jwlink]'))return;
   closeLinkPopover();
-});
-document.addEventListener('click',e=>{const bar=$('contextActions');if(!bar||!bar.classList.contains('show'))return;if(bar.contains(e.target))return;if(e.target.closest&&e.target.closest('.bible-verse,.v,.hl'))return;hideContextActions()},true);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLinkPopover();hideContextActions()}});
+  dismissRegionSelection();
+  // Closing the panel on inert article text must not also select a new verse
+  // or paragraph behind it.
+  if($('article')&&$('article').contains(e.target)&&!(e.target.closest&&e.target.closest('a,.hl,.hl-note-mark,.m[data-mid],.fn,.v .cl')))e.stopPropagation();
+},true);
+document.addEventListener('click',e=>{
+  const bar=$('contextActions');
+  if(!bar||!bar.classList.contains('show'))return;
+  if(bar.contains(e.target))return;
+  // Taps inside the article are resolved by the article handler so one tap can
+  // both abandon the region and refuse to pick a new one.
+  if($('article')&&$('article').contains(e.target))return;
+  dismissRegionSelection();
+},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLinkPopover();dismissRegionSelection()}});
 let linkPanelDockedAt=linkPanelDocked();
 window.addEventListener('resize',()=>{const docked=linkPanelDocked();if(docked!==linkPanelDockedAt){closeLinkPopover();linkPanelDockedAt=docked}else if(!docked&&$('linkPopover').style.display==='block')positionLinkPopover(null)});
 

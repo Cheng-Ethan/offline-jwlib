@@ -28,6 +28,8 @@ Categories are derived from `src/categories.json` rules matching publication sym
 - TOC: drawer on mobile; three-pane layout at ≥1100px (nav / TOC / article).
 - Font size and pronunciation controls in the reader toolbar.
 - Swipe/button page turning with restored scroll position.
+- Tapping a verse or paragraph marks only that verse/paragraph; tap it again or tap beside it to clear the mark. Page margins and gaps between blocks do not select anything.
+- The book button in the toolbar shows that verse/paragraph's footnotes, cross-references and cited articles; cited article text follows the pronunciation toggle for pinyin.
 - Search within the current book, all publications or the Bible; recent searches and "return to results" are supported.
 - Internal links: `jwpub://p/` (publication), `jwpub://b/` (Bible) and `jwpub://c/` (commentary) resolve locally; unresolved links explain the reason and **never go online**.
 - External links show a "will not open online" notice.
