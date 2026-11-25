@@ -5912,9 +5912,9 @@ function publicationPreviewHtml(raw,paragraph){
     if(blocks.length===1)target=blocks[0];
   }
   const clone=target.cloneNode(true);
-  // An article preview is a compact excerpt: remove media, marker glyphs and
-  // ruby annotations so the excerpt never carries pinyin.
-  clone.querySelectorAll('script,style,img,picture,video,audio,figure,iframe,object,embed,.fn,.m,.vl,.cl,.tt,rt,rp').forEach(n=>n.remove());
+  // An article preview is a compact excerpt: remove media and marker glyphs.
+  // Keep ruby annotations so pinyin follows the pronunciation toggle.
+  clone.querySelectorAll('script,style,img,picture,video,audio,figure,iframe,object,embed,.fn,.m,.vl,.cl,.tt').forEach(n=>n.remove());
   // Use the reader's own text styling instead of the source article's inline
   // colours and classes, so an article preview matches a verse link.
   [clone,...clone.querySelectorAll('*')].forEach(n=>{n.removeAttribute('style');n.removeAttribute('class')});
