@@ -8,9 +8,8 @@
 - 相关链接浮窗以链接名称为题头，点击即可直达目标文章段落并计入当前栏目返回历史；浮窗内的警告置于最上层并带关闭按钮，关闭警告不影响主浮窗。
 - 段落/经文信息面板显示脚注正文，以及串珠/相关经文的章节名和正文；外部链接提示离线不可用。
 - 笔记边栏标记改为铅笔符号；点中经文/段落使用更明显的蓝色整块高亮；点击已上色文字时按整行合并为一个圆角边框。
-- 高亮颜色的调色板图标改为黄、绿、蓝、红四个半透明圆片横向重叠的图标，点开显示四个大圆点；信息、笔记、复制图标统一为更饱满的 1:1 比例。每日经文分页文案为前一日/后一日。
+- 高亮颜色按钮改为四个同尺寸、不透明圆片从左到右层叠，黄色在最前并完整露出，绿、蓝、红依次在右侧露出弧形；点开显示四个大圆点；信息、笔记、复制图标统一为更饱满的 1:1 比例。每日经文分页文案为前一日/后一日。
 - 每日经文、多媒体图书馆和聚会阅读器不再显示底部操作栏。
-- 出版物里的「你会怎么回答？」等回答框默认只占一行高度，输入变多时自动向下长高。
 
 ## 0.14.0（2026-11-24）
 - **界面一致性改版**：统一 9 档字号、4 档圆角、2 种阴影与语义色 token；按钮、图标按钮、菜单项和确认框共用同一套组件规则。
@@ -73,7 +72,7 @@
 
 The current version is defined by `project.json`: **0.14.0**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
 
-- **Unreleased** — unified reader header (back, two-line publication/chapter title, three-dot menu) with table of contents, search, paging, bookmark, notes, language version, pronunciation and font size inside the menu; per-tab article, back history and exact paragraph position persisted across reloads and imports; navigable link-preview titles that open the target paragraph and join the tab history; warnings above link popovers with their own close button; footnotes and cross-references with resolved text in paragraph/verse info; pencil note markers; clear blue block highlight for the active verse/paragraph and one merged outline per highlighted line; highlight icon made of four overlapping translucent colour discs that opens four large colour discs; fuller 1:1 information, note and copy icons; previous/next-day labels for the daily text; answer fields in publications are one line tall by default and grow only as more text is typed.
+- **Unreleased** — unified reader header (back, two-line publication/chapter title, three-dot menu) with table of contents, search, paging, bookmark, notes, language version, pronunciation and font size inside the menu; per-tab article, back history and exact paragraph position persisted across reloads and imports; navigable link-preview titles that open the target paragraph and join the tab history; warnings above link popovers with their own close button; footnotes and cross-references with resolved text in paragraph/verse info; pencil note markers; clear blue block highlight for the active verse/paragraph and one merged outline per highlighted line; a four-disc colour button with yellow front and green, blue and pink arcs layered behind it, opening four large colour discs; fuller 1:1 information, note and copy icons; previous/next-day labels for the daily text.
 - **0.14.0** — UI consistency pass: shared type/radius/shadow/semantic-colour tokens; one linear SVG icon set; four-item More menu with nested backup and settings views; in-app help; one highlight-colour control; restored chapter-notes entry; pager states and arrow-key paging; in-app translatable confirmations; focus management, Escape handling, 44px touch targets and reduced-motion support.
 - **0.13.0** — baseline version (earlier upstream history collapsed; this docs restructure does not bump it; see [AGENTS.md](AGENTS.md)); full-text search for Bible/publications, recent searches, return-to-results; bilingual open-source documentation split into user/dev trees; MIT licence, contributing guide, security policy, code of conduct and third-party notices.
 - **0.12.0** — Bible concordance, verse info, single-verse copy and verse notes.
