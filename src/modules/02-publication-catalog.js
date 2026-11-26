@@ -1172,11 +1172,12 @@ function showSystemMenu(anchor,view){
 
 async function deletePublication(book){
  const [notes,marks,history]=await Promise.all([reqP(tx('notes').getAll()),reqP(tx('bookmarks').getAll()),reqP(tx('history').getAll())]);
- const stores=['books','bookMeta','bookAux','bookSources','notes','bookmarks','history'];const t=idb.transaction(stores,'readwrite');
- t.objectStore('books').delete(book.id);t.objectStore('bookMeta').delete(book.id);t.objectStore('bookAux').delete(book.id);t.objectStore('bookSources').delete(book.id);for(const n of notes)if(n.bookId===book.id)t.objectStore('notes').delete(n.id);
+ const stores=['books','bookMeta','bookAux','notes','bookmarks','history'];const t=idb.transaction(stores,'readwrite');
+ t.objectStore('books').delete(book.id);t.objectStore('bookMeta').delete(book.id);t.objectStore('bookAux').delete(book.id);for(const n of notes)if(n.bookId===book.id)t.objectStore('notes').delete(n.id);
  for(const m of marks)if(m.bookId===book.id)t.objectStore('bookmarks').delete(m.id);for(const h of history)if(h.bookId===book.id)t.objectStore('history').delete(h.id);
  await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error)});
  try{await deleteBookData(book.id)}catch(e){console.warn('删除正文/媒体记录失败',e)}
+ try{await deleteBookSource(book.id)}catch(e){console.warn('删除原始包失败',e)}
  clearUrls(book.id);if(currentBook?.id===book.id){closeLinkPopover();clearUrls();currentBook=null;readerReturnTarget=null;readerOriginSection=null;readerSessionTab=null;readerReturnSection=null;$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid'}
 }
 async function recordHistory(book,doc,scrollTop){

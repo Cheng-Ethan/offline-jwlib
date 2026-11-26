@@ -50,7 +50,7 @@ applyI18n()
 
 ### 4.1 Store
 
-`openDB()` 创建 13 个 object store：
+`openDB()` 创建 12 个 object store：
 
 | Store | 用途 |
 |---|---|
@@ -59,7 +59,6 @@ applyI18n()
 | `bookDocs` | 文档正文 |
 | `bookAssets` | 图片/字体/资源 |
 | `bookAux` | 辅助数据、导入报告 |
-| `bookSources` | 可选保存的原始 SQLite、内层文件和 manifest，用于导出 JWPUB |
 | `notes` | 笔记 |
 | `bookmarks` | 书签 |
 | `history` | 阅读历史 |
@@ -69,6 +68,8 @@ applyI18n()
 | `highlights` | 高亮 |
 
 > 分类实际位于 `categories` store；上表中的重复项仅表示它在 UI/元数据中都有体现。
+>
+> 可选的原始包保存在独立数据库 `OfflineJwLibrarySources` 的 `sources` store，不改变主库版本；测试 2.0 后 1.0.0 仍能打开现有图书馆。
 
 ### 4.2 元数据 + 分表 + generation
 

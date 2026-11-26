@@ -1241,7 +1241,7 @@ else if (typeof exports === 'object'){
 'use strict';
 const $ = id => document.getElementById(id);
 const APP_VERSION='1.0.0';
-const DB_NAME='OfflineJwLibrary', DB_VERSION=6;
+const DB_NAME='OfflineJwLibrary', DB_VERSION=5;
 let idb, SQL, currentBook=null, currentIndex=0, fontSize=19, currentObjectUrls=[], bibleMode=false, bibleReturn=null;
 let assetUrlCache=new Map(), pronunciationOn=false, historyWriteAt=0, readerReturnSection=null, readerNavSection=null, readerOriginSection=null, readerReturnTarget=null, readerSessionTab=null;
 let bibleState={bookId:null,tab:'books',book:null};
@@ -1727,7 +1727,6 @@ function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open
   if(!d.objectStoreNames.contains('bookDocs')){const s=d.createObjectStore('bookDocs',{keyPath:'key'});s.createIndex('byBook','bookId',{unique:false});s.createIndex('byMeps','mepsId',{unique:false});}
   if(!d.objectStoreNames.contains('bookAssets')){const s=d.createObjectStore('bookAssets',{keyPath:'key'});s.createIndex('byBook','bookId',{unique:false});}
   if(!d.objectStoreNames.contains('bookAux')) d.createObjectStore('bookAux',{keyPath:'id'});
-  if(!d.objectStoreNames.contains('bookSources')) d.createObjectStore('bookSources',{keyPath:'id'});
   if(!d.objectStoreNames.contains('categories')) d.createObjectStore('categories',{keyPath:'id'});
   if(!d.objectStoreNames.contains('tags')){const s=d.createObjectStore('tags',{keyPath:'id'});s.createIndex('byName','name',{unique:false});}
   if(!d.objectStoreNames.contains('highlights')){const s=d.createObjectStore('highlights',{keyPath:'id'});s.createIndex('byBook','bookId',{unique:false});s.createIndex('byBookDoc',['bookId','docId'],{unique:false});s.createIndex('byNote','noteId',{unique:false});}
@@ -2067,7 +2066,24 @@ async function getBookAux(id,gen){
 // It is off by default; the setting is read in the import path.
 function keepSourceEnabled(){try{return localStorage.getItem('offlineLibraryKeepSource')==='1'}catch(e){return false}}
 function setKeepSource(on){try{localStorage.setItem('offlineLibraryKeepSource',on?'1':'0')}catch(e){}}
-async function getBookSource(id){return reqP(tx('bookSources').get(id))}
+// Original packages live in a separate IndexedDB so the main library stays at
+// DB v5 and a 1.0.0 HTML can still open it after a 2.0 alpha test.
+const SOURCE_DB_NAME='OfflineJwLibrarySources',SOURCE_DB_VERSION=1;
+let sourceDbPromise=null;
+function openSourceDB(){
+  if(sourceDbPromise)return sourceDbPromise;
+  sourceDbPromise=new Promise((res,rej)=>{
+    const req=indexedDB.open(SOURCE_DB_NAME,SOURCE_DB_VERSION);
+    req.onupgradeneeded=()=>{const d=req.result;if(!d.objectStoreNames.contains('sources'))d.createObjectStore('sources',{keyPath:'id'});};
+    req.onsuccess=()=>{const d=req.result;d.onversionchange=()=>d.close();res(d)};
+    req.onerror=()=>rej(req.error);
+  });
+  return sourceDbPromise;
+}
+async function getBookSource(id){
+  const db=await openSourceDB();
+  return reqP(db.transaction('sources','readonly').objectStore('sources').get(id));
+}
 async function saveBookSource(id,source){
   if(!id||!source)return null;
   const manifestBytes=source.manifestBytes instanceof Blob?new Uint8Array(await source.manifestBytes.arrayBuffer()):source.manifestBytes;
@@ -2075,9 +2091,10 @@ async function saveBookSource(id,source){
   const files=(source.files||[]).map(f=>({name:f.name,blob:f.blob instanceof Blob?f.blob:new Blob([f.blob])}));
   const size=Number(source.size||0)||dbBlob.size+files.reduce((n,f)=>n+Number(f.blob&&f.blob.size||0),0)+Number(manifestBytes&&manifestBytes.byteLength||0);
   const rec={id,name:source.name||`${id}.jwpub`,size,dbName:source.dbName||'publication.db',db:dbBlob,manifestBytes,files,outerFiles:source.outerFiles||[],importedAt:source.importedAt||Date.now()};
+  const db=await openSourceDB();
   await new Promise((res,rej)=>{
-    const t=idb.transaction('bookSources','readwrite');
-    t.objectStore('bookSources').put(rec);
+    const t=db.transaction('sources','readwrite');
+    t.objectStore('sources').put(rec);
     t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('原始包保存事务被中止'));
   });
   await markBookSource(id,rec);
@@ -2090,7 +2107,15 @@ async function markBookSource(id,source){
   meta.sourceName=source&&source.name||'';
   await saveBookMeta(meta);
 }
-async function deleteBookSource(id){try{await reqP(tx('bookSources','readwrite').delete(id))}catch(e){}}
+async function deleteBookSource(id){
+  try{
+    const db=await openSourceDB();
+    await new Promise((res,rej)=>{const t=db.transaction('sources','readwrite');t.objectStore('sources').delete(id);t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('原始包删除事务被中止'))});
+  }catch(e){}
+}
+async function countBookSources(){
+  try{const db=await openSourceDB();return await reqP(db.transaction('sources','readonly').objectStore('sources').count())}catch(e){return 0}
+}
 
 function dailyDateKey(offset,year){
   const n=Number(offset);
@@ -2507,7 +2532,8 @@ async function buildDiagnostics(){
   try{storage=await navigator.storage.estimate()}catch(e){}
   try{persisted=await navigator.storage.persisted()}catch(e){}
   const counts={};
-  for(const s of ['books','bookMeta','bookDocs','bookAssets','bookAux','bookSources','notes','tags','highlights','bookmarks','history','categories'])counts[s]=await countStore(s);
+  for(const s of ['books','bookMeta','bookDocs','bookAssets','bookAux','notes','tags','highlights','bookmarks','history','categories'])counts[s]=await countStore(s);
+  counts.bookSources=await countBookSources();
   let migration=null;try{migration=await getOne('system','migratedV3')}catch(e){}
   return {
     appVersion:APP_VERSION,
@@ -4278,11 +4304,12 @@ function showSystemMenu(anchor,view){
 
 async function deletePublication(book){
  const [notes,marks,history]=await Promise.all([reqP(tx('notes').getAll()),reqP(tx('bookmarks').getAll()),reqP(tx('history').getAll())]);
- const stores=['books','bookMeta','bookAux','bookSources','notes','bookmarks','history'];const t=idb.transaction(stores,'readwrite');
- t.objectStore('books').delete(book.id);t.objectStore('bookMeta').delete(book.id);t.objectStore('bookAux').delete(book.id);t.objectStore('bookSources').delete(book.id);for(const n of notes)if(n.bookId===book.id)t.objectStore('notes').delete(n.id);
+ const stores=['books','bookMeta','bookAux','notes','bookmarks','history'];const t=idb.transaction(stores,'readwrite');
+ t.objectStore('books').delete(book.id);t.objectStore('bookMeta').delete(book.id);t.objectStore('bookAux').delete(book.id);for(const n of notes)if(n.bookId===book.id)t.objectStore('notes').delete(n.id);
  for(const m of marks)if(m.bookId===book.id)t.objectStore('bookmarks').delete(m.id);for(const h of history)if(h.bookId===book.id)t.objectStore('history').delete(h.id);
  await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error)});
  try{await deleteBookData(book.id)}catch(e){console.warn('删除正文/媒体记录失败',e)}
+ try{await deleteBookSource(book.id)}catch(e){console.warn('删除原始包失败',e)}
  clearUrls(book.id);if(currentBook?.id===book.id){closeLinkPopover();clearUrls();currentBook=null;readerReturnTarget=null;readerOriginSection=null;readerSessionTab=null;readerReturnSection=null;$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid'}
 }
 async function recordHistory(book,doc,scrollTop){

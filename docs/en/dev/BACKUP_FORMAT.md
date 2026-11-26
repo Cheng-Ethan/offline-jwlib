@@ -48,7 +48,7 @@ Top-level structure (streamed by `backupLibrary()`):
 }
 ```
 
-Each `book` comes from `loadBook(id, { assets: true })`, including metadata, documents, assets and the import report. The optional original package (`bookSources`) is not included in the full backup yet.
+Each `book` comes from `loadBook(id, { assets: true })`, including metadata, documents, assets and the import report. The optional original package (separate `OfflineJwLibrarySources` database) is not included in the full backup yet.
 
 ### 3.1 Binary packing
 

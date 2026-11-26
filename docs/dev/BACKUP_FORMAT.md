@@ -48,7 +48,7 @@
 }
 ```
 
-每本 `book` 是 `loadBook(id, { assets: true })` 的结果，包含元数据、文档、资源与导入报告等。可选的原始包（`bookSources`）目前不包含在完整备份中。
+每本 `book` 是 `loadBook(id, { assets: true })` 的结果，包含元数据、文档、资源与导入报告等。可选的原始包（独立 `OfflineJwLibrarySources` 数据库）目前不包含在完整备份中。
 
 ### 3.1 二进制包装
 

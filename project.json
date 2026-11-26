@@ -4,7 +4,7 @@
   "backupFormat": "offline-library-library-v1",
   "notesBackupFormat": "offline-library-notes-v1",
   "indexedDbName": "OfflineJwLibrary",
-  "indexedDbVersion": 6,
+  "indexedDbVersion": 5,
   "modules": [
     {"file": "00-core-db.js", "order": 0, "requiresApi": 1},
     {"file": "01-importer-security.js", "order": 1, "requiresApi": 1},
