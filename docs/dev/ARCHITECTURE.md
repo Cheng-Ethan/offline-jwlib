@@ -71,6 +71,10 @@ applyI18n()
 >
 > 可选的原始包保存在独立数据库 `OfflineJwLibrarySources` 的 `sources` store，不改变主库版本；测试 2.0 后 1.0.0 仍能打开现有图书馆。
 
+### 4.1b 2.0 实验读取路径
+
+`sourceReadEnabled()` 开启后，`showDoc()` 调用 `sourceDocHtml()`：从 `OfflineJwLibrarySources` 取出原始 JWPUB，解出内层 ZIP 和 SQLite，按 `DocumentId` 查询并解密当前文档；失败时回退到 `bookDocs` 的解析数据。`sourceDbCache` / `sourceDocCache` 做 LRU，`pagehide` 时 `closeSourceDbs()` 释放。
+
 ### 4.2 元数据 + 分表 + generation
 
 - `buildBookMeta()` 生成轻量元数据；

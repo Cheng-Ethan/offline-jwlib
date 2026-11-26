@@ -255,6 +255,9 @@ Object.assign(I18N.ko,{"重新导入以启用分享…":"공유를 위해 다시
 Object.assign(I18N.en,{"导出 / 分享原始 JWPUB…":"Export / share original JWPUB…","分享 / 保存（原文件名）":"Share / save (original filename)","分享 / 保存（易读名称）":"Share / save (readable name)","无法直接分享":"Cannot share directly","当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。":"This container cannot share files. Save with a desktop browser or share from the Files app."});
 Object.assign(I18N.ja,{"导出 / 分享原始 JWPUB…":"元のJWPUBを書き出す / 共有…","分享 / 保存（原文件名）":"共有 / 保存（元のファイル名）","分享 / 保存（易读名称）":"共有 / 保存（読みやすい名前）","无法直接分享":"直接共有できません","当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。":"このコンテナはファイルを共有できません。デスクトップのブラウザで保存するか、ファイルAppから共有してください。"});
 Object.assign(I18N.ko,{"导出 / 分享原始 JWPUB…":"원본 JWPUB 내보내기 / 공유…","分享 / 保存（原文件名）":"공유 / 저장 (원본 파일 이름)","分享 / 保存（易读名称）":"공유 / 저장 (읽기 쉬운 이름)","无法直接分享":"직접 공유할 수 없음","当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。":"이 컨테이너는 파일을 공유할 수 없습니다. 데스크톱 브라우저에서 저장하거나 파일 앱에서 공유하십시오."});
+Object.assign(I18N.en,{"从原始包读取正文（实验）":"Read text from original package (experimental)","开启后，打开有原始包的出版物时，会直接从原始 SQLite 查询并解密当前文档；失败时回退到解析数据。":"When enabled, opening a publication with an original package queries and decrypts the current document directly from the original SQLite; on failure it falls back to parsed data.","实验功能已关闭。":"Experimental feature off."});
+Object.assign(I18N.ja,{"从原始包读取正文（实验）":"元パッケージから本文を読む（実験）","开启后，打开有原始包的出版物时，会直接从原始 SQLite 查询并解密当前文档；失败时回退到解析数据。":"有効にすると、元パッケージのある出版物を開くとき、元のSQLiteから現在の文書を取得・復号します。失敗時は解析データに戻ります。","实验功能已关闭。":"実験機能をオフにしました。"});
+Object.assign(I18N.ko,{"从原始包读取正文（实验）":"원본 패키지에서 본문 읽기 (실험)","开启后，打开有原始包的出版物时，会直接从原始 SQLite 查询并解密当前文档；失败时回退到解析数据。":"켜면 원본 패키지가 있는 출판물을 열 때 원본 SQLite에서 현재 문서를 조회하고 복호화합니다. 실패하면 분석 데이터로 돌아갑니다.","实验功能已关闭。":"실험 기능이 꺼졌습니다."});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
@@ -896,6 +899,83 @@ async function deleteBookSource(id){
 }
 async function countBookSources(){
   try{const db=await openSourceDB();return await reqP(db.transaction('sources','readonly').objectStore('sources').count())}catch(e){return 0}
+}
+// Experimental 2.0 read path: open the stored original JWPUB, query SQLite on
+// demand and decrypt one document. Parsed data remains the fallback.
+const sourceDbCache=new Map(),sourceDocCache=new Map();
+const SOURCE_DB_CACHE_MAX=2,SOURCE_DOC_CACHE_MAX=24;
+function sourceReadEnabled(){try{return localStorage.getItem('offlineLibrarySourceRead')==='1'}catch(e){return false}}
+function setSourceRead(on){try{localStorage.setItem('offlineLibrarySourceRead',on?'1':'0')}catch(e){}}
+function sourcePubMeta(db){
+  const p=rows(db,'Publication')[0]||{};
+  return {
+    lang:Number(pick(p,['MepsLanguageIndex','LanguageIndex','Language'],0)),
+    symbol:String(pick(p,['Symbol','PublicationSymbol'],'unknown')),
+    year:Number(pick(p,['Year'],0)),
+    issue:Number(pick(p,['IssueTagNumber','IssueNumber'],0))
+  };
+}
+async function openBookSourceDb(bookId){
+  const key=String(bookId);
+  const cached=sourceDbCache.get(key);
+  if(cached){sourceDbCache.delete(key);sourceDbCache.set(key,cached);return cached}
+  const rec=await getBookSource(bookId);
+  if(!rec)throw new Error('没有保存原始包');
+  let innerBytes=null,manifest={},dbBytes=null;
+  if(rec.jwpub){
+    const outer=await JSZip.loadAsync(new Uint8Array(await rec.jwpub.arrayBuffer()));
+    const contents=outer.file('contents');
+    if(!contents)throw new Error('原始包缺少 contents');
+    innerBytes=await contents.async('uint8array');
+    const mf=outer.file('manifest.json');
+    if(mf){try{manifest=JSON.parse(new TextDecoder('utf-8').decode(await mf.async('uint8array')))}catch(e){}}
+  }else if(rec.innerZip){
+    innerBytes=await rec.innerZip.arrayBuffer();
+    if(rec.manifestBytes){try{manifest=JSON.parse(new TextDecoder('utf-8').decode(rec.manifestBytes))}catch(e){}}
+  }else if(rec.db){
+    dbBytes=await rec.db.arrayBuffer();
+  }
+  if(!dbBytes){
+    if(!innerBytes)throw new Error('原始包缺少 SQLite');
+    const inner=await JSZip.loadAsync(new Uint8Array(innerBytes));
+    const preferred=manifest.publication&&manifest.publication.fileName;
+    let dbEntry=preferred?inner.file(preferred):null;
+    if(!dbEntry){for(const [name,entry] of Object.entries(inner.files)){if(!entry.dir&&/\.(db|sqlite|sqlite3)$/i.test(name)){dbEntry=entry;break}}}
+    if(!dbEntry)throw new Error('原始包内没有数据库文件');
+    dbBytes=await dbEntry.async('uint8array');
+  }
+  SQL=SQL||await initSqlJs();
+  const db=new SQL.Database(dbBytes);
+  const pub=sourcePubMeta(db);
+  const ki=await keyIv(pub);
+  const entry={db,ki,bookId:key};
+  sourceDbCache.set(key,entry);
+  while(sourceDbCache.size>SOURCE_DB_CACHE_MAX){
+    const [oldKey,old]=sourceDbCache.entries().next().value;
+    try{old.db.close()}catch(e){}
+    sourceDbCache.delete(oldKey);
+  }
+  return entry;
+}
+async function sourceDocHtml(bookId,docId){
+  const cacheKey=String(bookId)+':'+String(docId);
+  if(sourceDocCache.has(cacheKey)){
+    const v=sourceDocCache.get(cacheKey);sourceDocCache.delete(cacheKey);sourceDocCache.set(cacheKey,v);return v;
+  }
+  const {db,ki}=await openBookSourceDb(bookId);
+  const target=normId(docId);
+  const row=rows(db,'Document').find(r=>normId(pick(r,['DocumentId','Id','RowId'],''))===target);
+  if(!row)return '';
+  const blob=bytes(pick(row,['Content'],null));
+  if(!blob)return '';
+  const decoded=await decryptContentAny(blob,ki);
+  sourceDocCache.set(cacheKey,decoded.html);
+  while(sourceDocCache.size>SOURCE_DOC_CACHE_MAX)sourceDocCache.delete(sourceDocCache.keys().next().value);
+  return decoded.html;
+}
+function closeSourceDbs(){
+  for(const e of sourceDbCache.values()){try{e.db.close()}catch(err){}}
+  sourceDbCache.clear();sourceDocCache.clear();
 }
 
 function dailyDateKey(offset,year){

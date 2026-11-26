@@ -520,8 +520,13 @@ async function showDoc(anchor=''){
   setReaderHeading(d);$('article').innerHTML='';
   const kind=readerKind(currentBook);$('article').className='reader-kind-'+kind;$('article').dataset.publicationKind=kind;
   document.body.classList.toggle('daily-reader',kind==='daily');
-  const map=await docAssetMap(currentBook,d.html);if(epoch!==tabEpoch)return false;
-  const clean=cleanHtml(d.html,map),style=document.createElement('style');style.textContent=clean.styles||'';$('article').appendChild(style);
+  let html=d.html;
+  if(sourceReadEnabled()&&currentBook&&!d.bibleChapter&&!d.datedText){
+    try{const fromSource=await sourceDocHtml(currentBook.id,d.id);if(fromSource)html=fromSource}
+    catch(e){logDiag('warn','从原始包读取正文失败',{bookId:currentBook.id,docId:d.id,message:e&&e.message||String(e)})}
+  }
+  const map=await docAssetMap(currentBook,html);if(epoch!==tabEpoch)return false;
+  const clean=cleanHtml(html,map),style=document.createElement('style');style.textContent=clean.styles||'';$('article').appendChild(style);
   const content=document.createElement('div');content.className='publication-content publication-content-'+kind;content.innerHTML=clean.body;
   const hasHeading=!!content.querySelector('h1,h2,.documentTitle,.title');
   if(!hasHeading&&!d.bibleChapter&&(d.titleRich||d.title)){const head=document.createElement('header');head.className='reader-generated-heading';const h=document.createElement('h1');h.innerHTML=d.titleRich||safeText(d.title);head.appendChild(h);if(d.subtitleRich||d.subtitle){const sub=document.createElement('p');sub.className='reader-generated-subtitle';sub.innerHTML=d.subtitleRich||safeText(d.subtitle);head.appendChild(sub)}content.insertBefore(head,content.firstChild)}

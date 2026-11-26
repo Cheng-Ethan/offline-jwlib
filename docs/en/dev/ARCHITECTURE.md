@@ -69,6 +69,10 @@ Failure shows "local storage unavailable". DB name/version come from `project.js
 
 > Optional original packages live in a separate `OfflineJwLibrarySources` database (`sources` store). The main library stays at v5, so a 1.0.0 HTML can still open it after a 2.0 alpha test.
 
+### 4.1b Experimental 2.0 read path
+
+When `sourceReadEnabled()` is on, `showDoc()` calls `sourceDocHtml()`: it opens the original JWPUB from `OfflineJwLibrarySources`, extracts the inner ZIP and SQLite, queries the current document by `DocumentId`, and decrypts it. On failure it falls back to parsed data in `bookDocs`. `sourceDbCache` / `sourceDocCache` are LRU caches; `closeSourceDbs()` releases them on `pagehide`.
+
 ### 4.2 Metadata + split stores + generations
 
 - `buildBookMeta()` builds light metadata;

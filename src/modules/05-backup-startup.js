@@ -388,7 +388,7 @@ async function showAbout(){
   }catch(e){say(t('设置与关于'),e.message||String(e))}
 }
 const _settingsBtn=$('settingsBtn');if(_settingsBtn)_settingsBtn.onclick=showAbout;
-window.addEventListener('pagehide',()=>{saveReaderCache().catch(()=>{})});
+window.addEventListener('pagehide',()=>{saveReaderCache().catch(()=>{});closeSourceDbs()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveReaderCache().catch(()=>{})});
 (async()=>{
   try{
