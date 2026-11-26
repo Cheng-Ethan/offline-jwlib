@@ -67,7 +67,7 @@ A confirmation appears above roughly 150 MB. The actual file is larger than the 
 ### Share the original JWPUB
 
 1. Open **More → Settings & diagnostics** and enable **Keep original package for sharing**.
-2. New imports then keep the original SQLite and inner files as well.
+2. New imports then keep the original inner package and manifest as well.
 3. On a publication card choose **More → Share / export… → Export original JWPUB**.
 
 Existing books can use **Link original PUB file…** to add the package. Books imported before the setting was enabled, without linking the original file, have no original package. The package uses extra space; the current full backup does not include it.

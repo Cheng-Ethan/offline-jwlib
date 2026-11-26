@@ -2087,10 +2087,13 @@ async function getBookSource(id){
 async function saveBookSource(id,source){
   if(!id||!source)return null;
   const manifestBytes=source.manifestBytes instanceof Blob?new Uint8Array(await source.manifestBytes.arrayBuffer()):source.manifestBytes;
-  const dbBlob=source.db instanceof Blob?source.db:new Blob([source.dbBytes||source.db||new Uint8Array(0)]);
+  const innerZipBlob=source.innerZip instanceof Blob?source.innerZip:source.innerZip?new Blob([source.innerZip]):null;
+  const dbBlob=source.db instanceof Blob?source.db:(source.dbBytes||source.db)?new Blob([source.dbBytes||source.db]):null;
   const files=(source.files||[]).map(f=>({name:f.name,blob:f.blob instanceof Blob?f.blob:new Blob([f.blob])}));
-  const size=Number(source.size||0)||dbBlob.size+files.reduce((n,f)=>n+Number(f.blob&&f.blob.size||0),0)+Number(manifestBytes&&manifestBytes.byteLength||0);
-  const rec={id,name:source.name||`${id}.jwpub`,size,dbName:source.dbName||'publication.db',db:dbBlob,manifestBytes,files,outerFiles:source.outerFiles||[],importedAt:source.importedAt||Date.now()};
+  const payloadSize=innerZipBlob?innerZipBlob.size:(dbBlob?dbBlob.size:0)+files.reduce((n,f)=>n+Number(f.blob&&f.blob.size||0),0);
+  const size=Number(source.size||0)||payloadSize+Number(manifestBytes&&manifestBytes.byteLength||0);
+  const rec={id,name:source.name||`${id}.jwpub`,size,dbName:source.dbName||'publication.db',innerZip:innerZipBlob,manifestBytes,outerFiles:source.outerFiles||[],importedAt:source.importedAt||Date.now()};
+  if(!innerZipBlob){if(dbBlob)rec.db=dbBlob;rec.files=files}
   const db=await openSourceDB();
   await new Promise((res,rej)=>{
     const t=db.transaction('sources','readwrite');
@@ -2647,9 +2650,9 @@ async function parseJwpub(file,onProgress,opts){
   if(!manifestFile)throw new Error('找不到 manifest.json；这可能不是标准 PUB 文件。');
   const manifestBytes=await manifestFile.async('uint8array');
   const manifest=JSON.parse(new TextDecoder('utf-8').decode(manifestBytes));
-  let inner=outer;
+  let inner=outer,sourceInnerBytes=null;
   const contents=outer.file('contents');
-  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b)inner=await JSZip.loadAsync(data);}
+  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b){inner=await JSZip.loadAsync(data);if(captureSource)sourceInnerBytes=data}}
   const innerNames=Object.keys(inner.files);
   if(innerNames.length>JWPUB_MAX_INNER_FILES)throw new Error(`压缩包内文件过多（${innerNames.length} 个），已停止导入以保护浏览器内存。`);
   onProgress('正在定位 SQLite 数据库…');
@@ -3081,6 +3084,7 @@ async function parseJwpub(file,onProgress,opts){
       size:Number((file&&file.size)||(file&&file.length)||0)||sourceDbBytes.length,
       dbName,
       dbBytes:sourceDbBytes,
+      innerZip:sourceInnerBytes,
       manifestBytes,
       files:sourceFiles,
       outerFiles,
@@ -3100,24 +3104,27 @@ async function readJwpubSource(file){
   if(!manifestFile)throw new Error('找不到 manifest.json；这可能不是标准 PUB 文件。');
   const manifestBytes=await manifestFile.async('uint8array');
   let manifest={};try{manifest=JSON.parse(new TextDecoder('utf-8').decode(manifestBytes))}catch(e){}
-  let inner=outer;
+  let inner=outer,sourceInnerBytes=null;
   const contents=outer.file('contents');
-  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b)inner=await JSZip.loadAsync(data);}
+  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b){inner=await JSZip.loadAsync(data);sourceInnerBytes=data}}
   const preferred=manifest.publication&&manifest.publication.fileName;
   let dbEntry=preferred?inner.file(preferred):null;
   if(!dbEntry){for(const [name,entry] of Object.entries(inner.files)){if(!entry.dir&&/\.(db|sqlite|sqlite3)$/i.test(name)){dbEntry=entry;break}}}
   if(!dbEntry)throw new Error('压缩包中没有找到数据库文件。');
   const dbName=dbEntry.name||preferred||'publication.db';
+  const outerFiles=[];
+  for(const [name,entry] of Object.entries(outer.files)){
+    if(entry.dir||name==='manifest.json'||name==='contents')continue;
+    try{outerFiles.push({name,blob:await entry.async('blob')})}catch(e){}
+  }
+  // Prefer the original inner ZIP: exporting it unchanged removes any doubt
+  // about SQLite/asset compression or entry order in the rebuilt archive.
+  if(sourceInnerBytes)return {name:(file&&file.name)||'publication.jwpub',size:u8.length,dbName,innerZip:sourceInnerBytes,manifestBytes,outerFiles,importedAt:Date.now()};
   const dbBytes=await dbEntry.async('uint8array');
   const files=[];
   for(const [name,entry] of Object.entries(inner.files)){
     if(entry.dir||name===dbName||entry===dbEntry)continue;
     try{files.push({name,blob:await entry.async('blob')})}catch(e){}
-  }
-  const outerFiles=[];
-  for(const [name,entry] of Object.entries(outer.files)){
-    if(entry.dir||name==='manifest.json'||name==='contents')continue;
-    try{outerFiles.push({name,blob:await entry.async('blob')})}catch(e){}
   }
   return {name:(file&&file.name)||'publication.jwpub',size:u8.length,dbName,dbBytes,manifestBytes,files,outerFiles,importedAt:Date.now()};
 }
@@ -7376,20 +7383,25 @@ async function exportBookJwpub(book){
     const src=await getBookSource(book.id);
     if(!src){say(t('导出失败'),t('没有保存原始包。请重新导入或关联原始 PUB 文件。'));return}
     say(t('正在生成 JWPUB'),t('正在打包…'),true);await tick();
-    const dbBytes=new Uint8Array(await src.db.arrayBuffer());
-    const inner=new JSZip();
-    inner.file(src.dbName||'publication.db',dbBytes);
-    for(const f of src.files||[])inner.file(f.name,f.blob);
-    const innerBytes=await inner.generateAsync({type:'uint8array',compression:'DEFLATE'});
+    let contentsBlob=src.innerZip||null;
+    if(contentsBlob&&!(contentsBlob instanceof Blob))contentsBlob=new Blob([contentsBlob]);
+    if(!contentsBlob){
+      if(!src.db)throw new Error('原始包缺少 SQLite 和内层文件。');
+      const dbBytes=new Uint8Array(await src.db.arrayBuffer());
+      const inner=new JSZip();
+      inner.file(src.dbName||'publication.db',dbBytes);
+      for(const f of src.files||[])inner.file(f.name,f.blob);
+      contentsBlob=await inner.generateAsync({type:'blob',compression:'DEFLATE'});
+    }
     const outer=new JSZip();
     outer.file('manifest.json',src.manifestBytes);
-    outer.file('contents',innerBytes);
+    outer.file('contents',contentsBlob);
     for(const f of src.outerFiles||[])outer.file(f.name,f.blob);
     const blob=await outer.generateAsync({type:'blob',compression:'DEFLATE'});
     const name=exportBookFileName(book);
     await shareOrDownload(blob,name);
     try{$('modal').style.display='none'}catch(e){}
-    logDiag('info','导出原始 JWPUB',{id:book.id,size:blob.size});
+    logDiag('info','导出原始 JWPUB',{id:book.id,size:blob.size,innerZip:!!src.innerZip});
   }catch(err){say(t('导出失败'),err.message||String(err));logDiag('error','导出原始 JWPUB 失败',{id:book.id,message:err.message||String(err)})}
 }
 function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();const t=setTimeout(()=>URL.revokeObjectURL(u),600000);try{if(t&&t.unref)t.unref()}catch(e){}}

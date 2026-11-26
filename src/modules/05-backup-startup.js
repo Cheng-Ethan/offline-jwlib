@@ -309,20 +309,25 @@ async function exportBookJwpub(book){
     const src=await getBookSource(book.id);
     if(!src){say(t('导出失败'),t('没有保存原始包。请重新导入或关联原始 PUB 文件。'));return}
     say(t('正在生成 JWPUB'),t('正在打包…'),true);await tick();
-    const dbBytes=new Uint8Array(await src.db.arrayBuffer());
-    const inner=new JSZip();
-    inner.file(src.dbName||'publication.db',dbBytes);
-    for(const f of src.files||[])inner.file(f.name,f.blob);
-    const innerBytes=await inner.generateAsync({type:'uint8array',compression:'DEFLATE'});
+    let contentsBlob=src.innerZip||null;
+    if(contentsBlob&&!(contentsBlob instanceof Blob))contentsBlob=new Blob([contentsBlob]);
+    if(!contentsBlob){
+      if(!src.db)throw new Error('原始包缺少 SQLite 和内层文件。');
+      const dbBytes=new Uint8Array(await src.db.arrayBuffer());
+      const inner=new JSZip();
+      inner.file(src.dbName||'publication.db',dbBytes);
+      for(const f of src.files||[])inner.file(f.name,f.blob);
+      contentsBlob=await inner.generateAsync({type:'blob',compression:'DEFLATE'});
+    }
     const outer=new JSZip();
     outer.file('manifest.json',src.manifestBytes);
-    outer.file('contents',innerBytes);
+    outer.file('contents',contentsBlob);
     for(const f of src.outerFiles||[])outer.file(f.name,f.blob);
     const blob=await outer.generateAsync({type:'blob',compression:'DEFLATE'});
     const name=exportBookFileName(book);
     await shareOrDownload(blob,name);
     try{$('modal').style.display='none'}catch(e){}
-    logDiag('info','导出原始 JWPUB',{id:book.id,size:blob.size});
+    logDiag('info','导出原始 JWPUB',{id:book.id,size:blob.size,innerZip:!!src.innerZip});
   }catch(err){say(t('导出失败'),err.message||String(err));logDiag('error','导出原始 JWPUB 失败',{id:book.id,message:err.message||String(err)})}
 }
 function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();const t=setTimeout(()=>URL.revokeObjectURL(u),600000);try{if(t&&t.unref)t.unref()}catch(e){}}

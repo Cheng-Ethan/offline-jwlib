@@ -849,10 +849,13 @@ async function getBookSource(id){
 async function saveBookSource(id,source){
   if(!id||!source)return null;
   const manifestBytes=source.manifestBytes instanceof Blob?new Uint8Array(await source.manifestBytes.arrayBuffer()):source.manifestBytes;
-  const dbBlob=source.db instanceof Blob?source.db:new Blob([source.dbBytes||source.db||new Uint8Array(0)]);
+  const innerZipBlob=source.innerZip instanceof Blob?source.innerZip:source.innerZip?new Blob([source.innerZip]):null;
+  const dbBlob=source.db instanceof Blob?source.db:(source.dbBytes||source.db)?new Blob([source.dbBytes||source.db]):null;
   const files=(source.files||[]).map(f=>({name:f.name,blob:f.blob instanceof Blob?f.blob:new Blob([f.blob])}));
-  const size=Number(source.size||0)||dbBlob.size+files.reduce((n,f)=>n+Number(f.blob&&f.blob.size||0),0)+Number(manifestBytes&&manifestBytes.byteLength||0);
-  const rec={id,name:source.name||`${id}.jwpub`,size,dbName:source.dbName||'publication.db',db:dbBlob,manifestBytes,files,outerFiles:source.outerFiles||[],importedAt:source.importedAt||Date.now()};
+  const payloadSize=innerZipBlob?innerZipBlob.size:(dbBlob?dbBlob.size:0)+files.reduce((n,f)=>n+Number(f.blob&&f.blob.size||0),0);
+  const size=Number(source.size||0)||payloadSize+Number(manifestBytes&&manifestBytes.byteLength||0);
+  const rec={id,name:source.name||`${id}.jwpub`,size,dbName:source.dbName||'publication.db',innerZip:innerZipBlob,manifestBytes,outerFiles:source.outerFiles||[],importedAt:source.importedAt||Date.now()};
+  if(!innerZipBlob){if(dbBlob)rec.db=dbBlob;rec.files=files}
   const db=await openSourceDB();
   await new Promise((res,rej)=>{
     const t=db.transaction('sources','readwrite');

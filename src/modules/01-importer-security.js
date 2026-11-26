@@ -72,9 +72,9 @@ async function parseJwpub(file,onProgress,opts){
   if(!manifestFile)throw new Error('找不到 manifest.json；这可能不是标准 PUB 文件。');
   const manifestBytes=await manifestFile.async('uint8array');
   const manifest=JSON.parse(new TextDecoder('utf-8').decode(manifestBytes));
-  let inner=outer;
+  let inner=outer,sourceInnerBytes=null;
   const contents=outer.file('contents');
-  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b)inner=await JSZip.loadAsync(data);}
+  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b){inner=await JSZip.loadAsync(data);if(captureSource)sourceInnerBytes=data}}
   const innerNames=Object.keys(inner.files);
   if(innerNames.length>JWPUB_MAX_INNER_FILES)throw new Error(`压缩包内文件过多（${innerNames.length} 个），已停止导入以保护浏览器内存。`);
   onProgress('正在定位 SQLite 数据库…');
@@ -506,6 +506,7 @@ async function parseJwpub(file,onProgress,opts){
       size:Number((file&&file.size)||(file&&file.length)||0)||sourceDbBytes.length,
       dbName,
       dbBytes:sourceDbBytes,
+      innerZip:sourceInnerBytes,
       manifestBytes,
       files:sourceFiles,
       outerFiles,
@@ -525,24 +526,27 @@ async function readJwpubSource(file){
   if(!manifestFile)throw new Error('找不到 manifest.json；这可能不是标准 PUB 文件。');
   const manifestBytes=await manifestFile.async('uint8array');
   let manifest={};try{manifest=JSON.parse(new TextDecoder('utf-8').decode(manifestBytes))}catch(e){}
-  let inner=outer;
+  let inner=outer,sourceInnerBytes=null;
   const contents=outer.file('contents');
-  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b)inner=await JSZip.loadAsync(data);}
+  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b){inner=await JSZip.loadAsync(data);sourceInnerBytes=data}}
   const preferred=manifest.publication&&manifest.publication.fileName;
   let dbEntry=preferred?inner.file(preferred):null;
   if(!dbEntry){for(const [name,entry] of Object.entries(inner.files)){if(!entry.dir&&/\.(db|sqlite|sqlite3)$/i.test(name)){dbEntry=entry;break}}}
   if(!dbEntry)throw new Error('压缩包中没有找到数据库文件。');
   const dbName=dbEntry.name||preferred||'publication.db';
+  const outerFiles=[];
+  for(const [name,entry] of Object.entries(outer.files)){
+    if(entry.dir||name==='manifest.json'||name==='contents')continue;
+    try{outerFiles.push({name,blob:await entry.async('blob')})}catch(e){}
+  }
+  // Prefer the original inner ZIP: exporting it unchanged removes any doubt
+  // about SQLite/asset compression or entry order in the rebuilt archive.
+  if(sourceInnerBytes)return {name:(file&&file.name)||'publication.jwpub',size:u8.length,dbName,innerZip:sourceInnerBytes,manifestBytes,outerFiles,importedAt:Date.now()};
   const dbBytes=await dbEntry.async('uint8array');
   const files=[];
   for(const [name,entry] of Object.entries(inner.files)){
     if(entry.dir||name===dbName||entry===dbEntry)continue;
     try{files.push({name,blob:await entry.async('blob')})}catch(e){}
-  }
-  const outerFiles=[];
-  for(const [name,entry] of Object.entries(outer.files)){
-    if(entry.dir||name==='manifest.json'||name==='contents')continue;
-    try{outerFiles.push({name,blob:await entry.async('blob')})}catch(e){}
   }
   return {name:(file&&file.name)||'publication.jwpub',size:u8.length,dbName,dbBytes,manifestBytes,files,outerFiles,importedAt:Date.now()};
 }

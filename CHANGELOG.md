@@ -3,7 +3,7 @@
 > 当前版本以 `project.json` 为准：**1.0.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
 
 ## 未发布（2.0.0 开发）
-- 新增可选「保留原始包以便分享」：开启后，导入的 PUB 会额外保存原始 SQLite、内层文件和 manifest，用于以后导出 JWPUB。
+- 新增可选「保留原始包以便分享」：开启后，导入的 PUB 会额外保存原始内层包和 manifest，用于以后导出 JWPUB。
 - 出版物卡片新增「分享 / 导出…」：可导出原始 JWPUB；已导入的书可通过「关联原始 PUB 文件…」补存原始包。
 - 原始包保存在独立数据库 `OfflineJwLibrarySources`；主库仍为 v5，测试 2.0 后 1.0.0 仍能打开现有图书馆。
 
