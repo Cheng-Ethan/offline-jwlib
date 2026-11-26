@@ -51,7 +51,7 @@ node build.mjs
 | `appVersion` | `1.0.0` | 当前版本，写入 HTML meta 与运行时 `APP_VERSION` |
 | `moduleApiVersion` | `1` | 模块 API 版本校验 |
 | `indexedDbName` | `OfflineJwLibrary` | 升级时尽量不变 |
-| `indexedDbVersion` | `5` | 数据库版本 |
+| `indexedDbVersion` | `6` | 数据库版本 |
 | `backupFormat` | `offline-library-library-v1` | 完整备份格式标识 |
 | `notesBackupFormat` | `offline-library-notes-v1` | 笔记备份格式标识 |
 | `modules.order` | `00` → `05` | 拼接顺序不可随意调整 |

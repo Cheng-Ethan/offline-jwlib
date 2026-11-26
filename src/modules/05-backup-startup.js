@@ -291,6 +291,40 @@ $('backupInput').onchange=async e=>{
     logDiag('info','恢复备份',{format:restoreFormat,books:bookCount,notes:notes.length,tags:tags.length,highlights:highlights.length});
   }catch(err){say('恢复失败',err.message||String(err));logDiag('error','恢复备份失败',{message:err.message||String(err),format:restoreFormat})}finally{e.target.value=''}
 };
+async function shareOrDownload(blob,name){
+  try{
+    if(typeof File==='function'&&navigator.canShare&&navigator.share){
+      const file=new File([blob],name,{type:'application/octet-stream'});
+      if(navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return}
+    }
+  }catch(e){if(e&&e.name==='AbortError')return}
+  download(blob,name);
+}
+function exportBookFileName(book){
+  const base=String(book.displayTitle||book.title||book.originalFilename||'publication').replace(/\.(jwpub|pub)$/i,'').replace(/[\\/:*?"<>|]+/g,'_').trim()||'publication';
+  return base+'.jwpub';
+}
+async function exportBookJwpub(book){
+  try{
+    const src=await getBookSource(book.id);
+    if(!src){say(t('导出失败'),t('没有保存原始包。请重新导入或关联原始 PUB 文件。'));return}
+    say(t('正在生成 JWPUB'),t('正在打包…'),true);await tick();
+    const dbBytes=new Uint8Array(await src.db.arrayBuffer());
+    const inner=new JSZip();
+    inner.file(src.dbName||'publication.db',dbBytes);
+    for(const f of src.files||[])inner.file(f.name,f.blob);
+    const innerBytes=await inner.generateAsync({type:'uint8array',compression:'DEFLATE'});
+    const outer=new JSZip();
+    outer.file('manifest.json',src.manifestBytes);
+    outer.file('contents',innerBytes);
+    for(const f of src.outerFiles||[])outer.file(f.name,f.blob);
+    const blob=await outer.generateAsync({type:'blob',compression:'DEFLATE'});
+    const name=exportBookFileName(book);
+    await shareOrDownload(blob,name);
+    try{$('modal').style.display='none'}catch(e){}
+    logDiag('info','导出原始 JWPUB',{id:book.id,size:blob.size});
+  }catch(err){say(t('导出失败'),err.message||String(err));logDiag('error','导出原始 JWPUB 失败',{id:book.id,message:err.message||String(err)})}
+}
 function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();const t=setTimeout(()=>URL.revokeObjectURL(u),600000);try{if(t&&t.unref)t.unref()}catch(e){}}
 const APP_UPDATE_NOTES=[
   '1.0 · 统一阅读器题头/栏目位置恢复/相关链接浮窗/笔记标记/每日经文分页',

@@ -50,7 +50,7 @@ applyI18n()
 
 ### 4.1 Store
 
-`openDB()` 创建 12 个 object store：
+`openDB()` 创建 13 个 object store：
 
 | Store | 用途 |
 |---|---|
@@ -58,7 +58,8 @@ applyI18n()
 | `bookMeta` | 书籍元数据（含 generation） |
 | `bookDocs` | 文档正文 |
 | `bookAssets` | 图片/字体/资源 |
-| `bookAux` | 原始 SQLite、辅助数据、导入报告 |
+| `bookAux` | 辅助数据、导入报告 |
+| `bookSources` | 可选保存的原始 SQLite、内层文件和 manifest，用于导出 JWPUB |
 | `notes` | 笔记 |
 | `bookmarks` | 书签 |
 | `history` | 阅读历史 |

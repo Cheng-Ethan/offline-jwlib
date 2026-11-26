@@ -51,7 +51,7 @@ Key `project.json` fields:
 | `appVersion` | `1.0.0` | Current version; HTML meta and runtime `APP_VERSION` |
 | `moduleApiVersion` | `1` | Module API version check |
 | `indexedDbName` | `OfflineJwLibrary` | Keep stable across upgrades |
-| `indexedDbVersion` | `5` | Database version |
+| `indexedDbVersion` | `6` | Database version |
 | `backupFormat` | `offline-library-library-v1` | Full-backup format id |
 | `notesBackupFormat` | `offline-library-notes-v1` | Notes-backup format id |
 | `modules.order` | `00` → `05` | Concatenation order; do not reorder casually |

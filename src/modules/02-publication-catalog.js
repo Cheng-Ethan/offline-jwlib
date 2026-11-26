@@ -174,8 +174,35 @@ function openBookActions(book,anchor){
   const add=(label,fn,cls,icon)=>{const b=document.createElement('button');b.className='book-action '+(cls||'');b.innerHTML=svgIcon(icon||'right',18)+'<span></span>';b.lastChild.textContent=label;b.onclick=e=>{e.stopPropagation();closeBookActions();fn()};menu.appendChild(b)};
   add(book.favorite?t('取消收藏'):t('收藏该出版物'),async()=>{const meta=await getBookMeta(book.id);if(!meta)return;meta.favorite=!meta.favorite;await saveBookMeta(meta);renderSection()},'',book.favorite?'starOn':'star');
   add(t('移动分类'),()=>openCategoryPicker(book,anchor),'','folder');
+  add(t('分享 / 导出…'),()=>openShareMenu(book,anchor),'','download');
   add(t('删除'),async()=>{if(!(await askConfirm(t('删除'),`确定删除《${book.displayTitle||book.title}》及其关联笔记、书签和阅读记录吗？`)))return;await deletePublication(book);renderSection()},'delete','trash');
   document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
+}
+function openShareMenu(book,anchor){
+  closeBookActions();
+  const menu=document.createElement('div');menu.id='bookActionMenu';menu.className='book-action-menu';
+  const add=(label,fn,icon)=>{const b=document.createElement('button');b.className='book-action';b.innerHTML=svgIcon(icon||'right',18)+'<span></span>';b.lastChild.textContent=label;b.onclick=e=>{e.stopPropagation();closeBookActions();fn()};menu.appendChild(b)};
+  if(book.hasSource)add(t('导出原始 JWPUB'),()=>exportBookJwpub(book),'download');
+  add(book.hasSource?t('重新关联原始 PUB 文件…'):t('关联原始 PUB 文件…'),()=>linkBookSource(book),'upload');
+  add(t('返回'),()=>openBookActions(book,anchor),'left');
+  document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
+}
+function linkBookSource(book){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.jwpub,.pub,application/zip';input.style.display='none';
+  input.onchange=async()=>{
+    const f=input.files&&input.files[0];if(!f)return;
+    try{
+      if(book.hasSource&&!(await askConfirm(t('重新关联原始 PUB 文件'),t('这会替换已保存的原始包。继续？'))))return;
+      say(t('正在读取原始 PUB'),t('正在提取 SQLite 和内层文件…'),true);await tick();
+      const src=await readJwpubSource(f);
+      await saveBookSource(book.id,src);
+      try{$('modal').style.display='none'}catch(e){}
+      await renderBooks();
+      say(t('关联完成'),t('现在可以导出原始 JWPUB。'));
+    }catch(err){say(t('关联失败'),err.message||String(err))}
+  };
+  input.click();
 }
 async function openCategoryPicker(book,anchor){
   closeBookActions();await loadCustomCategories();
@@ -435,7 +462,7 @@ function formatDiagnostics(d){
   const lines=[];
   lines.push(`应用 ${d.appVersion} · 数据库 ${d.dbName} v${d.dbVersion}`);
   if(d.storage)lines.push(`存储：已用 ${fmtMb(d.storage.usage)} / 配额 ${fmtMb(d.storage.quota)}${d.storage.persisted?' · 已持久化':' · 未持久化'}`);
-  lines.push(`记录：元数据 ${d.counts.bookMeta} · 正文 ${d.counts.bookDocs} · 媒体 ${d.counts.bookAssets} · 辅助 ${d.counts.bookAux}`);
+  lines.push(`记录：元数据 ${d.counts.bookMeta} · 正文 ${d.counts.bookDocs} · 媒体 ${d.counts.bookAssets} · 辅助 ${d.counts.bookAux} · ${t('原始包')} ${d.counts.bookSources||0}`);
   lines.push(`迁移：${d.migration&&d.migration.done?'已完成':'未完成'}${d.migration&&d.migration.failed&&d.migration.failed.length?` · 失败 ${d.migration.failed.length}`:''}`);
   if(d.pinyin)lines.push(`拼音：开关 ${d.pinyin.enabled?'开':'关'} · 页面 ${d.pinyin.domRt} rt · 当前正文 ${d.pinyin.storedRt??'—'} rt · display ${d.pinyin.computedDisplay||'—'}`);
   lines.push('出版物：');
@@ -459,6 +486,7 @@ async function renderMoreDashboard(books){
   const uiLangRow=document.createElement('div');uiLangRow.className='toolbar';uiLangRow.style.margin='0';settings.appendChild(uiLangRow);
   Object.entries(UI_LANGS).forEach(([code,info])=>{const b=document.createElement('button');b.type='button';b.className='btn secondary'+(code===uiLang?' active':'');b.textContent=info.name;b.onclick=()=>setUiLang(code);uiLangRow.appendChild(b)});
   const categoryMgr=document.createElement('button');categoryMgr.className='btn secondary';categoryMgr.textContent=t('分类管理');categoryMgr.onclick=()=>showCategoryManager(categoryMgr);settings.appendChild(categoryMgr);
+  const keepSource=document.createElement('button');keepSource.className='btn secondary'+(keepSourceEnabled()?' active':'');keepSource.textContent=t('保留原始包以便分享');keepSource.setAttribute('aria-pressed',keepSourceEnabled()?'true':'false');keepSource.onclick=()=>{const on=!keepSourceEnabled();setKeepSource(on);keepSource.classList.toggle('active',on);keepSource.setAttribute('aria-pressed',on?'true':'false');say(t('保留原始包以便分享'),on?t('开启后，导入的 PUB 会额外保存原始 SQLite 和内层文件，便于以后导出 JWPUB。会占用更多空间。'):t('已关闭原始包保存；已保存的原始包不会被删除。'))};settings.appendChild(keepSource);
   const langPack=document.createElement('button');langPack.className='btn secondary';langPack.textContent=t('导入语言包');langPack.onclick=()=>{const f=$('languagePackInput');if(f)f.click()};settings.appendChild(langPack);
   const diagPanel=sectionPanel(t('系统诊断'),'');
   const diagBox=document.createElement('div');diagBox.className='status';diagBox.style.cssText='white-space:pre-wrap;font-size:12px;max-height:320px;overflow:auto;background:#f6f8f9;border:1px solid #e3e8ea;border-radius:8px;padding:10px;margin:8px 0';
@@ -1144,8 +1172,8 @@ function showSystemMenu(anchor,view){
 
 async function deletePublication(book){
  const [notes,marks,history]=await Promise.all([reqP(tx('notes').getAll()),reqP(tx('bookmarks').getAll()),reqP(tx('history').getAll())]);
- const stores=['books','bookMeta','bookAux','notes','bookmarks','history'];const t=idb.transaction(stores,'readwrite');
- t.objectStore('books').delete(book.id);t.objectStore('bookMeta').delete(book.id);t.objectStore('bookAux').delete(book.id);for(const n of notes)if(n.bookId===book.id)t.objectStore('notes').delete(n.id);
+ const stores=['books','bookMeta','bookAux','bookSources','notes','bookmarks','history'];const t=idb.transaction(stores,'readwrite');
+ t.objectStore('books').delete(book.id);t.objectStore('bookMeta').delete(book.id);t.objectStore('bookAux').delete(book.id);t.objectStore('bookSources').delete(book.id);for(const n of notes)if(n.bookId===book.id)t.objectStore('notes').delete(n.id);
  for(const m of marks)if(m.bookId===book.id)t.objectStore('bookmarks').delete(m.id);for(const h of history)if(h.bookId===book.id)t.objectStore('history').delete(h.id);
  await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error)});
  try{await deleteBookData(book.id)}catch(e){console.warn('删除正文/媒体记录失败',e)}

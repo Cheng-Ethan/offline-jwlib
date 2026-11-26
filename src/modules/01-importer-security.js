@@ -61,7 +61,8 @@ async function loadJwpubArchive(file){
   }
   throw new Error(`这不是有效的 PUB：${name} 的文件头是 ${zipMagicHex(u8)}，应为 50 4b 03 04。文件可能被保存成网页、文本，或下载未完成。`);
 }
-async function parseJwpub(file,onProgress){
+async function parseJwpub(file,onProgress,opts){
+  const captureSource=!!(opts&&opts.captureSource);
   if(!window.JSZip)throw new Error('内置 PUB 压缩包组件未能加载，请重新打开完整的单文件 HTML。');
   if(!window.initSqlJs)throw new Error('SQLite 组件未能加载，请重新打开完整的单文件 HTML。');
   onProgress('正在读取 PUB 压缩包…');
@@ -69,7 +70,8 @@ async function parseJwpub(file,onProgress){
   const outer=await loadJwpubArchive(file);
   const manifestFile=outer.file('manifest.json');
   if(!manifestFile)throw new Error('找不到 manifest.json；这可能不是标准 PUB 文件。');
-  const manifest=JSON.parse(await manifestFile.async('string'));
+  const manifestBytes=await manifestFile.async('uint8array');
+  const manifest=JSON.parse(new TextDecoder('utf-8').decode(manifestBytes));
   let inner=outer;
   const contents=outer.file('contents');
   if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b)inner=await JSZip.loadAsync(data);}
@@ -81,7 +83,9 @@ async function parseJwpub(file,onProgress){
   if(preferred&&inner.file(preferred))dbEntry=inner.file(preferred);
   if(!dbEntry){for(const [name,entry] of Object.entries(inner.files)){if(!entry.dir&&/\.(db|sqlite|sqlite3)$/i.test(name)){dbEntry=entry;break}}}
   if(!dbEntry)throw new Error('压缩包中没有找到数据库文件。');
+  const dbName=dbEntry.name||preferred||'publication.db';
   let dbBytes=await dbEntry.async('uint8array');
+  const sourceDbBytes=captureSource?dbBytes:null;
   SQL=SQL||await initSqlJs();
   const db=new SQL.Database(dbBytes);
   dbBytes=null;
@@ -467,8 +471,25 @@ async function parseJwpub(file,onProgress){
     }
   }
   db.close();
-  const assets=[];
-  for(const [name,entry] of Object.entries(inner.files)){if(entry.dir||entry===dbEntry)continue;const lower=name.toLowerCase();if(/\.(jpg|jpeg|png|gif|webp|svg|pdf|woff2?|ttf|otf)$/i.test(lower)){try{assets.push({name,blob:await entry.async('blob')})}catch(e){}}}
+  const assets=[],sourceFiles=[];
+  for(const [name,entry] of Object.entries(inner.files)){
+    if(entry.dir||name===dbName||entry===dbEntry)continue;
+    const lower=name.toLowerCase();
+    const isMedia=/\.(jpg|jpeg|png|gif|webp|svg|pdf|woff2?|ttf|otf)$/i.test(lower);
+    if(!captureSource&&!isMedia)continue;
+    try{
+      const blob=await entry.async('blob');
+      if(isMedia)assets.push({name,blob});
+      if(captureSource)sourceFiles.push({name,blob});
+    }catch(e){}
+  }
+  const outerFiles=[];
+  if(captureSource){
+    for(const [name,entry] of Object.entries(outer.files)){
+      if(entry.dir||name==='manifest.json'||name==='contents')continue;
+      try{outerFiles.push({name,blob:await entry.async('blob')})}catch(e){}
+    }
+  }
   importReport.totalDocs=totalDocRows;
   importReport.totalAssets=assets.length;
   importReport.ms=Date.now()-importReport.startedAt;
@@ -478,7 +499,52 @@ async function parseJwpub(file,onProgress){
     logDiag('info','PUB 解析完成',{id:idFor(pub),docs:docs.length,assets:assets.length,ms:importReport.ms,modes:importReport.decodeModes});
   }
   pub.bibleData=bibleData;pub.databaseInfo=databaseInfo;pub.categoryPath=classifyPublication(pub);
-  return {...pub,id:idFor(pub),manifestName:manifest.name||file.name,originalFilename:file.name,commentaries,datedTexts,docs:docs.map(d=>{const {rawHtml,...meta}=d;return {...meta,html:rawHtml??d.html}}),toc,assets,bibleData,extracts,databaseInfo,importReport,importedAt:Date.now(),lastDocId:docs[0].id};
+  const result={...pub,id:idFor(pub),manifestName:manifest.name||file.name,originalFilename:file.name,commentaries,datedTexts,docs:docs.map(d=>{const {rawHtml,...meta}=d;return {...meta,html:rawHtml??d.html}}),toc,assets,bibleData,extracts,databaseInfo,importReport,importedAt:Date.now(),lastDocId:docs[0].id};
+  if(captureSource){
+    Object.defineProperty(result,'source',{value:{
+      name:(file&&file.name)||'publication.jwpub',
+      size:Number((file&&file.size)||(file&&file.length)||0)||sourceDbBytes.length,
+      dbName,
+      dbBytes:sourceDbBytes,
+      manifestBytes,
+      files:sourceFiles,
+      outerFiles,
+      importedAt:Date.now()
+    },enumerable:false,configurable:true});
+  }
+  return result;
+}
+// Read only the bytes needed to rebuild a JWPUB. This is used by the
+// "link original PUB" action so an existing parsed book can gain a shareable
+// source without a full decrypt/re-import pass.
+async function readJwpubSource(file){
+  if(!window.JSZip)throw new Error('内置 PUB 压缩包组件未能加载，请重新打开完整的单文件 HTML。');
+  const u8=await fileToBytes(file);
+  const outer=await loadJwpubArchive(u8);
+  const manifestFile=outer.file('manifest.json');
+  if(!manifestFile)throw new Error('找不到 manifest.json；这可能不是标准 PUB 文件。');
+  const manifestBytes=await manifestFile.async('uint8array');
+  let manifest={};try{manifest=JSON.parse(new TextDecoder('utf-8').decode(manifestBytes))}catch(e){}
+  let inner=outer;
+  const contents=outer.file('contents');
+  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b)inner=await JSZip.loadAsync(data);}
+  const preferred=manifest.publication&&manifest.publication.fileName;
+  let dbEntry=preferred?inner.file(preferred):null;
+  if(!dbEntry){for(const [name,entry] of Object.entries(inner.files)){if(!entry.dir&&/\.(db|sqlite|sqlite3)$/i.test(name)){dbEntry=entry;break}}}
+  if(!dbEntry)throw new Error('压缩包中没有找到数据库文件。');
+  const dbName=dbEntry.name||preferred||'publication.db';
+  const dbBytes=await dbEntry.async('uint8array');
+  const files=[];
+  for(const [name,entry] of Object.entries(inner.files)){
+    if(entry.dir||name===dbName||entry===dbEntry)continue;
+    try{files.push({name,blob:await entry.async('blob')})}catch(e){}
+  }
+  const outerFiles=[];
+  for(const [name,entry] of Object.entries(outer.files)){
+    if(entry.dir||name==='manifest.json'||name==='contents')continue;
+    try{outerFiles.push({name,blob:await entry.async('blob')})}catch(e){}
+  }
+  return {name:(file&&file.name)||'publication.jwpub',size:u8.length,dbName,dbBytes,manifestBytes,files,outerFiles,importedAt:Date.now()};
 }
 const CATEGORY_META={
   bible:{icon:'book',desc:'圣经译本和参考圣经'},books:{icon:'books',desc:'完整书籍和学习书籍'},

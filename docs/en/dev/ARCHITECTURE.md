@@ -50,7 +50,7 @@ Failure shows "local storage unavailable". DB name/version come from `project.js
 
 ### 4.1 Stores
 
-`openDB()` creates 12 object stores:
+`openDB()` creates 13 object stores:
 
 | Store | Purpose |
 |---|---|
@@ -58,7 +58,8 @@ Failure shows "local storage unavailable". DB name/version come from `project.js
 | `bookMeta` | Book metadata including generation |
 | `bookDocs` | Document bodies |
 | `bookAssets` | Images/fonts/assets |
-| `bookAux` | Raw SQLite, auxiliary data, import reports |
+| `bookAux` | Auxiliary data and import reports |
+| `bookSources` | Optional original SQLite, inner files and manifest for JWPUB export |
 | `notes` | Notes |
 | `bookmarks` | Bookmarks |
 | `history` | Reading history |

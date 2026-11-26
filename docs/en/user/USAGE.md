@@ -59,10 +59,18 @@ The Daily Text reader stays minimal: no bottom action bar; paging is labelled pr
 
 In **More → Backup & restore**:
 
-- **Backup library** → `offline-library-library-v1.json`: all publications, raw SQLite, assets, notes, tags, highlights, bookmarks, history and categories.
+- **Backup library** → `offline-library-library-v1.json`: all publications, assets, notes, tags, highlights, bookmarks, history and categories.
 - **Backup notes** → `offline-library-notes-v1.json`: notes, tags and highlights only.
 
 A confirmation appears above roughly 150 MB. The actual file is larger than the estimate because of Base64 encoding.
+
+### Share the original JWPUB
+
+1. Open **More → Settings & diagnostics** and enable **Keep original package for sharing**.
+2. New imports then keep the original SQLite and inner files as well.
+3. On a publication card choose **More → Share / export… → Export original JWPUB**.
+
+Existing books can use **Link original PUB file…** to add the package. Books imported before the setting was enabled, without linking the original file, have no original package. The package uses extra space; the current full backup does not include it.
 
 ### Restore
 

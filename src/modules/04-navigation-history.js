@@ -24,7 +24,7 @@ async function importFiles(files,opts={}){
  say(t('正在导入'),`0 / ${files.length}`);
  for(let i=0;i<files.length;i++){
   const f=files[i];let b=null;try{$('importBtn').textContent=`${t('正在导入')} ${i+1}/${files.length}…`;try{if($('modal').style.display==='flex')$('modalText').textContent=`${i+1}/${files.length}：${f.name}`}catch(e){}
-   b=await parseJwpub(f,msg=>{$('importBtn').textContent=`${i+1}/${files.length}：${msg}`;try{if($('modal').style.display==='flex')$('modalText').textContent=`${i+1}/${files.length}：${msg}`}catch(e){}});
+   b=await parseJwpub(f,msg=>{$('importBtn').textContent=`${i+1}/${files.length}：${msg}`;try{if($('modal').style.display==='flex')$('modalText').textContent=`${i+1}/${files.length}：${msg}`}catch(e){}},{captureSource:keepSourceEnabled()});
    b.originalFilename=f.name;
    const old=await getBookMeta(b.id)||await reqP(tx('books').get(b.id));
    if(old&&!overwriteNames.has(f.name)&&!(await askConfirm(t('导入 PUB'),`《${b.displayTitle||b.title}》已经导入。是否用这个文件覆盖正文和图片？笔记、标签、划线、书签和阅读历史会保留。`))){
@@ -34,6 +34,10 @@ async function importFiles(files,opts={}){
      const msg=String(saveErr&&(saveErr.name||saveErr.message)||saveErr);
      if(/quota/i.test(msg)){await new Promise(r=>setTimeout(r,1800));await saveBook(b)}
      else throw saveErr;
+   }
+   if(b.source&&keepSourceEnabled()){
+     try{await saveBookSource(b.id,b.source);logDiag('info','保存原始包',{id:b.id,size:b.source.size})}
+     catch(srcErr){logDiag('warn','保存原始包失败',{id:b.id,message:srcErr.message||String(srcErr)})}
    }
    ok.push(`${b.displayTitle||b.title}（${f.name}）`);logDiag('info','导入成功',{file:f.name,id:b.id,docs:b.docs?.length,assets:b.assets?.length,report:b.importReport});
   }catch(err){console.error(err);bad.push(`${f.name}：${err.message||String(err)}`);logDiag('error','导入失败',{file:f.name,message:err.message||String(err),stack:err&&err.stack})}
