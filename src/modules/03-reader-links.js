@@ -2239,8 +2239,13 @@ async function showBibleVerseRefs(el){
       fillers.push({idx,refs});
     }
   }
-  const verseRefs=(ctx.data.crossRefs||{})[ctx.key]||[];
-  if(verseRefs.length){const idx=sections.length;sections.push({label:t('整节经文')+' '+t('相关经文'),html:`<div data-verse-ref="${idx}"><p class="xref-empty">${t('正在读取…')}</p></div>`});fillers.push({idx,refs:verseRefs});}
+  // A citation row carries both its source verse and its margin block, so the
+  // margin markers above already list every reference of this verse. Only add
+  // verse-level references that no marker covered, never a duplicate block.
+  const refKey=x=>`${x.b}:${x.c}:${x.v}-${Number(x.ec)||x.c}:${Number(x.e)||x.v}`;
+  const shownRefs=new Set();fillers.forEach(f=>f.refs.forEach(x=>shownRefs.add(refKey(x))));
+  const verseRefs=((ctx.data.crossRefs||{})[ctx.key]||[]).filter(x=>!shownRefs.has(refKey(x)));
+  if(verseRefs.length){const idx=sections.length;sections.push({label:t('相关经文'),html:`<div data-verse-ref="${idx}"><p class="xref-empty">${t('正在读取…')}</p></div>`});fillers.push({idx,refs:verseRefs});}
   // Links written directly in this verse: Bible references and cited articles.
   for(const a of [...region.querySelectorAll('a[data-jwlink]')].slice(0,12)){
     if(a.closest('.m[data-mid],.fn'))continue;

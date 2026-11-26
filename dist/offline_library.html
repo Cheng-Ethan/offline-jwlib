@@ -282,7 +282,6 @@ html.pinyin-on.pinyin-fallback ruby rt{display:inline!important;font-size:.62em;
 .hl-note-mark{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border:0;background:transparent;color:#6f858e;font-size:var(--text-2xs);line-height:1;padding:0;margin-left:1px;vertical-align:super;cursor:pointer;opacity:.75}.hl-note-mark svg{display:block}
 .hl-note-mark:hover,.hl-note-mark:active{opacity:1;color:var(--green)}
 #article textarea,#article input[type="text"]{width:100%!important;max-width:100%!important;min-height:38px;height:38px;box-sizing:border-box;display:block;margin:10px 0;padding:8px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2);color:var(--ink);font:inherit;line-height:1.4;resize:vertical;outline:none}
-#article textarea{padding:4px 10px;line-height:1.35}
 #article textarea:focus,#article input[type="text"]:focus{border-color:#b9d3dd;background:#fff;box-shadow:0 0 0 2px #e4f0f4}
 #article .gen-field,#article .gen-field textarea,#article .gen-field input[type="text"]{width:100%!important;max-width:100%!important;box-sizing:border-box}
 
@@ -568,7 +567,6 @@ body.daily-reader .bottom-tools{display:none!important}
   .iconbtn,.book-more,.section-help-btn,.note-more,.study-add-note,.study-add-tag button{min-width:44px;min-height:44px}
   .context-actions .ctx-action{width:44px;height:44px}
 }
-.context-actions .ctx-color-toggle{width:51px}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
@@ -6403,8 +6401,13 @@ async function showBibleVerseRefs(el){
       fillers.push({idx,refs});
     }
   }
-  const verseRefs=(ctx.data.crossRefs||{})[ctx.key]||[];
-  if(verseRefs.length){const idx=sections.length;sections.push({label:t('整节经文')+' '+t('相关经文'),html:`<div data-verse-ref="${idx}"><p class="xref-empty">${t('正在读取…')}</p></div>`});fillers.push({idx,refs:verseRefs});}
+  // A citation row carries both its source verse and its margin block, so the
+  // margin markers above already list every reference of this verse. Only add
+  // verse-level references that no marker covered, never a duplicate block.
+  const refKey=x=>`${x.b}:${x.c}:${x.v}-${Number(x.ec)||x.c}:${Number(x.e)||x.v}`;
+  const shownRefs=new Set();fillers.forEach(f=>f.refs.forEach(x=>shownRefs.add(refKey(x))));
+  const verseRefs=((ctx.data.crossRefs||{})[ctx.key]||[]).filter(x=>!shownRefs.has(refKey(x)));
+  if(verseRefs.length){const idx=sections.length;sections.push({label:t('相关经文'),html:`<div data-verse-ref="${idx}"><p class="xref-empty">${t('正在读取…')}</p></div>`});fillers.push({idx,refs:verseRefs});}
   // Links written directly in this verse: Bible references and cited articles.
   for(const a of [...region.querySelectorAll('a[data-jwlink]')].slice(0,12)){
     if(a.closest('.m[data-mid],.fn'))continue;
