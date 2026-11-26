@@ -2141,7 +2141,7 @@ async function countBookSources(){
 // Experimental 2.0 read path: open the stored original JWPUB, query SQLite on
 // demand and decrypt one document. Parsed data remains the fallback.
 const sourceDbCache=new Map(),sourceDocCache=new Map();
-const SOURCE_DB_CACHE_MAX=2,SOURCE_DOC_CACHE_MAX=24;
+const SOURCE_DB_CACHE_MAX=1,SOURCE_DOC_CACHE_MAX=8;
 function sourceReadEnabled(){try{return localStorage.getItem('offlineLibrarySourceRead')==='1'}catch(e){return false}}
 function setSourceRead(on){try{localStorage.setItem('offlineLibrarySourceRead',on?'1':'0')}catch(e){}}
 function sourcePubMeta(db){
