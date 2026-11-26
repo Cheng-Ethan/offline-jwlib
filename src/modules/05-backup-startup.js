@@ -291,28 +291,46 @@ $('backupInput').onchange=async e=>{
     logDiag('info','恢复备份',{format:restoreFormat,books:bookCount,notes:notes.length,tags:tags.length,highlights:highlights.length});
   }catch(err){say('恢复失败',err.message||String(err));logDiag('error','恢复备份失败',{message:err.message||String(err),format:restoreFormat})}finally{e.target.value=''}
 };
-async function shareOrDownload(blob,name){
+async function shareFile(blob,name){
+  if(!(typeof File==='function'&&navigator.canShare&&navigator.share))return 'unsupported';
   try{
-    if(typeof File==='function'&&navigator.canShare&&navigator.share){
-      const file=new File([blob],name,{type:'application/octet-stream'});
-      if(navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return}
-    }
-  }catch(e){if(e&&e.name==='AbortError')return}
-  download(blob,name);
+    const file=new File([blob],name,{type:'application/x-jwpub'});
+    if(!navigator.canShare({files:[file]}))return 'unsupported';
+    await navigator.share({files:[file],title:name});
+    return 'shared';
+  }catch(e){
+    if(e&&e.name==='AbortError')return 'shared';
+    return 'failed';
+  }
 }
-function exportBookFileName(book){
-  const base=String(book.displayTitle||book.title||book.originalFilename||'publication').replace(/\.(jwpub|pub)$/i,'').replace(/[\\/:*?"<>|]+/g,'_').trim()||'publication';
+function exportBookFileName(book,src,mode){
+  const original=String((src&&src.name)||book.originalFilename||book.manifestName||'').trim();
+  const readable=String(book.displayTitle||book.title||'').trim();
+  let base=mode==='readable'?(readable||original):(original||readable);
+  base=base.replace(/\.(jwpub|pub)$/i,'').replace(/[\\/:*?"<>|\x00-\x1f]+/g,'_').trim()||'publication';
   return base+'.jwpub';
 }
-async function exportBookJwpub(book){
+async function deliverExport(blob,name,book,exact){
+  const result=await shareFile(blob,name);
+  if(result==='unsupported'){
+    download(blob,name);
+    logDiag('info','保存原始 JWPUB',{id:book.id,size:blob.size,name,exact:!!exact});
+    return;
+  }
+  if(result==='failed'){
+    say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'));
+    return;
+  }
+  logDiag('info','分享原始 JWPUB',{id:book.id,size:blob.size,name,exact:!!exact});
+}
+async function exportBookJwpub(book,mode='original'){
   try{
     const src=await getBookSource(book.id);
     if(!src){say(t('导出失败'),t('没有保存原始包。请重新导入原 PUB。'));return}
+    const name=exportBookFileName(book,src,mode);
     if(src.jwpub){
       const exact=src.jwpub instanceof Blob?src.jwpub:new Blob([src.jwpub]);
-      const name=exportBookFileName(book);
-      await shareOrDownload(exact,name);
-      logDiag('info','导出原始 JWPUB',{id:book.id,size:exact.size,exact:true});
+      await deliverExport(exact,name,book,true);
       return;
     }
     say(t('正在生成 JWPUB'),t('正在打包…'),true);await tick();
@@ -331,10 +349,8 @@ async function exportBookJwpub(book){
     outer.file('contents',contentsBlob);
     for(const f of src.outerFiles||[])outer.file(f.name,f.blob);
     const blob=await outer.generateAsync({type:'blob',compression:'DEFLATE'});
-    const name=exportBookFileName(book);
-    await shareOrDownload(blob,name);
     try{$('modal').style.display='none'}catch(e){}
-    logDiag('info','导出原始 JWPUB',{id:book.id,size:blob.size,innerZip:!!src.innerZip});
+    await deliverExport(blob,name,book,false);
   }catch(err){say(t('导出失败'),err.message||String(err));logDiag('error','导出原始 JWPUB 失败',{id:book.id,message:err.message||String(err)})}
 }
 function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();const t=setTimeout(()=>URL.revokeObjectURL(u),600000);try{if(t&&t.unref)t.unref()}catch(e){}}

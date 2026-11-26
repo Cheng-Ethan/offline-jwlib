@@ -68,7 +68,9 @@ A confirmation appears above roughly 150 MB. The actual file is larger than the 
 
 1. **More → Settings & diagnostics → Keep original package for sharing** is on by default; you can turn it off.
 2. New imports then keep a complete copy of the original file inside the app; the external `.jwpub` file can be deleted after import.
-3. On a publication card choose **More → Share / export… → Export original JWPUB**; the exported file is byte-for-byte identical to the imported JWPUB.
+3. On a publication card choose **More → Share / export… → Export / share original JWPUB…** and pick **original filename** or **readable name**. The exported file is byte-for-byte identical to the imported JWPUB.
+
+On mobile the system share sheet opens first. If JW Library is not listed, choose **Save to Files**, then share/open it to JW Library from the Files app. Desktop browsers save to Downloads.
 
 Books imported before this feature lack the package; the share menu asks for one re-import. The original file can be deleted again afterwards. The package uses extra space; the current full backup does not include it.
 

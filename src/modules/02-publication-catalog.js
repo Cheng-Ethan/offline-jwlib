@@ -182,9 +182,18 @@ function openShareMenu(book,anchor){
   closeBookActions();
   const menu=document.createElement('div');menu.id='bookActionMenu';menu.className='book-action-menu';
   const add=(label,fn,icon)=>{const b=document.createElement('button');b.className='book-action';b.innerHTML=svgIcon(icon||'right',18)+'<span></span>';b.lastChild.textContent=label;b.onclick=e=>{e.stopPropagation();closeBookActions();fn()};menu.appendChild(b)};
-  if(book.hasSource)add(t('导出原始 JWPUB'),()=>exportBookJwpub(book),'download');
+  if(book.hasSource)add(t('导出 / 分享原始 JWPUB…'),()=>openExportMenu(book,anchor),'download');
   else add(t('重新导入以启用分享…'),()=>promptReimportForShare(book),'upload');
   add(t('返回'),()=>openBookActions(book,anchor),'left');
+  document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
+}
+function openExportMenu(book,anchor){
+  closeBookActions();
+  const menu=document.createElement('div');menu.id='bookActionMenu';menu.className='book-action-menu';
+  const add=(label,fn,icon)=>{const b=document.createElement('button');b.className='book-action';b.innerHTML=svgIcon(icon||'right',18)+'<span></span>';b.lastChild.textContent=label;b.onclick=e=>{e.stopPropagation();closeBookActions();fn()};menu.appendChild(b)};
+  add(t('分享 / 保存（原文件名）'),()=>exportBookJwpub(book,'original'),'share');
+  add(t('分享 / 保存（易读名称）'),()=>exportBookJwpub(book,'readable'),'share');
+  add(t('返回'),()=>openShareMenu(book,anchor),'left');
   document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
 }
 function promptReimportForShare(book){

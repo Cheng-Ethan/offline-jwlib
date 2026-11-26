@@ -252,6 +252,9 @@ Object.assign(I18N.ko,{"分享 / 导出…":"공유 / 내보내기…","导出�
 Object.assign(I18N.en,{"重新导入以启用分享…":"Re-import to enable sharing…","重新导入以启用分享":"Re-import to enable sharing","这本书缺少分享所需的原始包。请选择原 PUB 重新导入；导入后原文件可以删除。":"This book has no original package for sharing. Choose the original PUB to re-import; the original file can be deleted afterwards.","选择文件":"Choose file","导入后会保留原始包以便以后分享，可在设置中关闭。":"Imports will keep the original package for later sharing; you can turn this off in Settings."});
 Object.assign(I18N.ja,{"重新导入以启用分享…":"共有を有効にするため再インポート…","重新导入以启用分享":"共有を有効にするため再インポート","这本书缺少分享所需的原始包。请选择原 PUB 重新导入；导入后原文件可以删除。":"この本には共有用の元パッケージがありません。元のPUBを選択して再インポートしてください。インポート後、元ファイルは削除できます。","选择文件":"ファイルを選択","导入后会保留原始包以便以后分享，可在设置中关闭。":"インポート時に共有用の元パッケージを保持します。設定でオフにできます。"});
 Object.assign(I18N.ko,{"重新导入以启用分享…":"공유를 위해 다시 가져오기…","重新导入以启用分享":"공유를 위해 다시 가져오기","这本书缺少分享所需的原始包。请选择原 PUB 重新导入；导入后原文件可以删除。":"이 책에는 공유용 원본 패키지가 없습니다. 원본 PUB를 선택해 다시 가져오십시오. 가져온 후 원본 파일은 삭제할 수 있습니다.","选择文件":"파일 선택","导入后会保留原始包以便以后分享，可在设置中关闭。":"가져올 때 공유용 원본 패키지를 보관합니다. 설정에서 끌 수 있습니다."});
+Object.assign(I18N.en,{"导出 / 分享原始 JWPUB…":"Export / share original JWPUB…","分享 / 保存（原文件名）":"Share / save (original filename)","分享 / 保存（易读名称）":"Share / save (readable name)","无法直接分享":"Cannot share directly","当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。":"This container cannot share files. Save with a desktop browser or share from the Files app."});
+Object.assign(I18N.ja,{"导出 / 分享原始 JWPUB…":"元のJWPUBを書き出す / 共有…","分享 / 保存（原文件名）":"共有 / 保存（元のファイル名）","分享 / 保存（易读名称）":"共有 / 保存（読みやすい名前）","无法直接分享":"直接共有できません","当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。":"このコンテナはファイルを共有できません。デスクトップのブラウザで保存するか、ファイルAppから共有してください。"});
+Object.assign(I18N.ko,{"导出 / 分享原始 JWPUB…":"원본 JWPUB 내보내기 / 공유…","分享 / 保存（原文件名）":"공유 / 저장 (원본 파일 이름)","分享 / 保存（易读名称）":"공유 / 저장 (읽기 쉬운 이름)","无法直接分享":"직접 공유할 수 없음","当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。":"이 컨테이너는 파일을 공유할 수 없습니다. 데스크톱 브라우저에서 저장하거나 파일 앱에서 공유하십시오."});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
@@ -276,6 +279,7 @@ const UI_ICONS={
   help:'<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.9.7c0 1.7-2.5 2-2.5 3.7"/><path d="M12 17.2h.01"/>',
   download:'<path d="M12 3.5v11M7.5 10.5 12 15l4.5-4.5"/><path d="M4.5 18.5h15"/>',
   upload:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4.5 18.5h15"/>',
+  share:'<circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="m8.2 10.8 7.6-4.6M8.2 13.2l7.6 4.6"/>',
   settings:'<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M18 6l-1.4 1.4M7.4 16.6 6 18"/>',
   check:'<path d="m5 12.5 4.5 4.5L19 7"/>',
   language:'<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.4 3.8 5.3 3.8 8.5S14.5 18.1 12 20.5c-2.5-2.4-3.8-5.3-3.8-8.5S9.5 5.9 12 3.5z"/>',
