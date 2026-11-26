@@ -63,7 +63,7 @@ async function openImportDialog(files){
   body.append(name,status);row.append(cb,body);list.appendChild(row);
  });
  let newCount=0;files.forEach(f=>{if(!existing.has(f.name))newCount++});
- $('importDialogHint').textContent=(newCount?t('未导入的文件默认勾选；'):'')+`${t('已导入')} ${files.length-newCount} ${t('本')}，`+t('默认不勾选；如需覆盖重新解析，请勾选对应文件。');
+ $('importDialogHint').textContent=(keepSourceEnabled()?t('导入后会保留原始包以便以后分享，可在设置中关闭。')+' ':'')+(newCount?t('未导入的文件默认勾选；'):'')+`${t('已导入')} ${files.length-newCount} ${t('本')}，`+t('默认不勾选；如需覆盖重新解析，请勾选对应文件。');
  rememberPanelFocus($('importDialog'));$('importDialog').style.display='flex';
  setTimeout(()=>{const cb=$('importFileList')&&$('importFileList').querySelector('input');focusSafely(cb||$('importDialogClose'))},0);
 }

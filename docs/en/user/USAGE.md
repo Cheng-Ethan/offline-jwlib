@@ -66,11 +66,11 @@ A confirmation appears above roughly 150 MB. The actual file is larger than the 
 
 ### Share the original JWPUB
 
-1. Open **More → Settings & diagnostics** and enable **Keep original package for sharing**.
-2. New imports then keep the original inner package and manifest as well.
+1. **More → Settings & diagnostics → Keep original package for sharing** is on by default; you can turn it off.
+2. New imports then keep the original inner package and manifest as well; the original `.jwpub` file can be deleted after import.
 3. On a publication card choose **More → Share / export… → Export original JWPUB**.
 
-Existing books can use **Link original PUB file…** to add the package. Books imported before the setting was enabled, without linking the original file, have no original package. The package uses extra space; the current full backup does not include it.
+Books imported before this feature lack the package; the share menu asks for one re-import. The original file can be deleted again afterwards. The package uses extra space; the current full backup does not include it.
 
 ### Restore
 

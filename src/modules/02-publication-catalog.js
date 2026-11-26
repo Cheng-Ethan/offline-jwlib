@@ -183,26 +183,14 @@ function openShareMenu(book,anchor){
   const menu=document.createElement('div');menu.id='bookActionMenu';menu.className='book-action-menu';
   const add=(label,fn,icon)=>{const b=document.createElement('button');b.className='book-action';b.innerHTML=svgIcon(icon||'right',18)+'<span></span>';b.lastChild.textContent=label;b.onclick=e=>{e.stopPropagation();closeBookActions();fn()};menu.appendChild(b)};
   if(book.hasSource)add(t('导出原始 JWPUB'),()=>exportBookJwpub(book),'download');
-  add(book.hasSource?t('重新关联原始 PUB 文件…'):t('关联原始 PUB 文件…'),()=>linkBookSource(book),'upload');
+  else add(t('重新导入以启用分享…'),()=>promptReimportForShare(book),'upload');
   add(t('返回'),()=>openBookActions(book,anchor),'left');
   document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
 }
-function linkBookSource(book){
-  const input=document.createElement('input');
-  input.type='file';input.accept='.jwpub,.pub,application/zip';input.style.display='none';
-  input.onchange=async()=>{
-    const f=input.files&&input.files[0];if(!f)return;
-    try{
-      if(book.hasSource&&!(await askConfirm(t('重新关联原始 PUB 文件'),t('这会替换已保存的原始包。继续？'))))return;
-      say(t('正在读取原始 PUB'),t('正在提取 SQLite 和内层文件…'),true);await tick();
-      const src=await readJwpubSource(f);
-      await saveBookSource(book.id,src);
-      try{$('modal').style.display='none'}catch(e){}
-      await renderBooks();
-      say(t('关联完成'),t('现在可以导出原始 JWPUB。'));
-    }catch(err){say(t('关联失败'),err.message||String(err))}
-  };
-  input.click();
+function promptReimportForShare(book){
+  // Keep this inside the original click gesture so iOS/Sitecase can open the
+  // file picker; the import dialog explains the one-time re-import.
+  try{$('fileInput').click()}catch(e){}
 }
 async function openCategoryPicker(book,anchor){
   closeBookActions();await loadCustomCategories();
@@ -486,7 +474,7 @@ async function renderMoreDashboard(books){
   const uiLangRow=document.createElement('div');uiLangRow.className='toolbar';uiLangRow.style.margin='0';settings.appendChild(uiLangRow);
   Object.entries(UI_LANGS).forEach(([code,info])=>{const b=document.createElement('button');b.type='button';b.className='btn secondary'+(code===uiLang?' active':'');b.textContent=info.name;b.onclick=()=>setUiLang(code);uiLangRow.appendChild(b)});
   const categoryMgr=document.createElement('button');categoryMgr.className='btn secondary';categoryMgr.textContent=t('分类管理');categoryMgr.onclick=()=>showCategoryManager(categoryMgr);settings.appendChild(categoryMgr);
-  const keepSource=document.createElement('button');keepSource.className='btn secondary'+(keepSourceEnabled()?' active':'');keepSource.textContent=t('保留原始包以便分享');keepSource.setAttribute('aria-pressed',keepSourceEnabled()?'true':'false');keepSource.onclick=()=>{const on=!keepSourceEnabled();setKeepSource(on);keepSource.classList.toggle('active',on);keepSource.setAttribute('aria-pressed',on?'true':'false');say(t('保留原始包以便分享'),on?t('开启后，导入的 PUB 会额外保存原始 SQLite 和内层文件，便于以后导出 JWPUB。会占用更多空间。'):t('已关闭原始包保存；已保存的原始包不会被删除。'))};settings.appendChild(keepSource);
+  const keepSource=document.createElement('button');keepSource.className='btn secondary'+(keepSourceEnabled()?' active':'');keepSource.textContent=t('保留原始包以便分享');keepSource.setAttribute('aria-pressed',keepSourceEnabled()?'true':'false');keepSource.onclick=()=>{const on=!keepSourceEnabled();setKeepSource(on);keepSource.classList.toggle('active',on);keepSource.setAttribute('aria-pressed',on?'true':'false');say(t('保留原始包以便分享'),on?t('开启后，导入的 PUB 会额外保存原始内层包和 manifest，便于以后导出 JWPUB。会占用更多空间。'):t('已关闭原始包保存；已保存的原始包不会被删除。'))};settings.appendChild(keepSource);
   const langPack=document.createElement('button');langPack.className='btn secondary';langPack.textContent=t('导入语言包');langPack.onclick=()=>{const f=$('languagePackInput');if(f)f.click()};settings.appendChild(langPack);
   const diagPanel=sectionPanel(t('系统诊断'),'');
   const diagBox=document.createElement('div');diagBox.className='status';diagBox.style.cssText='white-space:pre-wrap;font-size:12px;max-height:320px;overflow:auto;background:#f6f8f9;border:1px solid #e3e8ea;border-radius:8px;padding:10px;margin:8px 0';

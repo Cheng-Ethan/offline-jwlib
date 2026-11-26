@@ -515,41 +515,6 @@ async function parseJwpub(file,onProgress,opts){
   }
   return result;
 }
-// Read only the bytes needed to rebuild a JWPUB. This is used by the
-// "link original PUB" action so an existing parsed book can gain a shareable
-// source without a full decrypt/re-import pass.
-async function readJwpubSource(file){
-  if(!window.JSZip)throw new Error('内置 PUB 压缩包组件未能加载，请重新打开完整的单文件 HTML。');
-  const u8=await fileToBytes(file);
-  const outer=await loadJwpubArchive(u8);
-  const manifestFile=outer.file('manifest.json');
-  if(!manifestFile)throw new Error('找不到 manifest.json；这可能不是标准 PUB 文件。');
-  const manifestBytes=await manifestFile.async('uint8array');
-  let manifest={};try{manifest=JSON.parse(new TextDecoder('utf-8').decode(manifestBytes))}catch(e){}
-  let inner=outer,sourceInnerBytes=null;
-  const contents=outer.file('contents');
-  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b){inner=await JSZip.loadAsync(data);sourceInnerBytes=data}}
-  const preferred=manifest.publication&&manifest.publication.fileName;
-  let dbEntry=preferred?inner.file(preferred):null;
-  if(!dbEntry){for(const [name,entry] of Object.entries(inner.files)){if(!entry.dir&&/\.(db|sqlite|sqlite3)$/i.test(name)){dbEntry=entry;break}}}
-  if(!dbEntry)throw new Error('压缩包中没有找到数据库文件。');
-  const dbName=dbEntry.name||preferred||'publication.db';
-  const outerFiles=[];
-  for(const [name,entry] of Object.entries(outer.files)){
-    if(entry.dir||name==='manifest.json'||name==='contents')continue;
-    try{outerFiles.push({name,blob:await entry.async('blob')})}catch(e){}
-  }
-  // Prefer the original inner ZIP: exporting it unchanged removes any doubt
-  // about SQLite/asset compression or entry order in the rebuilt archive.
-  if(sourceInnerBytes)return {name:(file&&file.name)||'publication.jwpub',size:u8.length,dbName,innerZip:sourceInnerBytes,manifestBytes,outerFiles,importedAt:Date.now()};
-  const dbBytes=await dbEntry.async('uint8array');
-  const files=[];
-  for(const [name,entry] of Object.entries(inner.files)){
-    if(entry.dir||name===dbName||entry===dbEntry)continue;
-    try{files.push({name,blob:await entry.async('blob')})}catch(e){}
-  }
-  return {name:(file&&file.name)||'publication.jwpub',size:u8.length,dbName,dbBytes,manifestBytes,files,outerFiles,importedAt:Date.now()};
-}
 const CATEGORY_META={
   bible:{icon:'book',desc:'圣经译本和参考圣经'},books:{icon:'books',desc:'完整书籍和学习书籍'},
   magazines:{icon:'magazine',desc:'守望台、警醒！及其他期刊'},
