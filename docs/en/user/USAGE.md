@@ -67,8 +67,8 @@ A confirmation appears above roughly 150 MB. The actual file is larger than the 
 ### Share the original JWPUB
 
 1. **More → Settings & diagnostics → Keep original package for sharing** is on by default; you can turn it off.
-2. New imports then keep the original inner package and manifest as well; the original `.jwpub` file can be deleted after import.
-3. On a publication card choose **More → Share / export… → Export original JWPUB**.
+2. New imports then keep a complete copy of the original file inside the app; the external `.jwpub` file can be deleted after import.
+3. On a publication card choose **More → Share / export… → Export original JWPUB**; the exported file is byte-for-byte identical to the imported JWPUB.
 
 Books imported before this feature lack the package; the share menu asks for one re-import. The original file can be deleted again afterwards. The package uses extra space; the current full backup does not include it.
 

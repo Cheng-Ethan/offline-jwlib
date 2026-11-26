@@ -308,6 +308,13 @@ async function exportBookJwpub(book){
   try{
     const src=await getBookSource(book.id);
     if(!src){say(t('导出失败'),t('没有保存原始包。请重新导入原 PUB。'));return}
+    if(src.jwpub){
+      const exact=src.jwpub instanceof Blob?src.jwpub:new Blob([src.jwpub]);
+      const name=exportBookFileName(book);
+      await shareOrDownload(exact,name);
+      logDiag('info','导出原始 JWPUB',{id:book.id,size:exact.size,exact:true});
+      return;
+    }
     say(t('正在生成 JWPUB'),t('正在打包…'),true);await tick();
     let contentsBlob=src.innerZip||null;
     if(contentsBlob&&!(contentsBlob instanceof Blob))contentsBlob=new Blob([contentsBlob]);

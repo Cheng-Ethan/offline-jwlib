@@ -72,9 +72,9 @@ async function parseJwpub(file,onProgress,opts){
   if(!manifestFile)throw new Error('找不到 manifest.json；这可能不是标准 PUB 文件。');
   const manifestBytes=await manifestFile.async('uint8array');
   const manifest=JSON.parse(new TextDecoder('utf-8').decode(manifestBytes));
-  let inner=outer,sourceInnerBytes=null;
+  let inner=outer;
   const contents=outer.file('contents');
-  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b){inner=await JSZip.loadAsync(data);if(captureSource)sourceInnerBytes=data}}
+  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b)inner=await JSZip.loadAsync(data);}
   const innerNames=Object.keys(inner.files);
   if(innerNames.length>JWPUB_MAX_INNER_FILES)throw new Error(`压缩包内文件过多（${innerNames.length} 个），已停止导入以保护浏览器内存。`);
   onProgress('正在定位 SQLite 数据库…');
@@ -83,9 +83,7 @@ async function parseJwpub(file,onProgress,opts){
   if(preferred&&inner.file(preferred))dbEntry=inner.file(preferred);
   if(!dbEntry){for(const [name,entry] of Object.entries(inner.files)){if(!entry.dir&&/\.(db|sqlite|sqlite3)$/i.test(name)){dbEntry=entry;break}}}
   if(!dbEntry)throw new Error('压缩包中没有找到数据库文件。');
-  const dbName=dbEntry.name||preferred||'publication.db';
   let dbBytes=await dbEntry.async('uint8array');
-  const sourceDbBytes=captureSource?dbBytes:null;
   SQL=SQL||await initSqlJs();
   const db=new SQL.Database(dbBytes);
   dbBytes=null;
@@ -471,23 +469,12 @@ async function parseJwpub(file,onProgress,opts){
     }
   }
   db.close();
-  const assets=[],sourceFiles=[];
+  const assets=[];
   for(const [name,entry] of Object.entries(inner.files)){
-    if(entry.dir||name===dbName||entry===dbEntry)continue;
+    if(entry.dir||entry===dbEntry)continue;
     const lower=name.toLowerCase();
-    const isMedia=/\.(jpg|jpeg|png|gif|webp|svg|pdf|woff2?|ttf|otf)$/i.test(lower);
-    if(!captureSource&&!isMedia)continue;
-    try{
-      const blob=await entry.async('blob');
-      if(isMedia)assets.push({name,blob});
-      if(captureSource)sourceFiles.push({name,blob});
-    }catch(e){}
-  }
-  const outerFiles=[];
-  if(captureSource){
-    for(const [name,entry] of Object.entries(outer.files)){
-      if(entry.dir||name==='manifest.json'||name==='contents')continue;
-      try{outerFiles.push({name,blob:await entry.async('blob')})}catch(e){}
+    if(/\.(jpg|jpeg|png|gif|webp|svg|pdf|woff2?|ttf|otf)$/i.test(lower)){
+      try{assets.push({name,blob:await entry.async('blob')})}catch(e){}
     }
   }
   importReport.totalDocs=totalDocRows;
@@ -501,15 +488,13 @@ async function parseJwpub(file,onProgress,opts){
   pub.bibleData=bibleData;pub.databaseInfo=databaseInfo;pub.categoryPath=classifyPublication(pub);
   const result={...pub,id:idFor(pub),manifestName:manifest.name||file.name,originalFilename:file.name,commentaries,datedTexts,docs:docs.map(d=>{const {rawHtml,...meta}=d;return {...meta,html:rawHtml??d.html}}),toc,assets,bibleData,extracts,databaseInfo,importReport,importedAt:Date.now(),lastDocId:docs[0].id};
   if(captureSource){
+    const sourceFile=file instanceof Blob?file:null;
+    const sourceBytes=file instanceof Uint8Array?file:(file instanceof ArrayBuffer?new Uint8Array(file):null);
     Object.defineProperty(result,'source',{value:{
       name:(file&&file.name)||'publication.jwpub',
-      size:Number((file&&file.size)||(file&&file.length)||0)||sourceDbBytes.length,
-      dbName,
-      dbBytes:sourceDbBytes,
-      innerZip:sourceInnerBytes,
-      manifestBytes,
-      files:sourceFiles,
-      outerFiles,
+      size:Number((file&&file.size)||(file&&file.length)||0),
+      file:sourceFile,
+      bytes:sourceBytes,
       importedAt:Date.now()
     },enumerable:false,configurable:true});
   }
