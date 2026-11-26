@@ -6,7 +6,7 @@ This is a quick reference for people. **Agents and automation must use [`AGENTS.
 
 ## Current baseline
 
-- Version: **0.14.0** (initial baseline 0.13.0)
+- Version: **1.0.0** (initial baseline 0.13.0)
 - Development branch: `develop`
 - Release branch: `master` (published periodically by the user; agents do not push it)
 - `main`: upstream import reference, not used for new work

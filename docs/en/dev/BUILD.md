@@ -48,7 +48,7 @@ Key `project.json` fields:
 
 | Field | Current value | Meaning |
 |---|---|---|
-| `appVersion` | `0.14.0` | Current version; HTML meta and runtime `APP_VERSION` |
+| `appVersion` | `1.0.0` | Current version; HTML meta and runtime `APP_VERSION` |
 | `moduleApiVersion` | `1` | Module API version check |
 | `indexedDbName` | `OfflineJwLibrary` | Keep stable across upgrades |
 | `indexedDbVersion` | `5` | Database version |

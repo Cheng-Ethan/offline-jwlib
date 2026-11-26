@@ -4,7 +4,7 @@
 
 ## 1. Versioning
 
-Use `major.minor.patch` (currently `0.14.0`):
+Use `major.minor.patch` (currently `1.0.0`):
 
 - `patch`: fixes, docs, build scripts;
 - `minor`: new features, extension points, backward-compatible backup fields;

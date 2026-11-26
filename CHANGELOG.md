@@ -1,8 +1,9 @@
 # 更新记录 / Changelog
 
-> 当前版本以 `project.json` 为准：**0.14.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
+> 当前版本以 `project.json` 为准：**1.0.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
 
-## 未发布（0.14.0 之后）
+## 1.0.0（2026-11-26）
+- **稳定基线**：把当前阅读器与界面改动收束为 1.0.0；后续 2.0.0 将评估 SQLite 源存储重构。
 - **统一阅读器界面**：题头只保留返回、两行标题（出版物名 + 当前章节/文章）和三个点菜单；目录、搜索、上一节/下一节、书签、笔记、语言版本、拼音、字号全部收纳到该菜单，移除底部操作栏。
 - 每个栏目的当前文章、返回历史和精确段落位置持久化到本机数据库；重新打开 HTML 或导入出版物后继续原栏目、原段落。
 - 相关链接浮窗以链接名称为题头，点击即可直达目标文章段落并计入当前栏目返回历史；浮窗内的警告置于最上层并带关闭按钮，关闭警告不影响主浮窗。
@@ -71,9 +72,9 @@
 
 ## English summary
 
-The current version is defined by `project.json`: **0.14.0**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
+The current version is defined by `project.json`: **1.0.0**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
 
-- **Unreleased** — unified reader header (back, two-line publication/chapter title, three-dot menu) with table of contents, search, paging, bookmark, notes, language version, pronunciation and font size inside the menu; per-tab article, back history and exact paragraph position persisted across reloads and imports; navigable link-preview titles that open the target paragraph and join the tab history; warnings above link popovers with their own close button; footnotes and cross-references with resolved text in paragraph/verse info; pencil note markers; clear blue block highlight for the active verse/paragraph and one merged outline per highlighted line; a four-disc colour button with yellow front and green, blue and pink arcs layered behind it, opening four large colour discs; fuller 1:1 information, note and copy icons; previous/next-day labels for the daily text. Answer fields in publications are one line tall by default and grow as more text is typed.
+- **1.0.0** — stable baseline for the current reader and UI work; the later 2.0.0 line will evaluate the SQLite-source storage refactor. Unified reader header (back, two-line publication/chapter title, three-dot menu) with table of contents, search, paging, bookmark, notes, language version, pronunciation and font size inside the menu; per-tab article, back history and exact paragraph position persisted across reloads and imports; navigable link-preview titles that open the target paragraph and join the tab history; warnings above link popovers with their own close button; footnotes and cross-references with resolved text in paragraph/verse info; pencil note markers; clear blue block highlight for the active verse/paragraph and one merged outline per highlighted line; a four-disc colour button with yellow front and green, blue and pink arcs layered behind it, opening four large colour discs; fuller 1:1 information, note and copy icons; previous/next-day labels for the daily text. Answer fields in publications are one line tall by default and grow as more text is typed.
 - **0.14.0** — UI consistency pass: shared type/radius/shadow/semantic-colour tokens; one linear SVG icon set; four-item More menu with nested backup and settings views; in-app help; one highlight-colour control; restored chapter-notes entry; pager states and arrow-key paging; in-app translatable confirmations; focus management, Escape handling, 44px touch targets and reduced-motion support.
 - **0.13.0** — baseline version (earlier upstream history collapsed; this docs restructure does not bump it; see [AGENTS.md](AGENTS.md)); full-text search for Bible/publications, recent searches, return-to-results; bilingual open-source documentation split into user/dev trees; MIT licence, contributing guide, security policy, code of conduct and third-party notices.
 - **0.12.0** — Bible concordance, verse info, single-verse copy and verse notes.

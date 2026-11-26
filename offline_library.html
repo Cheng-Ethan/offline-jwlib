@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f7f5f0">
-<meta name="offline-library-version" content="0.14.0">
+<meta name="offline-library-version" content="1.0.0">
 <title>我的私人图书馆</title>
 <style>
 :root{
@@ -1240,7 +1240,7 @@ else if (typeof exports === 'object'){
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const APP_VERSION='0.14.0';
+const APP_VERSION='1.0.0';
 const DB_NAME='OfflineJwLibrary', DB_VERSION=5;
 let idb, SQL, currentBook=null, currentIndex=0, fontSize=19, currentObjectUrls=[], bibleMode=false, bibleReturn=null;
 let assetUrlCache=new Map(), pronunciationOn=false, historyWriteAt=0, readerReturnSection=null, readerNavSection=null, readerOriginSection=null, readerReturnTarget=null, readerSessionTab=null;
@@ -7201,6 +7201,7 @@ $('backupInput').onchange=async e=>{
 };
 function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();const t=setTimeout(()=>URL.revokeObjectURL(u),600000);try{if(t&&t.unref)t.unref()}catch(e){}}
 const APP_UPDATE_NOTES=[
+  '1.0 · 统一阅读器题头/栏目位置恢复/相关链接浮窗/笔记标记/每日经文分页',
   '0.14 · 界面一致性/统一图标与菜单/使用说明/无障碍',
   '0.13 · 圣经/出版物全文搜索/最近搜索/搜索结果返回',
   '0.12 · 圣经串珠/经文信息/单节复制/经文笔记',
