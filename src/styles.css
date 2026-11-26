@@ -274,6 +274,7 @@ html.pinyin-on.pinyin-fallback ruby rt{display:inline!important;font-size:.62em;
 .hl-note-mark{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border:0;background:transparent;color:#6f858e;font-size:var(--text-2xs);line-height:1;padding:0;margin-left:1px;vertical-align:super;cursor:pointer;opacity:.75}.hl-note-mark svg{display:block}
 .hl-note-mark:hover,.hl-note-mark:active{opacity:1;color:var(--green)}
 #article textarea,#article input[type="text"]{width:100%!important;max-width:100%!important;min-height:38px;height:38px;box-sizing:border-box;display:block;margin:10px 0;padding:8px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2);color:var(--ink);font:inherit;line-height:1.4;resize:vertical;outline:none}
+#article textarea{padding:4px 10px;line-height:1.35}
 #article textarea:focus,#article input[type="text"]:focus{border-color:#b9d3dd;background:#fff;box-shadow:0 0 0 2px #e4f0f4}
 #article .gen-field,#article .gen-field textarea,#article .gen-field input[type="text"]{width:100%!important;max-width:100%!important;box-sizing:border-box}
 

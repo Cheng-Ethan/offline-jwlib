@@ -1432,10 +1432,16 @@ async function setupAnswerFields(bookId,docId){
     if(fieldBox)fieldBox.querySelectorAll('label').forEach(l=>{l.style.display='none'});
     const grow=()=>{
       if(el.tagName!=='TEXTAREA')return;
+      el.rows=1;
+      el.style.minHeight='0';
       el.style.height='auto';
-      const border=Math.max(0,(el.offsetHeight||0)-(el.clientHeight||0));
-      el.style.height=Math.max(38,Number(el.scrollHeight||0)+border)+'px';
-      el.style.minHeight='38px';
+      const cs=getComputedStyle(el);
+      const border=(parseFloat(cs.borderTopWidth)||0)+(parseFloat(cs.borderBottomWidth)||0);
+      const line=(parseFloat(cs.lineHeight)||0)||(parseFloat(cs.fontSize)||16)*1.4;
+      const pad=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0);
+      const oneLine=Math.ceil(line+pad+border);
+      el.style.height=Math.max(oneLine,Math.ceil(Number(el.scrollHeight||0)+border))+'px';
+      el.style.minHeight=oneLine+'px';
       el.style.overflowY='hidden';
     };
     grow();requestAnimationFrame(grow);setTimeout(grow,300);

@@ -31,6 +31,7 @@ The Daily Text reader stays minimal: no bottom action bar; paging is labelled pr
 - Three-dot menu: table of contents, search, previous/next section (previous/next day for the Daily Text), bookmark, notes, language version, pronunciation and font size.
 - TOC: drawer on mobile; three-pane layout at ≥1100px (nav / TOC / article).
 - Tapping a verse or paragraph gives that verse/paragraph a clear blue block highlight; tap it again or tap beside it to clear it. Page margins and gaps between blocks do not select anything.
+- Answer boxes: fields such as “How would you answer?” start at a single line of height and only grow as you type.
 - The “information” button shows that verse/paragraph's footnotes, cross-references and cited articles, including reference labels and text; external links state that they are unavailable offline.
 - A link popover is titled with the link name. Clicking the title opens the target article at the referenced paragraph and records the jump in the current tab's back history, so back returns to the publication you came from.
 - If a link inside the popover needs the internet, the warning appears above every panel; its X closes only the warning and leaves the main popover open.
