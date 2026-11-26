@@ -647,9 +647,13 @@ async function openBibleChapterReader(bookId,bookNum,chapter,verse=0,origin=null
   if(!full)return false;
   const data=full.bibleData||{};
   let html='';
+  if(sourceReadEnabled()){
+    try{html=await sourceBibleChapterHtml(bookId,bookNum,chapter)}
+    catch(e){logDiag('warn','从原始包读取圣经章节失败',{bookId,bookNum,chapter,message:e&&e.message||String(e)})}
+  }
   const idx=data.chapterIndex?.[`${bookNum}:${chapter}`];
   const row=idx!==undefined?data.chapterRows?.[idx]:null;
-  if(row&&row.content){
+  if(!html&&row&&row.content){
     try{html=await decryptContent(bytes(row.content),{key:bytesHex(data.keyHex),iv:bytesHex(data.ivHex)});}
     catch(e){logDiag('warn','圣经章节解密失败',{bookId,bookNum,chapter,message:e&&e.message||String(e)});}
   }

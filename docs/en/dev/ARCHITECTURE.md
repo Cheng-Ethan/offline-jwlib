@@ -71,7 +71,7 @@ Failure shows "local storage unavailable". DB name/version come from `project.js
 
 ### 4.1b Experimental 2.0 read path
 
-When `sourceReadEnabled()` is on, `showDoc()` calls `sourceDocHtml()`: it opens the original JWPUB from `OfflineJwLibrarySources`, extracts the inner ZIP and SQLite, queries the current document by `DocumentId`, and decrypts it. On failure it falls back to parsed data in `bookDocs`. `sourceDbCache` / `sourceDocCache` are LRU caches; `closeSourceDbs()` releases them on `pagehide`.
+When `sourceReadEnabled()` is on, `showDoc()` calls `sourceDocHtml()`: it opens the original JWPUB from `OfflineJwLibrarySources`, extracts the inner ZIP and SQLite, queries the current document by `DocumentId`, and decrypts it. Bible chapters use `sourceBibleChapterHtml()` against `BibleChapter` / `BibleVerse`. On failure both fall back to parsed data in `bookDocs` / `bibleData`. `sourceDbCache` / `sourceDocCache` are LRU caches; `closeSourceDbs()` releases them on `pagehide`.
 
 ### 4.2 Metadata + split stores + generations
 

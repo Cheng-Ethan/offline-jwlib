@@ -973,6 +973,37 @@ async function sourceDocHtml(bookId,docId){
   while(sourceDocCache.size>SOURCE_DOC_CACHE_MAX)sourceDocCache.delete(sourceDocCache.keys().next().value);
   return decoded.html;
 }
+async function sourceBibleChapterHtml(bookId,bookNum,chapter){
+  const cacheKey=`bible:${bookId}:${bookNum}:${chapter}`;
+  if(sourceDocCache.has(cacheKey)){
+    const v=sourceDocCache.get(cacheKey);sourceDocCache.delete(cacheKey);sourceDocCache.set(cacheKey,v);return v;
+  }
+  const {db,ki}=await openBookSourceDb(bookId);
+  const chapterRow=rows(db,'BibleChapter').find(r=>Number(pick(r,['BookNumber'],0))===Number(bookNum)&&Number(pick(r,['ChapterNumber'],0))===Number(chapter));
+  let html='';
+  if(chapterRow){
+    const blob=bytes(pick(chapterRow,['Content'],null));
+    if(blob){try{html=(await decryptContentAny(blob,ki)).html}catch(e){}}
+    if(!html){
+      const first=Number(pick(chapterRow,['FirstVerseId'],0)),last=Number(pick(chapterRow,['LastVerseId'],0));
+      if(first&&last){
+        for(const v of rows(db,'BibleVerse')){
+          const id=Number(pick(v,['BibleVerseId','Id'],0));
+          if(id<first||id>last)continue;
+          const vb=bytes(pick(v,['Content'],null));if(!vb)continue;
+          try{
+            const text=(await decryptContentAny(vb,ki)).html;
+            const label=String(pick(v,['Label'],'')).replace(/<[^>]+>/g,' ').trim();
+            html+=`<div class="bible-verse" data-bible-verse="${id}"><sup>${safeText(label)}</sup> ${text}</div>`;
+          }catch(e){}
+        }
+      }
+    }
+  }
+  sourceDocCache.set(cacheKey,html);
+  while(sourceDocCache.size>SOURCE_DOC_CACHE_MAX)sourceDocCache.delete(sourceDocCache.keys().next().value);
+  return html;
+}
 function closeSourceDbs(){
   for(const e of sourceDbCache.values()){try{e.db.close()}catch(err){}}
   sourceDbCache.clear();sourceDocCache.clear();

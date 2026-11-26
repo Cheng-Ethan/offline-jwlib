@@ -73,7 +73,7 @@ applyI18n()
 
 ### 4.1b 2.0 实验读取路径
 
-`sourceReadEnabled()` 开启后，`showDoc()` 调用 `sourceDocHtml()`：从 `OfflineJwLibrarySources` 取出原始 JWPUB，解出内层 ZIP 和 SQLite，按 `DocumentId` 查询并解密当前文档；失败时回退到 `bookDocs` 的解析数据。`sourceDbCache` / `sourceDocCache` 做 LRU，`pagehide` 时 `closeSourceDbs()` 释放。
+`sourceReadEnabled()` 开启后，`showDoc()` 调用 `sourceDocHtml()`：从 `OfflineJwLibrarySources` 取出原始 JWPUB，解出内层 ZIP 和 SQLite，按 `DocumentId` 查询并解密当前文档；圣经章节由 `sourceBibleChapterHtml()` 查询 `BibleChapter` / `BibleVerse`；失败时回退到 `bookDocs` / `bibleData` 的解析数据。`sourceDbCache` / `sourceDocCache` 做 LRU，`pagehide` 时 `closeSourceDbs()` 释放。
 
 ### 4.2 元数据 + 分表 + generation
 
