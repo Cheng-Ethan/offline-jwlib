@@ -110,6 +110,7 @@ applyI18n()
 - 相关链接浮窗的题头可点击，通过 `openPublicationDocument()` 打开目标文章段落；`openDocInBook()` 会把当前文章压入当前栏目的返回历史。
 - 浮窗内的离线警告使用 `#modal`，层级高于链接浮窗；关闭警告不会触发浮窗的 outside-click 关闭。
 - 笔记边栏铅笔标记、选中经文/段落的整块高亮由 CSS 实现；点击已上色文字时 `showHighlightOutline()` 按视觉行合并为一个绝对定位圆角框。
+- 阅读器搜索范围由 `readerSearchScope` 控制：`publication` / `category` / `selected` / `all`。`searchScopeMetas()` 按 `categoryPath()` 和 `BOOK_CATEGORIES` 顺序排序后逐本遍历；`renderReaderSearchHits()` 按 `groupKey` 分组，每组默认显示 5 条，其余折叠。所选出版物 ID 保存在 `localStorage` 的 `offlineLibrarySearchSelectedBooks`。
 
 `cleanHtml()`（`00-core-db.js`）是正文进入 DOM 前的主要清洗器：
 

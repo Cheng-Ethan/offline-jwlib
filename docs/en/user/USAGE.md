@@ -35,7 +35,7 @@ The Daily Text reader stays minimal: no bottom action bar; paging is labelled pr
 - The “information” button shows that verse/paragraph's footnotes, cross-references and cited articles, including reference labels and text; external links state that they are unavailable offline.
 - A link popover is titled with the link name. Clicking the title opens the target article at the referenced paragraph and records the jump in the current tab's back history, so back returns to the publication you came from.
 - If a link inside the popover needs the internet, the warning appears above every panel; its X closes only the warning and leaves the main popover open.
-- Search within the current book, all publications or the Bible; recent searches and "return to results" are supported.
+- Choose a search scope (current publication, current category, selected publications or all publications). Results are grouped by publication, five per group by default with the rest expandable; recent searches and "return to results" are supported.
 - Internal links: `jwpub://p/` (publication), `jwpub://b/` (Bible) and `jwpub://c/` (commentary) resolve locally; unresolved links explain the reason and **never go online**.
 - External links show a "will not open online" notice.
 - Remote images/CSS are stripped when sanitising article HTML.

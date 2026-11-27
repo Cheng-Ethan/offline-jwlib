@@ -725,6 +725,14 @@ let readerSearchBook=null,readerSearchKind='publications',readerSearchTab='libra
 const bibleSearchCache=new Map();
 const publicationSearchCache=new Map();
 const READER_SEARCH_KEY='offlineLibraryRecentSearches';
+const READER_SEARCH_SELECTED_KEY='offlineLibrarySearchSelectedBooks';
+const READER_SEARCH_GROUP_LIMIT=5;
+const READER_SEARCH_BOOK_LIMIT=40;
+const READER_SEARCH_TOTAL_LIMIT=200;
+const PUBLICATION_SEARCH_CACHE_MAX=4;
+function loadReaderSearchSelected(){try{const v=JSON.parse(localStorage.getItem(READER_SEARCH_SELECTED_KEY)||'[]');return Array.isArray(v)?v.map(String):[]}catch(e){return[]}}
+function saveReaderSearchSelected(list){try{localStorage.setItem(READER_SEARCH_SELECTED_KEY,JSON.stringify(list))}catch(e){}}
+let readerSearchSelected=loadReaderSearchSelected();
 function hlRoot(){return $('article').querySelector('.publication-content')||$('article')}
 function hlBlocks(root){return [...(root||hlRoot()).querySelectorAll(HL_SELECTOR)].filter(el=>!el.closest('rt,rp,script,style'))}
 function hlBlockForNode(node){const el=node&&node.nodeType===1?node:node&&node.parentElement;return el&&el.closest?el.closest(HL_SELECTOR):null}
@@ -941,11 +949,112 @@ function renderReaderSearchRecent(){
   list.forEach(q=>{const b=document.createElement('button');b.type='button';b.className='reader-search-chip';b.textContent=q;b.onclick=()=>{const input=$('readerSearchInput');if(input)input.value=q;runReaderSearch(q,true)};chips.appendChild(b)});
   box.appendChild(chips);box.style.display='block';
 }
-function readerSearchScopeLabel(){
-  if(readerSearchKind==='bible'&&readerSearchBook){
-    return `${t('搜索范围')}：${t('圣经')} · ${readerSearchBook.displayTitle||readerSearchBook.title||''}`;
+function readerSearchScopeOptions(){
+  const out=[];
+  if(readerSearchKind==='publications'&&readerSearchBook&&!readerSearchBook.bibleData)out.push('publication');
+  if(categoryTrail.length)out.push('category');
+  out.push('selected','all');
+  return out;
+}
+function readerSearchScopeLabel(id){
+  if(id==='publication')return t('当前出版物');
+  if(id==='category')return categoryTrail.length?`${t('当前分类')} · ${catLabel(categoryTrail[categoryTrail.length-1])}`:t('当前分类');
+  if(id==='selected')return readerSearchSelected.length?`${t('所选出版物')} (${readerSearchSelected.length})`:t('所选出版物');
+  return t('全部出版物');
+}
+function renderReaderSearchScope(){
+  const box=$('readerSearchScope');if(!box)return;
+  box.innerHTML='';
+  if(readerSearchKind==='bible'){
+    const label=document.createElement('div');label.className='reader-search-scope-static';
+    label.textContent=`${t('搜索范围')}：${t('圣经')}${readerSearchBook?' · '+String(readerSearchBook.displayTitle||readerSearchBook.title||''):''}`;
+    box.appendChild(label);return;
   }
-  return `${t('搜索范围')}：${t('所有已导入出版物')}`;
+  const options=readerSearchScopeOptions();
+  if(!options.includes(readerSearchScope))readerSearchScope=options[0]||'all';
+  const row=document.createElement('div');row.className='reader-search-scope-chips';
+  for(const id of options){
+    const b=document.createElement('button');b.type='button';
+    b.className='reader-search-scope-chip'+(readerSearchScope===id?' active':'');
+    b.textContent=readerSearchScopeLabel(id);
+    b.setAttribute('aria-pressed',readerSearchScope===id?'true':'false');
+    b.onclick=()=>{
+      if(id==='selected'&&readerSearchScope!=='selected'){
+        readerSearchScope='selected';renderReaderSearchScope();openReaderSearchPicker();return;
+      }
+      if(id===readerSearchScope)return;
+      readerSearchScope=id;renderReaderSearchScope();
+      const q=$('readerSearchInput')?String($('readerSearchInput').value||'').trim():'';
+      if(q)runReaderSearch(q,false);
+    };
+    row.appendChild(b);
+  }
+  box.appendChild(row);
+  if(readerSearchScope==='selected'){
+    const hint=document.createElement('div');hint.className='reader-search-scope-hint';
+    if(!readerSearchSelected.length){
+      hint.textContent=t('还没有选择出版物。');
+    }else{
+      hint.textContent=`${t('已选择')} ${readerSearchSelected.length} ${t('本出版物')} `;
+    }
+    const edit=document.createElement('button');edit.type='button';edit.className='reader-search-scope-link';
+    edit.textContent=t('选择出版物…');edit.onclick=openReaderSearchPicker;hint.appendChild(edit);
+    box.appendChild(hint);
+  }
+}
+function publicationSearchRank(meta){
+  const path=categoryPath(meta),top=String(path[0]||'uncategorized');
+  const idx=BOOK_CATEGORIES.indexOf(top);
+  return String(idx<0?BOOK_CATEGORIES.length:idx).padStart(2,'0')+'|'+path.join('/')+'|'+String(meta.displayTitle||meta.title||meta.symbol||'');
+}
+function sortPublicationSearchOrder(list){
+  return list.slice().sort((a,b)=>publicationSearchRank(a).localeCompare(publicationSearchRank(b),'zh-Hans-CN'));
+}
+async function searchScopeMetas(){
+  const all=(await allBooks()).filter(m=>!m.hasBible);
+  let list;
+  if(readerSearchScope==='publication'&&readerSearchBook)list=all.filter(m=>String(m.id)===String(readerSearchBook.id));
+  else if(readerSearchScope==='category'&&categoryTrail.length)list=all.filter(m=>{const p=categoryPath(m);return categoryTrail.every((x,i)=>p[i]===x)});
+  else if(readerSearchScope==='selected'){
+    const set=new Set(readerSearchSelected.map(String));list=all.filter(m=>set.has(String(m.id)));
+  }else list=all;
+  return sortPublicationSearchOrder(list);
+}
+async function openReaderSearchPicker(){
+  const box=$('readerSearchResults');if(!box)return;
+  box.innerHTML='';
+  const metas=sortPublicationSearchOrder((await allBooks()).filter(m=>!m.hasBible));
+  const chosen=new Set(readerSearchSelected.map(String));
+  const wrap=document.createElement('div');wrap.className='reader-search-picker';
+  const head=document.createElement('div');head.className='reader-search-picker-head';
+  head.textContent=t('选择要搜索的出版物');
+  wrap.appendChild(head);
+  if(!metas.length){
+    const empty=document.createElement('div');empty.className='reader-search-status';empty.textContent=t('还没有导入出版物。');wrap.appendChild(empty);
+  }
+  for(const meta of metas){
+    const label=document.createElement('label');label.className='reader-search-picker-row';
+    const input=document.createElement('input');input.type='checkbox';input.checked=chosen.has(String(meta.id));
+    input.onchange=()=>{if(input.checked)chosen.add(String(meta.id));else chosen.delete(String(meta.id));count.textContent=`${t('已选择')} ${chosen.size} ${t('本出版物')}`};
+    const text=document.createElement('span');text.className='reader-search-picker-text';
+    const title=document.createElement('strong');title.textContent=String(meta.displayTitle||meta.title||meta.symbol||meta.id);
+    const sub=document.createElement('small');sub.textContent=catLabel(String(categoryPath(meta)[0]||'uncategorized'));
+    text.append(title,sub);label.append(input,text);wrap.appendChild(label);
+  }
+  const foot=document.createElement('div');foot.className='reader-search-picker-foot';
+  const count=document.createElement('span');count.className='reader-search-picker-count';count.textContent=`${t('已选择')} ${chosen.size} ${t('本出版物')}`;
+  const all=document.createElement('button');all.type='button';all.className='reader-search-scope-link';all.textContent=t('全选');all.onclick=()=>{for(const m of metas)chosen.add(String(m.id));wrap.querySelectorAll('input[type=checkbox]').forEach(x=>x.checked=true);count.textContent=`${t('已选择')} ${chosen.size} ${t('本出版物')}`};
+  const none=document.createElement('button');none.type='button';none.className='reader-search-scope-link';none.textContent=t('清空');none.onclick=()=>{chosen.clear();wrap.querySelectorAll('input[type=checkbox]').forEach(x=>x.checked=false);count.textContent=`${t('已选择')} 0 ${t('本出版物')}`};
+  const done=document.createElement('button');done.type='button';done.className='btn secondary reader-search-picker-done';done.textContent=t('完成');
+  done.onclick=()=>{
+    readerSearchSelected=[...chosen];
+    saveReaderSearchSelected(readerSearchSelected);
+    renderReaderSearchScope();
+    const q=$('readerSearchInput')?String($('readerSearchInput').value||'').trim():'';
+    if(q)runReaderSearch(q,false);else box.innerHTML='';
+  };
+  foot.append(count,all,none,done);wrap.appendChild(foot);
+  box.appendChild(wrap);
 }
 async function openReaderSearch(opts={}){
   const panel=$('readerSearchPanel');if(!panel)return;
@@ -965,7 +1074,9 @@ async function openReaderSearch(opts={}){
   readerSearchBook=book||null;
   readerSearchTab=tab;
   rememberPanelFocus(panel);panel.classList.add('show');
-  const scope=$('readerSearchScope');if(scope)scope.textContent=readerSearchScopeLabel();
+  const options=readerSearchScopeOptions();
+  if(!options.includes(readerSearchScope))readerSearchScope=options[0]||'all';
+  renderReaderSearchScope();
   const results=$('readerSearchResults');if(results)results.innerHTML='';
   const input=$('readerSearchInput');if(input)input.value='';
   renderReaderSearchRecent();
@@ -974,6 +1085,7 @@ async function openReaderSearch(opts={}){
 async function restoreReaderSearch(state){
   if(!state)return;
   await openReaderSearch({kind:state.kind,bookId:state.bookId,tab:state.tab});
+  if(state.scope&&readerSearchScopeOptions().includes(state.scope)){readerSearchScope=state.scope;renderReaderSearchScope()}
   const input=$('readerSearchInput');if(input)input.value=state.query||'';
   if(state.query)await runReaderSearch(state.query,false);
 }
@@ -982,7 +1094,7 @@ function closeReaderSearch(){
   const panel=$('readerSearchPanel');if(panel){panel.classList.remove('show');restorePanelFocus(panel)}
 }
 function prepareReaderSearchReturn(q){
-  readerSearchReturn={kind:readerSearchKind,query:String(q||''),tab:readerSearchTab,bookId:readerSearchBook&&readerSearchBook.id};
+  readerSearchReturn={kind:readerSearchKind,query:String(q||''),tab:readerSearchTab,bookId:readerSearchBook&&readerSearchBook.id,scope:readerSearchScope};
 }
 function readerSearchStatus(box,text){
   const d=document.createElement('div');d.className='reader-search-status';d.textContent=text;box.appendChild(d);return d;
@@ -996,16 +1108,49 @@ function readerSearchSnippet(text,q){
 function renderReaderSearchHits(q,hits,openResult){
   const box=$('readerSearchResults');if(!box)return;box.innerHTML='';
   if(!hits.length){readerSearchStatus(box,t('没有找到匹配结果'));return}
+  const groups=new Map();
   for(const hit of hits){
-    const b=document.createElement('button');b.type='button';b.className='reader-search-result';
-    const title=document.createElement('strong');title.textContent=hit.label;
-    const snippet=document.createElement('span');snippet.textContent=readerSearchSnippet(hit.text,q);
-    b.append(title,snippet);
-    b.onclick=async()=>{
-      rememberReaderSearch(q);prepareReaderSearchReturn(q);closeReaderSearch();
-      try{await openResult(hit)}catch(e){}
+    const key=hit.groupKey!==undefined?String(hit.groupKey):String(hit.bookId||'');
+    let group=groups.get(key);
+    if(!group){group={title:hit.groupTitle||hit.label||'',hits:[]};groups.set(key,group)}
+    group.hits.push(hit);
+  }
+  const summary=document.createElement('div');summary.className='reader-search-summary';
+  summary.textContent=`${t('共')} ${hits.length} ${t('条结果')} · ${groups.size} ${readerSearchKind==='bible'?t('章'):t('本出版物')}`;
+  box.appendChild(summary);
+  for(const group of groups.values()){
+    const section=document.createElement('section');section.className='reader-search-group';
+    const head=document.createElement('div');head.className='reader-search-group-head';
+    const name=document.createElement('strong');name.textContent=group.title;
+    const count=document.createElement('span');count.textContent=`${group.hits.length} ${t('条')}`;
+    head.append(name,count);section.appendChild(head);
+    const list=document.createElement('div');list.className='reader-search-group-list';
+    const renderRange=(from,to)=>{
+      for(const hit of group.hits.slice(from,to)){
+        const b=document.createElement('button');b.type='button';b.className='reader-search-result';
+        const title=document.createElement('strong');title.textContent=hit.label||group.title;
+        const snippet=document.createElement('span');snippet.textContent=readerSearchSnippet(hit.text,q);
+        b.append(title,snippet);
+        b.onclick=async()=>{
+          rememberReaderSearch(q);prepareReaderSearchReturn(q);closeReaderSearch();
+          try{await openResult(hit)}catch(e){}
+        };
+        list.appendChild(b);
+      }
     };
-    box.appendChild(b);
+    renderRange(0,READER_SEARCH_GROUP_LIMIT);
+    section.appendChild(list);
+    if(group.hits.length>READER_SEARCH_GROUP_LIMIT){
+      const rest=group.hits.length-READER_SEARCH_GROUP_LIMIT;
+      const more=document.createElement('button');more.type='button';more.className='reader-search-more';
+      more.textContent=`${t('展开其余')} ${rest} ${t('条')}`;
+      more.onclick=()=>{
+        renderRange(READER_SEARCH_GROUP_LIMIT,group.hits.length);
+        more.remove();
+      };
+      section.appendChild(more);
+    }
+    box.appendChild(section);
   }
 }
 async function runReaderSearch(raw,remember){
@@ -1026,7 +1171,7 @@ function publicationSearchKey(meta){return String(meta.id)+':'+String(meta.gen||
 async function publicationSearchRecord(meta){
   const key=publicationSearchKey(meta);
   let rec=publicationSearchCache.get(key);
-  if(rec)return rec;
+  if(rec){publicationSearchCache.delete(key);publicationSearchCache.set(key,rec);return rec}
   const book=await loadBook(meta.id);
   if(!book)return null;
   const docs=[];
@@ -1044,39 +1189,45 @@ async function publicationSearchRecord(meta){
     }
     docs.push({docId:d.id,title:d.title||'',blocks});
   }
-  rec={meta,docs};publicationSearchCache.set(key,rec);return rec;
+  rec={meta,docs};publicationSearchCache.set(key,rec);
+  while(publicationSearchCache.size>PUBLICATION_SEARCH_CACHE_MAX)publicationSearchCache.delete(publicationSearchCache.keys().next().value);
+  return rec;
 }
 async function searchAllPublicationsForReader(run,q,status){
-  const metas=await allBooks();if(run!==readerSearchRunId)return;
+  const metas=await searchScopeMetas();if(run!==readerSearchRunId)return;
   const lower=q.toLowerCase(),hits=[],seen=new Set();
-  for(const meta of metas){
-    if(meta.hasBible)continue;
-    const title=String(meta.displayTitle||meta.title||'');
-    if(title&&title.toLowerCase().includes(lower))hits.push({bookId:meta.id,docId:null,pid:'',label:title,text:title});
+  let truncated=false;
+  if(!metas.length){
+    if(readerSearchScope==='selected'){
+      readerSearchStatus($('readerSearchResults'),t('还没有选择出版物。'));
+      renderReaderSearchScope();
+      return;
+    }
   }
-  const searchable=metas.filter(m=>!m.hasBible);
-  for(let i=0;i<searchable.length;i++){
+  for(let i=0;i<metas.length;i++){
     if(run!==readerSearchRunId)return;
-    const meta=searchable[i],bookTitle=String(meta.displayTitle||meta.title||'');
-    status.textContent=t('搜索中…')+` ${i+1}/${searchable.length}`;
+    const meta=metas[i],bookTitle=String(meta.displayTitle||meta.title||'');
+    status.textContent=`${t('搜索中…')} ${i+1}/${metas.length}`;
     const rec=await publicationSearchRecord(meta);
     if(!rec){await new Promise(r=>setTimeout(r,0));continue}
+    let bookHits=0;
     for(const d of rec.docs){
       const docTitle=String(d.title||'');
       if(docTitle&&docTitle.toLowerCase().includes(lower)){
         const key=meta.id+':'+d.docId+':title';
-        if(!seen.has(key)){seen.add(key);hits.push({bookId:meta.id,docId:d.docId,pid:'',label:`${bookTitle} · ${docTitle}`,text:docTitle})}
+        if(!seen.has(key)){seen.add(key);hits.push({bookId:meta.id,docId:d.docId,pid:'',label:docTitle,text:docTitle,groupKey:meta.id,groupTitle:bookTitle});bookHits++}
       }
       for(const block of d.blocks){
         if(!block.text.toLowerCase().includes(lower))continue;
         const key=meta.id+':'+d.docId+':'+(block.pid||block.text.slice(0,40));
         if(seen.has(key))continue;seen.add(key);
-        hits.push({bookId:meta.id,docId:d.docId,pid:block.pid,label:`${bookTitle} · ${docTitle}`,text:block.text});
-        if(hits.length>=80)break;
+        hits.push({bookId:meta.id,docId:d.docId,pid:block.pid,label:docTitle||bookTitle,text:block.text,groupKey:meta.id,groupTitle:bookTitle});
+        bookHits++;
+        if(bookHits>=READER_SEARCH_BOOK_LIMIT){truncated=true;break}
       }
-      if(hits.length>=80)break;
+      if(bookHits>=READER_SEARCH_BOOK_LIMIT)break;
     }
-    if(hits.length>=80)break;
+    if(hits.length>=READER_SEARCH_TOTAL_LIMIT){truncated=true;break}
     await new Promise(r=>setTimeout(r,0));
   }
   if(run!==readerSearchRunId)return;
@@ -1086,6 +1237,10 @@ async function searchAllPublicationsForReader(run,q,status){
     if(docId!==undefined&&docId!==null)await openDocInBook(book,docId,hit.pid?'#p'+hit.pid:'',readerSearchTab);
     else await openBook(book.id);
   });
+  if(truncated){
+    const box=$('readerSearchResults');
+    if(box){const note=document.createElement('div');note.className='reader-search-status';note.textContent=t('结果较多，已显示前面的部分。可以缩小搜索范围。');box.appendChild(note)}
+  }
 }
 async function searchBibleForReader(run,q,status){
   const book=readerSearchBook;if(!book||!book.bibleData)return;
@@ -1096,12 +1251,15 @@ async function searchBibleForReader(run,q,status){
   for(const key of keys){
     if(run!==readerSearchRunId)return;
     const parts=key.split(':'),b=Number(parts[0]),c=Number(parts[1]);
+    const groupTitle=`${chineseBibleBookName(data,b)} ${c}`;
+    let chapterHits=0;
     for(const verse of cache.get(key)||[]){
       if(!verse.text.toLowerCase().includes(lower))continue;
-      hits.push({b,c,v:verse.v,text:verse.text,label:`${chineseBibleBookName(data,b)} ${c}:${verse.v}`});
-      if(hits.length>=80)break;
+      hits.push({b,c,v:verse.v,text:verse.text,label:`${c}:${verse.v}`,groupKey:key,groupTitle});
+      chapterHits++;
+      if(chapterHits>=READER_SEARCH_BOOK_LIMIT)break;
     }
-    if(hits.length>=80)break;
+    if(hits.length>=READER_SEARCH_TOTAL_LIMIT)break;
   }
   renderReaderSearchHits(q,hits,hit=>openBibleChapterReader(book.id,hit.b,hit.c,hit.v,readerSearchTab||'bible'));
 }

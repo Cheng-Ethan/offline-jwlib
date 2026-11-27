@@ -108,6 +108,7 @@ Limits at the top of `01-importer-security.js`: 380 MB per file, 8000 internal f
 - A link popover title is clickable and calls `openPublicationDocument()` to open the target paragraph; `openDocInBook()` pushes the current article into the current tab's back history.
 - Offline warnings inside a popover use `#modal`, layered above the link popover; dismissing a warning does not trigger the popover's outside-click close.
 - Gutter pencil markers and the active verse/paragraph block highlight are CSS-only. `showHighlightOutline()` merges the active highlight into one absolutely positioned rounded box per visual line.
+- Reader search scope is controlled by `readerSearchScope`: `publication` / `category` / `selected` / `all`. `searchScopeMetas()` orders publications by `categoryPath()` and `BOOK_CATEGORIES` before walking them; `renderReaderSearchHits()` groups by `groupKey`, shows five hits per group and collapses the rest. Selected publication IDs live in `localStorage` under `offlineLibrarySearchSelectedBooks`.
 
 `cleanHtml()` (`00-core-db.js`) sanitises article HTML before insertion:
 
