@@ -2191,7 +2191,11 @@ function setSourceFirst(on){try{localStorage.setItem('offlineLibrarySourceFirst'
 async function ensureDocHtml(book,doc){
   if(!book||!doc)return '';
   if(doc.html)return doc.html;
-  if(doc.datedText||doc.bibleChapter)return '';
+  if(doc.bibleChapter)return '';
+  if(doc.datedText){
+    try{const html=await sourceDatedTextHtml(book.id,doc.datedTextId);if(html){doc.html=html;return html}}catch(e){}
+    return '';
+  }
   try{const html=await sourceDocHtml(book.id,doc.id);if(html){doc.html=html;return html}}catch(e){}
   return '';
 }
@@ -2201,7 +2205,7 @@ async function stripBookDocHtml(bookId){
   const t=idb.transaction('bookDocs','readwrite'),store=t.objectStore('bookDocs');
   let changed=0;
   for(const rec of recs){
-    if(rec.datedText||rec.bibleChapter||!rec.html)continue;
+    if(rec.bibleChapter||!rec.html)continue;
     const {key,bookId:_b,gen,...doc}=rec;
     store.put({key,bookId:_b,gen,...doc,html:''});
     changed++;
@@ -2285,6 +2289,22 @@ async function sourceExtractHtml(bookId,extractId){
   }
   const {db,ki}=await openBookSourceDb(bookId);
   const row=rows(db,'Extract').find(r=>normId(pick(r,['ExtractId','Id'],''))===id);
+  if(!row)return '';
+  const blob=bytes(pick(row,['Content'],null));
+  if(!blob)return '';
+  const html=(await decryptContentAny(blob,ki)).html;
+  sourceDocCache.set(cacheKey,html);
+  while(sourceDocCache.size>SOURCE_DOC_CACHE_MAX)sourceDocCache.delete(sourceDocCache.keys().next().value);
+  return html;
+}
+async function sourceDatedTextHtml(bookId,datedTextId){
+  const id=normId(datedTextId);
+  const cacheKey=`dated:${bookId}:${id}`;
+  if(sourceDocCache.has(cacheKey)){
+    const v=sourceDocCache.get(cacheKey);sourceDocCache.delete(cacheKey);sourceDocCache.set(cacheKey,v);return v;
+  }
+  const {db,ki}=await openBookSourceDb(bookId);
+  const row=rows(db,'DatedText').find(r=>normId(pick(r,['DatedTextId','Id'],''))===id);
   if(!row)return '';
   const blob=bytes(pick(row,['Content'],null));
   if(!blob)return '';
@@ -3944,7 +3964,11 @@ $('librarySubtitle').textContent=t('今日经文、收藏和最近导入。');
   const dailyPanel=sectionPanel(t('今日经文'),'');
   if(daily){
     const d=await getBookDoc(daily.book.id,daily.doc.id);
-    const summary=d?extractDailyVerse(d.html):{date:'',verse:''};
+    let dailyHtml=d?d.html:'';
+    if(!dailyHtml&&(sourceFirstEnabled()||sourceReadEnabled())&&d&&d.datedTextId){
+      try{dailyHtml=await sourceDatedTextHtml(daily.book.id,d.datedTextId)}catch(e){}
+    }
+    const summary=d?extractDailyVerse(dailyHtml):{date:'',verse:''};
     const card=document.createElement('div');card.className='daily-card';
     card.title=t('点击阅读今天全文');
     card.setAttribute('role','link');card.tabIndex=0;
@@ -5083,9 +5107,11 @@ async function showDoc(anchor=''){
   const kind=readerKind(currentBook);$('article').className='reader-kind-'+kind;$('article').dataset.publicationKind=kind;
   document.body.classList.toggle('daily-reader',kind==='daily');
   let html=d.html;
-  if(currentBook&&!d.bibleChapter&&!d.datedText&&(sourceReadEnabled()||!html)){
-    try{const fromSource=await sourceDocHtml(currentBook.id,d.id);if(fromSource)html=fromSource}
-    catch(e){logDiag('warn','从原始包读取正文失败',{bookId:currentBook.id,docId:d.id,message:e&&e.message||String(e)})}
+  if(currentBook&&!d.bibleChapter&&(sourceReadEnabled()||sourceFirstEnabled()||!html)){
+    try{
+      const fromSource=d.datedText?await sourceDatedTextHtml(currentBook.id,d.datedTextId):await sourceDocHtml(currentBook.id,d.id);
+      if(fromSource)html=fromSource;
+    }catch(e){logDiag('warn','从原始包读取正文失败',{bookId:currentBook.id,docId:d.id,message:e&&e.message||String(e)})}
   }
   if(!html)html=`<p class="reader-empty-body">${t('这篇正文没有保存在本机。请重新导入原始 PUB，或在设置中开启“从原始包读取正文”。')}</p>`;
   const map=await docAssetMap(currentBook,html);if(epoch!==tabEpoch)return false;

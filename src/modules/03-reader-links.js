@@ -521,9 +521,11 @@ async function showDoc(anchor=''){
   const kind=readerKind(currentBook);$('article').className='reader-kind-'+kind;$('article').dataset.publicationKind=kind;
   document.body.classList.toggle('daily-reader',kind==='daily');
   let html=d.html;
-  if(currentBook&&!d.bibleChapter&&!d.datedText&&(sourceReadEnabled()||!html)){
-    try{const fromSource=await sourceDocHtml(currentBook.id,d.id);if(fromSource)html=fromSource}
-    catch(e){logDiag('warn','从原始包读取正文失败',{bookId:currentBook.id,docId:d.id,message:e&&e.message||String(e)})}
+  if(currentBook&&!d.bibleChapter&&(sourceReadEnabled()||sourceFirstEnabled()||!html)){
+    try{
+      const fromSource=d.datedText?await sourceDatedTextHtml(currentBook.id,d.datedTextId):await sourceDocHtml(currentBook.id,d.id);
+      if(fromSource)html=fromSource;
+    }catch(e){logDiag('warn','从原始包读取正文失败',{bookId:currentBook.id,docId:d.id,message:e&&e.message||String(e)})}
   }
   if(!html)html=`<p class="reader-empty-body">${t('这篇正文没有保存在本机。请重新导入原始 PUB，或在设置中开启“从原始包读取正文”。')}</p>`;
   const map=await docAssetMap(currentBook,html);if(epoch!==tabEpoch)return false;

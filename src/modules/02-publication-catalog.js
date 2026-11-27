@@ -570,7 +570,11 @@ $('librarySubtitle').textContent=t('今日经文、收藏和最近导入。');
   const dailyPanel=sectionPanel(t('今日经文'),'');
   if(daily){
     const d=await getBookDoc(daily.book.id,daily.doc.id);
-    const summary=d?extractDailyVerse(d.html):{date:'',verse:''};
+    let dailyHtml=d?d.html:'';
+    if(!dailyHtml&&(sourceFirstEnabled()||sourceReadEnabled())&&d&&d.datedTextId){
+      try{dailyHtml=await sourceDatedTextHtml(daily.book.id,d.datedTextId)}catch(e){}
+    }
+    const summary=d?extractDailyVerse(dailyHtml):{date:'',verse:''};
     const card=document.createElement('div');card.className='daily-card';
     card.title=t('点击阅读今天全文');
     card.setAttribute('role','link');card.tabIndex=0;

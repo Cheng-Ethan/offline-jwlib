@@ -929,7 +929,11 @@ function setSourceFirst(on){try{localStorage.setItem('offlineLibrarySourceFirst'
 async function ensureDocHtml(book,doc){
   if(!book||!doc)return '';
   if(doc.html)return doc.html;
-  if(doc.datedText||doc.bibleChapter)return '';
+  if(doc.bibleChapter)return '';
+  if(doc.datedText){
+    try{const html=await sourceDatedTextHtml(book.id,doc.datedTextId);if(html){doc.html=html;return html}}catch(e){}
+    return '';
+  }
   try{const html=await sourceDocHtml(book.id,doc.id);if(html){doc.html=html;return html}}catch(e){}
   return '';
 }
@@ -939,7 +943,7 @@ async function stripBookDocHtml(bookId){
   const t=idb.transaction('bookDocs','readwrite'),store=t.objectStore('bookDocs');
   let changed=0;
   for(const rec of recs){
-    if(rec.datedText||rec.bibleChapter||!rec.html)continue;
+    if(rec.bibleChapter||!rec.html)continue;
     const {key,bookId:_b,gen,...doc}=rec;
     store.put({key,bookId:_b,gen,...doc,html:''});
     changed++;
@@ -1023,6 +1027,22 @@ async function sourceExtractHtml(bookId,extractId){
   }
   const {db,ki}=await openBookSourceDb(bookId);
   const row=rows(db,'Extract').find(r=>normId(pick(r,['ExtractId','Id'],''))===id);
+  if(!row)return '';
+  const blob=bytes(pick(row,['Content'],null));
+  if(!blob)return '';
+  const html=(await decryptContentAny(blob,ki)).html;
+  sourceDocCache.set(cacheKey,html);
+  while(sourceDocCache.size>SOURCE_DOC_CACHE_MAX)sourceDocCache.delete(sourceDocCache.keys().next().value);
+  return html;
+}
+async function sourceDatedTextHtml(bookId,datedTextId){
+  const id=normId(datedTextId);
+  const cacheKey=`dated:${bookId}:${id}`;
+  if(sourceDocCache.has(cacheKey)){
+    const v=sourceDocCache.get(cacheKey);sourceDocCache.delete(cacheKey);sourceDocCache.set(cacheKey,v);return v;
+  }
+  const {db,ki}=await openBookSourceDb(bookId);
+  const row=rows(db,'DatedText').find(r=>normId(pick(r,['DatedTextId','Id'],''))===id);
   if(!row)return '';
   const blob=bytes(pick(row,['Content'],null));
   if(!blob)return '';
