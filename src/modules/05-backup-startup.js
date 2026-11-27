@@ -351,6 +351,14 @@ $('backupInput').onchange=async e=>{
 function isIOSWebView(){
   try{return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}catch(e){return false}
 }
+function isMobileWebView(){
+  try{
+    const ua=navigator.userAgent||'';
+    if(/iPad|iPhone|iPod|Android/i.test(ua))return true;
+    if(Number(navigator.maxTouchPoints||0)>1&&/Macintosh|Mac OS X/i.test(ua))return true;
+    return Number(navigator.maxTouchPoints||0)>1&&!/Windows|Linux/i.test(ua);
+  }catch(e){return false}
+}
 function closeExportPanel(){const p=document.getElementById('exportPanel');if(p)p.remove()}
 async function saveBlobAsFile(blob,name){
   if(typeof window.showSaveFilePicker==='function'){
@@ -360,11 +368,12 @@ async function saveBlobAsFile(blob,name){
       await writable.write(blob);await writable.close();return true;
     }catch(e){if(e&&e.name==='AbortError')return true}
   }
+  if(isMobileWebView())return false;
   download(blob,name);return true;
 }
 function showExportPanel(blob,name,book,exact){
   closeExportPanel();
-  const mobileShare=isIOSWebView()||/Android/i.test(navigator.userAgent);
+  const mobileShare=isMobileWebView();
   const panel=document.createElement('div');panel.id='exportPanel';
   panel.style.cssText='position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:20px';
   panel.onclick=e=>{if(e.target===panel)closeExportPanel()};
@@ -387,8 +396,8 @@ function showExportPanel(blob,name,book,exact){
         return;
       }
       closeExportPanel();
-      if(isIOSWebView()){say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'));return}
-      await saveBlobAsFile(blob,name);
+      const ok=await saveBlobAsFile(blob,name);
+      if(!ok)say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'));
     });
   }else{
     mk(t('保存到文件…'),async()=>{closeExportPanel();await saveBlobAsFile(blob,name);logDiag('info','保存原始 JWPUB',{id:book.id,size:blob.size,name,exact:!!exact})});

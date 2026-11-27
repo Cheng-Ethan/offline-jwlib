@@ -673,8 +673,8 @@ body.daily-reader .bottom-tools{display:none!important}
   <div class="reader-tools-menu" id="readerToolsMenu" role="menu" aria-label="阅读设置" data-i18n-aria-label="阅读设置">
     <button type="button" class="reader-tool" id="tocBtn" role="menuitem" data-i18n="目录" aria-label="目录" data-i18n-aria-label="目录" aria-pressed="false">目录</button>
     <button type="button" class="reader-tool" id="readerSearchBtn" role="menuitem" data-i18n="搜索">搜索</button>
-    <button type="button" class="reader-tool" id="prevBtn" role="menuitem" data-i18n="上一节">上一节</button>
-    <button type="button" class="reader-tool" id="nextBtn" role="menuitem" data-i18n="下一节">下一节</button>
+    <button type="button" class="reader-tool" id="prevBtn" role="menuitem"><span id="prevBtnLabel" data-i18n="上一节">上一节</span></button>
+    <button type="button" class="reader-tool" id="nextBtn" role="menuitem"><span id="nextBtnLabel" data-i18n="下一节">下一节</span></button>
     <button type="button" class="reader-tool" id="bookmarkBtn" role="menuitem" aria-pressed="false"><span class="btn-icon"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.8 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.9l5.8-.8z"/></svg></span><span data-i18n="书签">书签</span></button>
     <button type="button" class="reader-tool" id="noteBtn" role="menuitem"><span class="btn-icon"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 4.5h13v10.2l-4.8 4.8H5.5z"/><path d="M18.5 14.7h-4.8v4.8"/><path d="M12 8.4v4.8M9.6 10.8h4.8"/></svg></span><span data-i18n="笔记">笔记</span></button>
     <button type="button" class="reader-tool" id="readerLangBtn" role="menuitem" data-i18n="语言版本" style="display:none">语言版本</button>
@@ -1542,6 +1542,9 @@ Object.assign(I18N.ko,{"重新导入":"다시 가져오기","分享":"공유","�
 Object.assign(I18N.en,{"分享 / 保存":"Share / save","分享 / 保存…":"Share / save…","保存到文件…":"Save to file…","在分享面板选择“存储到文件”，再从“文件”App 分享给 JW Library。":"In the share sheet choose “Save to Files”, then share it to JW Library from the Files app."});
 Object.assign(I18N.ja,{"分享 / 保存":"共有 / 保存","分享 / 保存…":"共有 / 保存…","保存到文件…":"ファイルに保存…","在分享面板选择“存储到文件”，再从“文件”App 分享给 JW Library。":"共有シートで「ファイルに保存」を選び、ファイルAppからJW Libraryに共有してください。"});
 Object.assign(I18N.ko,{"分享 / 保存":"공유 / 저장","分享 / 保存…":"공유 / 저장…","保存到文件…":"파일에 저장…","在分享面板选择“存储到文件”，再从“文件”App 分享给 JW Library。":"공유 시트에서 “파일에 저장”을 선택한 다음 파일 앱에서 JW Library로 공유하십시오."});
+Object.assign(I18N.en,{"上一章":"Previous chapter","下一章":"Next chapter"});
+Object.assign(I18N.ja,{"上一章":"前の章","下一章":"次の章"});
+Object.assign(I18N.ko,{"上一章":"이전 장","下一章":"다음 장"});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
@@ -1551,6 +1554,8 @@ const UI_ICONS={
   note:'<path d="M5.5 4.5h13v10.2l-4.8 4.8H5.5z"/><path d="M18.5 14.7h-4.8v4.8"/><path d="M12 8.4v4.8M9.6 10.8h4.8"/>',
   left:'<path d="M14.5 5.5 8 12l6.5 6.5"/>',
   right:'<path d="M9.5 5.5 16 12l-6.5 6.5"/>',
+  swipeLeft:'<circle cx="16" cy="12" r="2.2"/><path d="M13.8 12H6"/><path d="m9 9-3 3 3 3"/><path d="M18.5 7.5c1.2 2.8 1.2 6.2 0 9"/>',
+  swipeRight:'<circle cx="8" cy="12" r="2.2"/><path d="M10.2 12H18"/><path d="m15 9 3 3-3 3"/><path d="M5.5 7.5c-1.2 2.8-1.2 6.2 0 9"/>',
   up:'<path d="M6 14.5 12 8.5l6 6"/>',
   down:'<path d="M6 9.5 12 15.5l6-6"/>',
   collapse:'<path d="M5 8.5 12 15.5l7-7"/>',
@@ -5228,6 +5233,7 @@ async function showDoc(anchor=''){
   closeReaderToolsMenu();
   bibleMode=false;setBibleToolbar(false);
   const d=currentBook.docs[currentIndex];if(!d)return;
+  updateReaderNavLabels();
   // Take the pending restore snapshot before touching the DOM. Replacing the
   // article clamps readerBody.scrollTop to the new content height, and the
   // scroll listener would write that value back into the same object we are
@@ -7667,13 +7673,20 @@ function toggleReaderToolsMenu(){
 $('readerMoreBtn').onclick=e=>{e.stopPropagation();toggleReaderToolsMenu()};
 $('readerReimportBtn').onclick=()=>{closeReaderToolsMenu();if(currentBook)updatePublication(currentBook)};
 $('readerShareBtn').onclick=()=>{closeReaderToolsMenu();if(currentBook)openShareMenu(currentBook,$('readerMoreBtn'))};
+function updateReaderNavLabels(){
+  const bible=!!(currentBook&&(currentBook.bibleData||currentBook.hasBible||readerKind(currentBook)==='bible'));
+  const prev=$('prevBtnLabel'),next=$('nextBtnLabel');
+  if(prev){const key=bible?'上一章':'上一节';if(prev.getAttribute('data-i18n')!==key){prev.setAttribute('data-i18n',key);prev.textContent=t(key)}}
+  if(next){const key=bible?'下一章':'下一节';if(next.getAttribute('data-i18n')!==key){next.setAttribute('data-i18n',key);next.textContent=t(key)}}
+}
 function decorateReaderTools(){
-  const map={tocBtn:'list',readerSearchBtn:'search',prevBtn:'left',nextBtn:'right',bookmarkBtn:'starOn',noteBtn:'note',readerLangBtn:'language',pronunciationBtn:'language',fontDown:'minus',fontUp:'plus',readerReimportBtn:'download',readerShareBtn:'upload'};
+  const map={tocBtn:'list',readerSearchBtn:'search',prevBtn:'swipeLeft',nextBtn:'swipeRight',bookmarkBtn:'starOn',noteBtn:'note',readerLangBtn:'language',pronunciationBtn:'language',fontDown:'minus',fontUp:'plus',readerReimportBtn:'download',readerShareBtn:'upload'};
   for(const [id,icon] of Object.entries(map)){
     const b=$(id);if(!b||b.querySelector('.btn-icon'))continue;
     const s=document.createElement('span');s.className='btn-icon';s.innerHTML=svgIcon(icon,18);
     b.insertBefore(s,b.firstChild);
   }
+  updateReaderNavLabels();
 }
 setTimeout(decorateReaderTools,0);
 $('readerToolsMenu').addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#readerLangBtn,#tocBtn,#readerSearchBtn,#noteBtn'))closeReaderToolsMenu()});
@@ -8038,6 +8051,14 @@ $('backupInput').onchange=async e=>{
 function isIOSWebView(){
   try{return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}catch(e){return false}
 }
+function isMobileWebView(){
+  try{
+    const ua=navigator.userAgent||'';
+    if(/iPad|iPhone|iPod|Android/i.test(ua))return true;
+    if(Number(navigator.maxTouchPoints||0)>1&&/Macintosh|Mac OS X/i.test(ua))return true;
+    return Number(navigator.maxTouchPoints||0)>1&&!/Windows|Linux/i.test(ua);
+  }catch(e){return false}
+}
 function closeExportPanel(){const p=document.getElementById('exportPanel');if(p)p.remove()}
 async function saveBlobAsFile(blob,name){
   if(typeof window.showSaveFilePicker==='function'){
@@ -8047,11 +8068,12 @@ async function saveBlobAsFile(blob,name){
       await writable.write(blob);await writable.close();return true;
     }catch(e){if(e&&e.name==='AbortError')return true}
   }
+  if(isMobileWebView())return false;
   download(blob,name);return true;
 }
 function showExportPanel(blob,name,book,exact){
   closeExportPanel();
-  const mobileShare=isIOSWebView()||/Android/i.test(navigator.userAgent);
+  const mobileShare=isMobileWebView();
   const panel=document.createElement('div');panel.id='exportPanel';
   panel.style.cssText='position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:20px';
   panel.onclick=e=>{if(e.target===panel)closeExportPanel()};
@@ -8074,8 +8096,8 @@ function showExportPanel(blob,name,book,exact){
         return;
       }
       closeExportPanel();
-      if(isIOSWebView()){say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'));return}
-      await saveBlobAsFile(blob,name);
+      const ok=await saveBlobAsFile(blob,name);
+      if(!ok)say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'));
     });
   }else{
     mk(t('保存到文件…'),async()=>{closeExportPanel();await saveBlobAsFile(blob,name);logDiag('info','保存原始 JWPUB',{id:book.id,size:blob.size,name,exact:!!exact})});

@@ -265,13 +265,20 @@ function toggleReaderToolsMenu(){
 $('readerMoreBtn').onclick=e=>{e.stopPropagation();toggleReaderToolsMenu()};
 $('readerReimportBtn').onclick=()=>{closeReaderToolsMenu();if(currentBook)updatePublication(currentBook)};
 $('readerShareBtn').onclick=()=>{closeReaderToolsMenu();if(currentBook)openShareMenu(currentBook,$('readerMoreBtn'))};
+function updateReaderNavLabels(){
+  const bible=!!(currentBook&&(currentBook.bibleData||currentBook.hasBible||readerKind(currentBook)==='bible'));
+  const prev=$('prevBtnLabel'),next=$('nextBtnLabel');
+  if(prev){const key=bible?'上一章':'上一节';if(prev.getAttribute('data-i18n')!==key){prev.setAttribute('data-i18n',key);prev.textContent=t(key)}}
+  if(next){const key=bible?'下一章':'下一节';if(next.getAttribute('data-i18n')!==key){next.setAttribute('data-i18n',key);next.textContent=t(key)}}
+}
 function decorateReaderTools(){
-  const map={tocBtn:'list',readerSearchBtn:'search',prevBtn:'left',nextBtn:'right',bookmarkBtn:'starOn',noteBtn:'note',readerLangBtn:'language',pronunciationBtn:'language',fontDown:'minus',fontUp:'plus',readerReimportBtn:'download',readerShareBtn:'upload'};
+  const map={tocBtn:'list',readerSearchBtn:'search',prevBtn:'swipeLeft',nextBtn:'swipeRight',bookmarkBtn:'starOn',noteBtn:'note',readerLangBtn:'language',pronunciationBtn:'language',fontDown:'minus',fontUp:'plus',readerReimportBtn:'download',readerShareBtn:'upload'};
   for(const [id,icon] of Object.entries(map)){
     const b=$(id);if(!b||b.querySelector('.btn-icon'))continue;
     const s=document.createElement('span');s.className='btn-icon';s.innerHTML=svgIcon(icon,18);
     b.insertBefore(s,b.firstChild);
   }
+  updateReaderNavLabels();
 }
 setTimeout(decorateReaderTools,0);
 $('readerToolsMenu').addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#readerLangBtn,#tocBtn,#readerSearchBtn,#noteBtn'))closeReaderToolsMenu()});

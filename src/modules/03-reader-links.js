@@ -511,6 +511,7 @@ async function showDoc(anchor=''){
   closeReaderToolsMenu();
   bibleMode=false;setBibleToolbar(false);
   const d=currentBook.docs[currentIndex];if(!d)return;
+  updateReaderNavLabels();
   // Take the pending restore snapshot before touching the DOM. Replacing the
   // article clamps readerBody.scrollTop to the new content height, and the
   // scroll listener would write that value back into the same object we are

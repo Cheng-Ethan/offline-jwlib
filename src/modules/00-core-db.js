@@ -276,6 +276,9 @@ Object.assign(I18N.ko,{"重新导入":"다시 가져오기","分享":"공유","�
 Object.assign(I18N.en,{"分享 / 保存":"Share / save","分享 / 保存…":"Share / save…","保存到文件…":"Save to file…","在分享面板选择“存储到文件”，再从“文件”App 分享给 JW Library。":"In the share sheet choose “Save to Files”, then share it to JW Library from the Files app."});
 Object.assign(I18N.ja,{"分享 / 保存":"共有 / 保存","分享 / 保存…":"共有 / 保存…","保存到文件…":"ファイルに保存…","在分享面板选择“存储到文件”，再从“文件”App 分享给 JW Library。":"共有シートで「ファイルに保存」を選び、ファイルAppからJW Libraryに共有してください。"});
 Object.assign(I18N.ko,{"分享 / 保存":"공유 / 저장","分享 / 保存…":"공유 / 저장…","保存到文件…":"파일에 저장…","在分享面板选择“存储到文件”，再从“文件”App 分享给 JW Library。":"공유 시트에서 “파일에 저장”을 선택한 다음 파일 앱에서 JW Library로 공유하십시오."});
+Object.assign(I18N.en,{"上一章":"Previous chapter","下一章":"Next chapter"});
+Object.assign(I18N.ja,{"上一章":"前の章","下一章":"次の章"});
+Object.assign(I18N.ko,{"上一章":"이전 장","下一章":"다음 장"});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
@@ -285,6 +288,8 @@ const UI_ICONS={
   note:'<path d="M5.5 4.5h13v10.2l-4.8 4.8H5.5z"/><path d="M18.5 14.7h-4.8v4.8"/><path d="M12 8.4v4.8M9.6 10.8h4.8"/>',
   left:'<path d="M14.5 5.5 8 12l6.5 6.5"/>',
   right:'<path d="M9.5 5.5 16 12l-6.5 6.5"/>',
+  swipeLeft:'<circle cx="16" cy="12" r="2.2"/><path d="M13.8 12H6"/><path d="m9 9-3 3 3 3"/><path d="M18.5 7.5c1.2 2.8 1.2 6.2 0 9"/>',
+  swipeRight:'<circle cx="8" cy="12" r="2.2"/><path d="M10.2 12H18"/><path d="m15 9 3 3-3 3"/><path d="M5.5 7.5c-1.2 2.8-1.2 6.2 0 9"/>',
   up:'<path d="M6 14.5 12 8.5l6 6"/>',
   down:'<path d="M6 9.5 12 15.5l6-6"/>',
   collapse:'<path d="M5 8.5 12 15.5l7-7"/>',
