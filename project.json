@@ -1,7 +1,7 @@
 {
-  "appVersion": "1.0.0",
+  "appVersion": "2.0.0",
   "moduleApiVersion": 1,
-  "backupFormat": "offline-library-library-v1",
+  "backupFormat": "offline-library-library-v2",
   "notesBackupFormat": "offline-library-notes-v1",
   "indexedDbName": "OfflineJwLibrary",
   "indexedDbVersion": 5,

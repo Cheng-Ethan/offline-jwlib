@@ -1,8 +1,8 @@
 # 更新记录 / Changelog
 
-> 当前版本以 `project.json` 为准：**1.0.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
+> 当前版本以 `project.json` 为准：**2.0.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
 
-## 未发布（2.0.0 开发）
+## 2.0.0（2026-11-27）
 - 新增可选「保留原始包以便分享」：开启后，导入的 PUB 会在应用内保留完整原始文件，导出时逐字节原样输出 JWPUB。
 - 出版物卡片新增「分享」：可导出原始 JWPUB，并选择原文件名或易读名称；缺少原始包的旧书会提示重新导入一次。
 - 原始包保存在独立数据库 `OfflineJwLibrarySources`；主库仍为 v5，测试 2.0 后 1.0.0 仍能打开现有图书馆。
@@ -83,9 +83,10 @@
 
 ## English summary
 
-The current version is defined by `project.json`: **1.0.0**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
+The current version is defined by `project.json`: **2.0.0**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
 
-- **1.0.0** — stable baseline for the current reader and UI work; the later 2.0.0 line will evaluate the SQLite-source storage refactor. Unified reader header (back, two-line publication/chapter title, three-dot menu) with table of contents, search, paging, bookmark, notes, language version, pronunciation and font size inside the menu; per-tab article, back history and exact paragraph position persisted across reloads and imports; navigable link-preview titles that open the target paragraph and join the tab history; warnings above link popovers with their own close button; footnotes and cross-references with resolved text in paragraph/verse info; pencil note markers; clear blue block highlight for the active verse/paragraph and one merged outline per highlighted line; a four-disc colour button with yellow front and green, blue and pink arcs layered behind it, opening four large colour discs; fuller 1:1 information, note and copy icons; previous/next-day labels for the daily text. Answer fields in publications are one line tall by default and grow as more text is typed.
+- **2.0.0** — optional exact original-package retention with byte-identical JWPUB sharing and identity-checked re-import; source-first reading from the original SQLite for articles, Bible text/ranges/search, daily text, extracts, commentaries and images; scoped and grouped search; backup v2 including original packages, system state and localStorage; reader menu icons, swipe chapter icons and reordered actions.
+- **1.0.0** — stable baseline for the current reader and UI work. Unified reader header (back, two-line publication/chapter title, three-dot menu) with table of contents, search, paging, bookmark, notes, language version, pronunciation and font size inside the menu; per-tab article, back history and exact paragraph position persisted across reloads and imports; navigable link-preview titles that open the target paragraph and join the tab history; warnings above link popovers with their own close button; footnotes and cross-references with resolved text in paragraph/verse info; pencil note markers; clear blue block highlight for the active verse/paragraph and one merged outline per highlighted line; a four-disc colour button with yellow front and green, blue and pink arcs layered behind it, opening four large colour discs; fuller 1:1 information, note and copy icons; previous/next-day labels for the daily text. Answer fields in publications are one line tall by default and grow as more text is typed.
 - **0.14.0** — UI consistency pass: shared type/radius/shadow/semantic-colour tokens; one linear SVG icon set; four-item More menu with nested backup and settings views; in-app help; one highlight-colour control; restored chapter-notes entry; pager states and arrow-key paging; in-app translatable confirmations; focus management, Escape handling, 44px touch targets and reduced-motion support.
 - **0.13.0** — baseline version (earlier upstream history collapsed; this docs restructure does not bump it; see [AGENTS.md](AGENTS.md)); full-text search for Bible/publications, recent searches, return-to-results; bilingual open-source documentation split into user/dev trees; MIT licence, contributing guide, security policy, code of conduct and third-party notices.
 - **0.12.0** — Bible concordance, verse info, single-verse copy and verse notes.

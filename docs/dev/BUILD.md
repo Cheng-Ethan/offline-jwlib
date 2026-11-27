@@ -48,11 +48,11 @@ node build.mjs
 
 | 字段 | 当前值 | 说明 |
 |---|---|---|
-| `appVersion` | `1.0.0` | 当前版本，写入 HTML meta 与运行时 `APP_VERSION` |
+| `appVersion` | `2.0.0` | 当前版本，写入 HTML meta 与运行时 `APP_VERSION` |
 | `moduleApiVersion` | `1` | 模块 API 版本校验 |
 | `indexedDbName` | `OfflineJwLibrary` | 升级时尽量不变 |
 | `indexedDbVersion` | `5` | 数据库版本（原始包使用独立数据库） |
-| `backupFormat` | `offline-library-library-v1` | 完整备份格式标识 |
+| `backupFormat` | `offline-library-library-v2` | 完整备份格式标识 |
 | `notesBackupFormat` | `offline-library-notes-v1` | 笔记备份格式标识 |
 | `modules.order` | `00` → `05` | 拼接顺序不可随意调整 |
 | `vendor` | `jszip.js`、`pako.js`、`sql-wasm.js` | 全部内嵌 |

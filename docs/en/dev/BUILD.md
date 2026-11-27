@@ -48,11 +48,11 @@ Key `project.json` fields:
 
 | Field | Current value | Meaning |
 |---|---|---|
-| `appVersion` | `1.0.0` | Current version; HTML meta and runtime `APP_VERSION` |
+| `appVersion` | `2.0.0` | Current version; HTML meta and runtime `APP_VERSION` |
 | `moduleApiVersion` | `1` | Module API version check |
 | `indexedDbName` | `OfflineJwLibrary` | Keep stable across upgrades |
 | `indexedDbVersion` | `5` | Database version (original packages use a separate database) |
-| `backupFormat` | `offline-library-library-v1` | Full-backup format id |
+| `backupFormat` | `offline-library-library-v2` | Full-backup format id |
 | `notesBackupFormat` | `offline-library-notes-v1` | Notes-backup format id |
 | `modules.order` | `00` → `05` | Concatenation order; do not reorder casually |
 | `vendor` | `jszip.js`, `pako.js`, `sql-wasm.js` | Fully inlined |

@@ -444,6 +444,7 @@ async function exportBookJwpub(book,mode='original'){
 }
 function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();const t=setTimeout(()=>URL.revokeObjectURL(u),600000);try{if(t&&t.unref)t.unref()}catch(e){}}
 const APP_UPDATE_NOTES=[
+  '2.0 · 原始包分享/重新导入/备份 v2/搜索范围分组/source-first',
   '1.0 · 统一阅读器题头/栏目位置恢复/相关链接浮窗/笔记标记/每日经文分页',
   '0.14 · 界面一致性/统一图标与菜单/使用说明/无障碍',
   '0.13 · 圣经/出版物全文搜索/最近搜索/搜索结果返回',
