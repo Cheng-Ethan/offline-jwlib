@@ -174,6 +174,7 @@ function openBookActions(book,anchor){
   const add=(label,fn,cls,icon)=>{const b=document.createElement('button');b.className='book-action '+(cls||'');b.innerHTML=svgIcon(icon||'right',18)+'<span></span>';b.lastChild.textContent=label;b.onclick=e=>{e.stopPropagation();closeBookActions();fn()};menu.appendChild(b)};
   add(book.favorite?t('取消收藏'):t('收藏该出版物'),async()=>{const meta=await getBookMeta(book.id);if(!meta)return;meta.favorite=!meta.favorite;await saveBookMeta(meta);renderSection()},'',book.favorite?'starOn':'star');
   add(t('移动分类'),()=>openCategoryPicker(book,anchor),'','folder');
+  add(t('更新该资料…'),()=>updatePublication(book),'','upload');
   add(t('分享 / 导出…'),()=>openShareMenu(book,anchor),'','download');
   add(t('删除'),async()=>{if(!(await askConfirm(t('删除'),`确定删除《${book.displayTitle||book.title}》及其关联笔记、书签和阅读记录吗？`)))return;await deletePublication(book);renderSection()},'delete','trash');
   document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
@@ -195,6 +196,32 @@ function openExportMenu(book,anchor){
   add(t('分享 / 保存（易读名称）'),()=>exportBookJwpub(book,'readable'),'share');
   add(t('返回'),()=>openShareMenu(book,anchor),'left');
   document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
+}
+function updatePublication(book){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.jwpub,.pub,application/zip';input.style.display='none';
+  document.body.appendChild(input);
+  input.onchange=async()=>{
+    const f=input.files&&input.files[0];if(!f){input.remove();return}
+    try{
+      say(t('正在检查文件'),t('正在读取出版物信息…'),true);await tick();
+      const info=await readJwpubIdentity(f);
+      const targetTitle=String(book.displayTitle||book.title||'');
+      const fileTitle=String(info.displayTitle||info.title||info.fileName||'');
+      const targetIds=new Set([String(book.id),String(idFor(book))]);
+      if(!targetIds.has(String(info.id))){
+        try{$('modal').style.display='none'}catch(e){}
+        say(t('文件不匹配'),`${t('当前资料')}：${targetTitle}\n${t('所选文件')}：${fileTitle}\n${t('请选择同一出版物的 JWPUB 文件。')}`);
+        return;
+      }
+      try{$('modal').style.display='none'}catch(e){}
+      const nameNote=fileTitle&&fileTitle!==targetTitle?`${t('所选文件名称为')}《${fileTitle}》，${t('与当前资料')}《${targetTitle}》${t('名称不同，但出版物 ID 一致。')}\n\n`:'';
+      if(!(await askConfirm(t('更新该资料'),`${nameNote}${t('将用所选文件更新')}《${targetTitle}》。${t('笔记、标签、划线、书签和阅读历史会保留。')}`,t('更新'))))return;
+      await importFiles([f],{overwriteNames:new Set([f.name])});
+    }catch(err){try{$('modal').style.display='none'}catch(e){};say(t('更新失败'),err.message||String(err))}
+    finally{input.remove()}
+  };
+  input.click();
 }
 function promptReimportForShare(book){
   // Keep this inside the original click gesture so iOS/Sitecase can open the
@@ -449,7 +476,7 @@ function sectionPanel(title,desc,opts={}){
   if(desc)box.appendChild(p);
   $('sectionDashboard').appendChild(box);return box;
 }
-function sectionBookCard(book,subtitle='',targetDocId=null){const card=document.createElement('div');card.className='section-book-card';const title=document.createElement('h3');title.textContent=book.displayTitle||book.title;const meta=document.createElement('p');meta.className='sub';meta.textContent=subtitle||`${langLabel(book.lang)} · ${book.year||''}${book.year?' · ':''}${Number(book.docCount??(book.docs||[]).length)} ${t('文档')} · ${sourceFileName(book.originalFilename||book.manifestName||t('原始文件未知'))}`;const actions=document.createElement('div');actions.className='section-card-actions';const open=document.createElement('button');open.className='btn';open.textContent=t('打开阅读');open.onclick=()=>targetDocId!==null?openDocInBook(book,targetDocId):openBook(book.id);actions.appendChild(open);if(Number(book.docCount??(book.docs||[]).length)>1){const toc=document.createElement('button');toc.className='btn secondary';toc.textContent=t('查看目录');toc.onclick=()=>{openBook(book.id).then(()=>{if(window.innerWidth<1100)$('drawer').style.display='block'})};actions.appendChild(toc)}card.append(title,meta,actions);return card}
+function sectionBookCard(book,subtitle='',targetDocId=null){const card=document.createElement('div');card.className='section-book-card';card.style.position='relative';const title=document.createElement('h3');title.textContent=book.displayTitle||book.title;title.style.paddingRight='44px';const meta=document.createElement('p');meta.className='sub';meta.textContent=subtitle||`${langLabel(book.lang)} · ${book.year||''}${book.year?' · ':''}${Number(book.docCount??(book.docs||[]).length)} ${t('文档')} · ${sourceFileName(book.originalFilename||book.manifestName||t('原始文件未知'))}`;const actions=document.createElement('div');actions.className='section-card-actions';const open=document.createElement('button');open.className='btn';open.textContent=t('打开阅读');open.onclick=()=>targetDocId!==null?openDocInBook(book,targetDocId):openBook(book.id);actions.appendChild(open);if(Number(book.docCount??(book.docs||[]).length)>1){const toc=document.createElement('button');toc.className='btn secondary';toc.textContent=t('查看目录');toc.onclick=()=>{openBook(book.id).then(()=>{if(window.innerWidth<1100)$('drawer').style.display='block'})};actions.appendChild(toc)}const more=document.createElement('button');more.className='book-more';more.style.position='absolute';more.style.top='8px';more.style.right='8px';more.innerHTML=svgIcon('more',18);more.title=t('更多操作');more.setAttribute('aria-label',t('更多操作'));more.onclick=e=>{e.stopPropagation();openBookActions(book,more)};card.append(title,meta,actions,more);return card}
 function fmtMb(n){const v=Number(n||0);if(v>=1048576)return (v/1048576).toFixed(1)+'MB';if(v>=1024)return (v/1024).toFixed(1)+'KB';return v+'B'}
 async function copyText(text){
   if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);return}

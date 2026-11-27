@@ -61,6 +61,50 @@ async function loadJwpubArchive(file){
   }
   throw new Error(`这不是有效的 PUB：${name} 的文件头是 ${zipMagicHex(u8)}，应为 50 4b 03 04。文件可能被保存成网页、文本，或下载未完成。`);
 }
+// Read only the identity fields needed by "update this publication" so we can
+// reject a wrong file before doing the full decrypt/import pass.
+async function readJwpubIdentity(file){
+  if(!window.JSZip)throw new Error('内置 PUB 压缩包组件未能加载，请重新打开完整的单文件 HTML。');
+  const outer=await loadJwpubArchive(file);
+  const manifestFile=outer.file('manifest.json');
+  if(!manifestFile)throw new Error('找不到 manifest.json；这可能不是标准 PUB 文件。');
+  const manifestBytes=await manifestFile.async('uint8array');
+  const manifest=JSON.parse(new TextDecoder('utf-8').decode(manifestBytes));
+  let inner=outer;
+  const contents=outer.file('contents');
+  if(contents){const data=await contents.async('uint8array');if(data[0]===0x50&&data[1]===0x4b)inner=await JSZip.loadAsync(data);}
+  const mp=manifest.publication||{};
+  const preferred=mp.fileName;
+  let dbEntry=preferred?inner.file(preferred):null;
+  if(!dbEntry){for(const [name,entry] of Object.entries(inner.files)){if(!entry.dir&&/\.(db|sqlite|sqlite3)$/i.test(name)){dbEntry=entry;break}}}
+  if(!dbEntry)throw new Error('压缩包中没有找到数据库文件。');
+  const dbBytes=await dbEntry.async('uint8array');
+  SQL=SQL||await initSqlJs();
+  const db=new SQL.Database(dbBytes);
+  try{
+    const p=rows(db,'Publication')[0];
+    if(!p)throw new Error('数据库中没有 Publication 记录。');
+    const pub={
+      lang:Number(pick(p,['MepsLanguageIndex','LanguageIndex','Language'],mp.language??0)),
+      symbol:String(pick(p,['Symbol','PublicationSymbol'],mp.symbol||'unknown')),
+      undatedSymbol:String(pick(p,['UndatedSymbol'],mp.undatedSymbol||'')),
+      year:Number(pick(p,['Year'],mp.year||0)),
+      issue:Number(pick(p,['IssueTagNumber','IssueNumber'],mp.issueNumber||0)),
+      manifestRaw:manifest
+    };
+    const title=String(pick(p,['Title','Name'],mp.title||manifest.name||file.name||''));
+    return {
+      id:idFor(pub),
+      title,
+      displayTitle:String(mp.displayTitle||mp.title||manifest.name||title||''),
+      symbol:pub.symbol,
+      year:pub.year,
+      issue:pub.issue,
+      lang:pub.lang,
+      fileName:(file&&file.name)||''
+    };
+  }finally{try{db.close()}catch(e){}}
+}
 async function parseJwpub(file,onProgress,opts){
   const captureSource=!!(opts&&opts.captureSource);
   if(!window.JSZip)throw new Error('内置 PUB 压缩包组件未能加载，请重新打开完整的单文件 HTML。');

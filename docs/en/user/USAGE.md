@@ -64,6 +64,14 @@ In **More → Backup & restore**:
 
 A confirmation appears above roughly 150 MB. The actual file is larger than the estimate because of Base64 encoding.
 
+### Update a publication
+
+On a publication card choose **More → Update this publication…**, then select the new JWPUB for the same publication. The app first reads its publication name and ID:
+
+- a different publication is rejected, so the wrong file cannot silently replace a book;
+- if the name differs but the publication ID matches, the app asks for confirmation;
+- notes, tags, highlights, bookmarks and reading history are kept.
+
 ### Share the original JWPUB
 
 1. **More → Settings & diagnostics → Keep original package for sharing** is on by default; you can turn it off.
