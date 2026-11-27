@@ -273,6 +273,9 @@ Object.assign(I18N.ko,{"更新该资料…":"이 자료 업데이트…","正在
 Object.assign(I18N.en,{"重新导入":"Re-import","分享":"Share","将用所选文件重新导入":"This will re-import with the selected file","重新导入失败":"Re-import failed"});
 Object.assign(I18N.ja,{"重新导入":"再インポート","分享":"共有","将用所选文件重新导入":"選択したファイルで再インポートします","重新导入失败":"再インポートに失敗"});
 Object.assign(I18N.ko,{"重新导入":"다시 가져오기","分享":"공유","将用所选文件重新导入":"선택한 파일로 다시 가져옵니다","重新导入失败":"다시 가져오기 실패"});
+Object.assign(I18N.en,{"分享 / 保存":"Share / save","分享 / 保存…":"Share / save…","保存到文件…":"Save to file…","在分享面板选择“存储到文件”，再从“文件”App 分享给 JW Library。":"In the share sheet choose “Save to Files”, then share it to JW Library from the Files app."});
+Object.assign(I18N.ja,{"分享 / 保存":"共有 / 保存","分享 / 保存…":"共有 / 保存…","保存到文件…":"ファイルに保存…","在分享面板选择“存储到文件”，再从“文件”App 分享给 JW Library。":"共有シートで「ファイルに保存」を選び、ファイルAppからJW Libraryに共有してください。"});
+Object.assign(I18N.ko,{"分享 / 保存":"공유 / 저장","分享 / 保存…":"공유 / 저장…","保存到文件…":"파일에 저장…","在分享面板选择“存储到文件”，再从“文件”App 分享给 JW Library。":"공유 시트에서 “파일에 저장”을 선택한 다음 파일 앱에서 JW Library로 공유하십시오."});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
