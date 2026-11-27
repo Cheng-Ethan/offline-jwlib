@@ -35,6 +35,7 @@ h1{font-size:var(--text-3xl);line-height:1.2;margin:7px 0 8px}h2{font-size:var(-
 .reader-tools-menu.show{display:flex}
 .reader-tool{width:100%;padding:11px 12px;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--ink);font-family:var(--font-ui);font-size:var(--text-sm);font-weight:650;line-height:1.3;text-align:left;display:flex;align-items:center;justify-content:flex-start;gap:8px;white-space:nowrap}
 .reader-tool .btn-icon{display:flex;flex:none;color:var(--muted)}
+.reader-tool-sep{height:1px;background:var(--line);margin:4px 6px;flex:none}
 .reader-tool:active{background:#edf3f5}
 .reader-tool:disabled{opacity:.42}
 .reader-tool[aria-pressed="true"],.reader-tool.active{color:var(--green)}

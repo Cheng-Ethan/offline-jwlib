@@ -352,32 +352,47 @@ function isIOSWebView(){
   try{return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}catch(e){return false}
 }
 function closeExportPanel(){const p=document.getElementById('exportPanel');if(p)p.remove()}
+async function saveBlobAsFile(blob,name){
+  if(typeof window.showSaveFilePicker==='function'){
+    try{
+      const handle=await window.showSaveFilePicker({suggestedName:name,types:[{description:'JWPUB',accept:{'application/octet-stream':['.jwpub']}}]});
+      const writable=await handle.createWritable();
+      await writable.write(blob);await writable.close();return true;
+    }catch(e){if(e&&e.name==='AbortError')return true}
+  }
+  download(blob,name);return true;
+}
 function showExportPanel(blob,name,book,exact){
   closeExportPanel();
+  const mobileShare=isIOSWebView()||/Android/i.test(navigator.userAgent);
   const panel=document.createElement('div');panel.id='exportPanel';
   panel.style.cssText='position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:20px';
   panel.onclick=e=>{if(e.target===panel)closeExportPanel()};
   const box=document.createElement('div');box.style.cssText='background:#fff;color:#172026;border-radius:14px;padding:18px;max-width:440px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.28);font:14px/1.5 system-ui,-apple-system,sans-serif';
   const title=document.createElement('div');title.style.cssText='font-weight:700;font-size:16px;margin-bottom:8px';title.textContent=t('分享 / 保存');
   const fileLabel=document.createElement('div');fileLabel.style.cssText='font-size:12px;color:#5d7079;word-break:break-all;margin-bottom:12px';fileLabel.textContent=name;
-  const hint=document.createElement('div');hint.style.cssText='font-size:12px;color:#5d7079;line-height:1.5;margin-bottom:14px';hint.textContent=isIOSWebView()?t('在分享面板选择“存储到文件”，再从“文件”App 分享给 JW Library。'):'';
+  const hint=document.createElement('div');hint.style.cssText='font-size:12px;color:#5d7079;line-height:1.5;margin-bottom:14px';hint.textContent=mobileShare?t('在分享面板选择“存储到文件”，再从“文件”App 分享给 JW Library。'):'';
   const actions=document.createElement('div');actions.style.cssText='display:flex;flex-direction:column;gap:8px';
   const mk=(label,fn,secondary)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.style.cssText='padding:11px 14px;border-radius:10px;border:1px solid '+(secondary?'#d8dee4':'#172026')+';background:'+(secondary?'#fff':'#172026')+';color:'+(secondary?'#172026':'#fff')+';font:inherit;font-weight:650';b.onclick=fn;actions.appendChild(b);return b};
-  mk(t('分享 / 保存…'),async()=>{
-    if(typeof File!=='function'){closeExportPanel();say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'));return}
-    const fileObj=new File([blob],name,{type:'application/octet-stream'});
-    let can=false;try{can=!!(navigator.canShare&&navigator.share&&navigator.canShare({files:[fileObj]}))}catch(e){}
-    if(can){
-      const p=navigator.share({files:[fileObj],title:name});
+  if(mobileShare){
+    mk(t('分享 / 保存…'),async()=>{
+      if(typeof File!=='function'){closeExportPanel();say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'));return}
+      const fileObj=new File([blob],name,{type:'application/octet-stream'});
+      let can=false;try{can=!!(navigator.canShare&&navigator.share&&navigator.canShare({files:[fileObj]}))}catch(e){}
+      if(can){
+        const p=navigator.share({files:[fileObj],title:name});
+        closeExportPanel();
+        try{await p;logDiag('info','分享原始 JWPUB',{id:book.id,size:blob.size,name,exact:!!exact})}
+        catch(e){if(e&&e.name!=='AbortError')say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'))}
+        return;
+      }
       closeExportPanel();
-      try{await p;logDiag('info','分享原始 JWPUB',{id:book.id,size:blob.size,name,exact:!!exact})}
-      catch(e){if(e&&e.name!=='AbortError')say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'))}
-      return;
-    }
-    if(!isIOSWebView()){closeExportPanel();download(blob,name);logDiag('info','保存原始 JWPUB',{id:book.id,size:blob.size,name,exact:!!exact});return}
-    closeExportPanel();say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'));
-  });
-  if(!isIOSWebView())mk(t('保存到文件…'),()=>{closeExportPanel();download(blob,name);logDiag('info','保存原始 JWPUB',{id:book.id,size:blob.size,name,exact:!!exact})},true);
+      if(isIOSWebView()){say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'));return}
+      await saveBlobAsFile(blob,name);
+    });
+  }else{
+    mk(t('保存到文件…'),async()=>{closeExportPanel();await saveBlobAsFile(blob,name);logDiag('info','保存原始 JWPUB',{id:book.id,size:blob.size,name,exact:!!exact})});
+  }
   mk(t('取消'),closeExportPanel,true);
   box.append(title,fileLabel,hint,actions);panel.appendChild(box);document.body.appendChild(panel);
 }

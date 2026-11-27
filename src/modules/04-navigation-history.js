@@ -265,6 +265,15 @@ function toggleReaderToolsMenu(){
 $('readerMoreBtn').onclick=e=>{e.stopPropagation();toggleReaderToolsMenu()};
 $('readerReimportBtn').onclick=()=>{closeReaderToolsMenu();if(currentBook)updatePublication(currentBook)};
 $('readerShareBtn').onclick=()=>{closeReaderToolsMenu();if(currentBook)openShareMenu(currentBook,$('readerMoreBtn'))};
+function decorateReaderTools(){
+  const map={tocBtn:'list',readerSearchBtn:'search',prevBtn:'left',nextBtn:'right',bookmarkBtn:'starOn',noteBtn:'note',readerLangBtn:'language',pronunciationBtn:'language',fontDown:'minus',fontUp:'plus',readerReimportBtn:'download',readerShareBtn:'upload'};
+  for(const [id,icon] of Object.entries(map)){
+    const b=$(id);if(!b||b.querySelector('.btn-icon'))continue;
+    const s=document.createElement('span');s.className='btn-icon';s.innerHTML=svgIcon(icon,18);
+    b.insertBefore(s,b.firstChild);
+  }
+}
+setTimeout(decorateReaderTools,0);
 $('readerToolsMenu').addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#readerLangBtn,#tocBtn,#readerSearchBtn,#noteBtn'))closeReaderToolsMenu()});
 document.addEventListener('click',e=>{
   const menu=$('readerToolsMenu');
