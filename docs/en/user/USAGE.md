@@ -59,7 +59,7 @@ The Daily Text reader stays minimal: no bottom action bar; paging is labelled pr
 
 In **More → Backup & restore**:
 
-- **Backup library** → `offline-library-library-v2.json`: all publications, assets, notes, tags, highlights, bookmarks, history and categories. Books with an original package include the original JWPUB too, so the backup can approach twice the library size.
+- **Backup library** → `offline-library-library-v2.json`: all publications, assets, notes, tags, highlights, bookmarks, history, categories, UI settings, language packs and reading positions. Books with an original package include the original JWPUB too, so the backup can approach twice the library size.
 - **Backup notes** → `offline-library-notes-v1.json`: notes, tags and highlights only.
 
 A confirmation appears above roughly 150 MB. The actual file is larger than the estimate because of Base64 encoding.

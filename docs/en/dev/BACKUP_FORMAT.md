@@ -45,11 +45,15 @@ Top-level structure (streamed by `backupLibrary()`):
   "highlights": [],
   "bookmarks": [],
   "history": [],
-  "categories": []
+  "categories": [],
+  "system": [],
+  "localStorage": {}
 }
 ```
 
 Each `book` comes from `loadBook(id, { assets: true })`, including metadata, documents, assets and the import report.
+
+`system` stores non-derived system records (mainly `readerPanelCache`: per-section current article, back history and paragraph position); derived records such as `canonicalAnchorsV1` and migration flags are omitted and rebuilt after restore. `localStorage` stores every `offlineLibrary*` key: UI language, content language, pronunciation, sidebar/TOC state, language packs, search history/selected books, Bible order, source retention and source-first settings. Restore writes them back and applies them immediately.
 
 ### 3.0 Original packages
 

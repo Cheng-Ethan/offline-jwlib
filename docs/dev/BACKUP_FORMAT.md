@@ -45,11 +45,15 @@
   "highlights": [],
   "bookmarks": [],
   "history": [],
-  "categories": []
+  "categories": [],
+  "system": [],
+  "localStorage": {}
 }
 ```
 
 每本 `book` 是 `loadBook(id, { assets: true })` 的结果，包含元数据、文档、资源与导入报告等。
+
+`system` 保存非派生的系统记录（主要是 `readerPanelCache`，即各栏目当前文章、返回历史和段落位置）；`canonicalAnchorsV1`、迁移标记等派生记录不写入，恢复后重建。`localStorage` 保存所有 `offlineLibrary*` 键，包括界面语言、内容语言、拼音、侧栏/目录状态、语言包、搜索历史/所选出版物、圣经顺序、保留原始包和 source-first 设置。恢复时会写回并立即应用。
 
 ### 3.0 原始包
 

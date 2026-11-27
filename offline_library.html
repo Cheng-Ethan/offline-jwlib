@@ -7778,6 +7778,37 @@ async function backupNotes(){
     logDiag('info','导出笔记备份',{notes:(notes||[]).length,tags:(tags||[]).length,highlights:(highlights||[]).length});
   }catch(err){say('备份失败',err.message||String(err));logDiag('error','导出笔记备份失败',{message:err.message||String(err)})}
 }
+const RESTORE_DERIVED_SYSTEM_IDS=new Set(['canonicalAnchorsV1','migratedV3','migratedStableIds','categoryIdsV1']);
+function snapshotLocalStorage(){
+  const out={};
+  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('offlineLibrary'))out[k]=localStorage.getItem(k)}}catch(e){}
+  return out;
+}
+async function snapshotSystemStore(){
+  const out=[];
+  await new Promise((res,rej)=>{
+    const t=idb.transaction('system','readonly');
+    const r=t.objectStore('system').openCursor();
+    r.onsuccess=e=>{const c=e.target.result;if(c){const v=c.value;if(v&&!RESTORE_DERIVED_SYSTEM_IDS.has(String(v.id)))out.push(v);c.continue()}else res()};
+    r.onerror=()=>rej(r.error);
+  });
+  return out;
+}
+function applyRestoredSettings(){
+  try{
+    try{const packs=JSON.parse(localStorage.getItem('offlineLibraryLanguagePacks')||'{}');for(const [code,pack] of Object.entries(packs))registerLanguagePack(code,pack.meta,pack.messages,false)}catch(e){}
+    const savedUi=localStorage.getItem('offlineLibraryUiLang');
+    if(savedUi&&UI_LANGS[savedUi])uiLang=savedUi;
+    const savedContent=localStorage.getItem('offlineLibraryContentLang');
+    if(savedContent)contentLangFilter=savedContent;
+    const pron=localStorage.getItem('offlineLibraryPronunciation');
+    if(pron!==null)setPinyin(pron==='1');
+    try{sidebarCollapsed=localStorage.getItem('offlineLibrarySidebarCollapsed')==='1';tocHidden=localStorage.getItem('offlineLibraryTocHidden')==='1';applySidebarState();applyTocState()}catch(e){}
+    try{readerSearchSelected=loadReaderSearchSelected()}catch(e){}
+    try{const id=localStorage.getItem('offlineLibraryBibleId');if(id)currentBibleId=id}catch(e){}
+    applyI18n();
+  }catch(e){logDiag('warn','恢复界面设置失败',{message:e&&e.message||String(e)})}
+}
 async function backupLibrary(){
   try{
     const metas=await allBooks();
@@ -7795,7 +7826,7 @@ async function backupLibrary(){
     };
     paint('正在读取笔记、标签和划线…',true);
     await tick();
-    const [notes,tags,highlights,marks,history,categories]=await Promise.all([reqP(tx('notes').getAll()),reqP(tx('tags').getAll()),reqP(tx('highlights').getAll()),reqP(tx('bookmarks').getAll()),reqP(tx('history').getAll()),reqP(tx('categories').getAll())]);
+    const [notes,tags,highlights,marks,history,categories,system,localStorageData]=await Promise.all([reqP(tx('notes').getAll()),reqP(tx('tags').getAll()),reqP(tx('highlights').getAll()),reqP(tx('bookmarks').getAll()),reqP(tx('history').getAll()),reqP(tx('categories').getAll()),snapshotSystemStore(),snapshotLocalStorage()]);
     const sink=createJsonSink(),state={lastYield:Date.now()};
     sink.write('{"format":"offline-library-library-v2","appVersion":'+JSON.stringify(APP_VERSION)+',"createdAt":'+JSON.stringify(new Date().toISOString())+',"books":[');
     for(let i=0;i<metas.length;i++){
@@ -7811,7 +7842,7 @@ async function backupLibrary(){
       bookCount++;
       await tick();
     }
-    const tail=[['notes',notes],['tags',tags],['highlights',highlights],['bookmarks',marks],['history',history],['categories',categories]];
+    const tail=[['notes',notes],['tags',tags],['highlights',highlights],['bookmarks',marks],['history',history],['categories',categories],['system',system],['localStorage',localStorageData]];
     sink.write(']');
     for(const [name,value] of tail){
       sink.write(','+JSON.stringify(name)+':');
@@ -7958,10 +7989,16 @@ $('backupInput').onchange=async e=>{
     for(const m of marks)await saveOne('bookmarks',m);
     for(const h of history)await saveOne('history',h);
     for(const c of categories)await saveOne('categories',c);
+    const system=await unpackValue(result.tail.system||[]);
+    const localData=await unpackValue(result.tail.localStorage||{});
+    for(const rec of system)await saveOne('system',rec);
+    for(const [k,v] of Object.entries(localData||{}))try{localStorage.setItem(k,String(v))}catch(e){}
+    applyRestoredSettings();
+    await loadReaderCache();
     await refreshCanonicalAnchorsAfterRestore();
     await renderBooks();
-    say('恢复完成',`恢复/合并出版物 ${bookCount} 本${sourceCount?`（含原始包 ${sourceCount} 个）`:''}、笔记 ${notes.length} 条、标签 ${tags.length} 个、划线 ${highlights.length} 条、书签 ${marks.length} 条、阅读记录 ${history.length} 条。`);
-    logDiag('info','恢复备份',{format:restoreFormat,books:bookCount,sources:sourceCount,notes:notes.length,tags:tags.length,highlights:highlights.length});
+    say('恢复完成',`恢复/合并出版物 ${bookCount} 本${sourceCount?`（含原始包 ${sourceCount} 个）`:''}、笔记 ${notes.length} 条、标签 ${tags.length} 个、划线 ${highlights.length} 条、书签 ${marks.length} 条、阅读记录 ${history.length} 条；界面设置/语言包/阅读位置已恢复。`);
+    logDiag('info','恢复备份',{format:restoreFormat,books:bookCount,sources:sourceCount,notes:notes.length,tags:tags.length,highlights:highlights.length,system:system.length,localStorage:Object.keys(localData||{}).length});
   }catch(err){say('恢复失败',err.message||String(err));logDiag('error','恢复备份失败',{message:err.message||String(err),format:restoreFormat})}finally{e.target.value=''}
 };
 async function shareFile(blob,name){
