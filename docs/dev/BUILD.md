@@ -48,7 +48,7 @@ node build.mjs
 
 | 字段 | 当前值 | 说明 |
 |---|---|---|
-| `appVersion` | `2.0.0` | 当前版本，写入 HTML meta 与运行时 `APP_VERSION` |
+| `appVersion` | `2.0.1` | 当前版本，写入 HTML meta 与运行时 `APP_VERSION` |
 | `moduleApiVersion` | `1` | 模块 API 版本校验 |
 | `indexedDbName` | `OfflineJwLibrary` | 升级时尽量不变 |
 | `indexedDbVersion` | `5` | 数据库版本（原始包使用独立数据库） |

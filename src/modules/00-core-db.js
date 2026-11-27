@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const APP_VERSION='2.0.0';
+const APP_VERSION='2.0.1';
 const DB_NAME='OfflineJwLibrary', DB_VERSION=5;
 let idb, SQL, currentBook=null, currentIndex=0, fontSize=19, currentObjectUrls=[], bibleMode=false, bibleReturn=null;
 let assetUrlCache=new Map(), pronunciationOn=false, historyWriteAt=0, readerReturnSection=null, readerNavSection=null, readerOriginSection=null, readerReturnTarget=null, readerSessionTab=null;
@@ -566,6 +566,9 @@ function shouldMigrateId(b){
   return old===legacyIdFor(b)&&old!==idFor(b);
 }
 function safeText(v){return String(v??'').replace(/[<>]/g,'')}
+const HL_COLORS=new Set(['#ffe58a','#b7e4c7','#bcd9f2','#f4b6b6']);
+function safeHighlightColor(c){const v=String(c||'').toLowerCase();return HL_COLORS.has(v)?v:'#ffe58a'}
+function cleanInlineHtml(raw){try{return cleanHtml(String(raw||''),{}).body}catch(e){return safeText(raw)}}
 function bytesHex(s){return new Uint8Array(s.match(/.{2}/g).map(x=>parseInt(x,16)))}
 function xor(a,b){const o=new Uint8Array(a.length);for(let i=0;i<a.length;i++)o[i]=a[i]^b[i];return o}
 let _aesTables=null;
@@ -808,7 +811,7 @@ function cleanHtml(raw,assetMap){
 async function allTags(){return reqP(tx('tags').getAll())}
 async function saveTag(tag){return reqP(tx('tags','readwrite').put(tag))}
 async function allHighlights(){return reqP(tx('highlights').getAll())}
-async function saveHighlight(h){return reqP(tx('highlights','readwrite').put(h))}
+async function saveHighlight(h){if(h)h.color=safeHighlightColor(h.color);return reqP(tx('highlights','readwrite').put(h))}
 async function getHighlightsForDoc(bookId,docId){return reqP(tx('highlights').index('byBookDoc').getAll([String(bookId),String(docId)]))}
 async function getHighlightsForBook(bookId){return reqP(tx('highlights').index('byBook').getAll(String(bookId)))}
 async function getHighlightsForNote(noteId){return reqP(tx('highlights').index('byNote').getAll(String(noteId)))}

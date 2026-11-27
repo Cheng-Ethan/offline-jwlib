@@ -532,7 +532,7 @@ async function showDoc(anchor=''){
   const clean=cleanHtml(html,map),style=document.createElement('style');style.textContent=clean.styles||'';$('article').appendChild(style);
   const content=document.createElement('div');content.className='publication-content publication-content-'+kind;content.innerHTML=clean.body;
   const hasHeading=!!content.querySelector('h1,h2,.documentTitle,.title');
-  if(!hasHeading&&!d.bibleChapter&&(d.titleRich||d.title)){const head=document.createElement('header');head.className='reader-generated-heading';const h=document.createElement('h1');h.innerHTML=d.titleRich||safeText(d.title);head.appendChild(h);if(d.subtitleRich||d.subtitle){const sub=document.createElement('p');sub.className='reader-generated-subtitle';sub.innerHTML=d.subtitleRich||safeText(d.subtitle);head.appendChild(sub)}content.insertBefore(head,content.firstChild)}
+  if(!hasHeading&&!d.bibleChapter&&(d.titleRich||d.title)){const head=document.createElement('header');head.className='reader-generated-heading';const h=document.createElement('h1');h.innerHTML=cleanInlineHtml(d.titleRich||safeText(d.title));head.appendChild(h);if(d.subtitleRich||d.subtitle){const sub=document.createElement('p');sub.className='reader-generated-subtitle';sub.innerHTML=cleanInlineHtml(d.subtitleRich||safeText(d.subtitle));head.appendChild(sub)}content.insertBefore(head,content.firstChild)}
   if(epoch!==tabEpoch)return false;
   $('article').appendChild(content);
   applyBibleCrossRefMarkers(content,currentBook);
@@ -780,7 +780,7 @@ function wrapHighlight(block,start,end,id,color){
     const {node,from,to}=targets[i];let target=node;
     if(to<target.data.length)target.splitText(to);
     if(from>0)target=target.splitText(from);
-    const span=document.createElement('span');span.className='hl';span.dataset.hlId=id;span.style.backgroundColor=color||'#ffe58a';span.style.borderRadius='3px';span.style.cursor='pointer';
+    const span=document.createElement('span');span.className='hl';span.dataset.hlId=id;span.style.backgroundColor=safeHighlightColor(color);span.style.borderRadius='3px';span.style.cursor='pointer';
     target.parentNode.insertBefore(span,target);span.appendChild(target);
   }
   return true;
@@ -1499,7 +1499,7 @@ async function showHighlightActions(el,id){
 async function updateHighlightColor(id,color){
   const h=await getOne('highlights',id);if(!h)return;
   h.color=color;await saveHighlight(h);
-  document.querySelectorAll('.hl[data-hl-id="'+CSS.escape(String(id))+'"]').forEach(el=>{el.style.backgroundColor=color});
+  document.querySelectorAll('.hl[data-hl-id="'+CSS.escape(String(id))+'"]').forEach(el=>{el.style.backgroundColor=safeHighlightColor(color)});
 }
 async function clearHighlight(id){
   const h=await getOne('highlights',id);if(!h)return;
@@ -1590,7 +1590,7 @@ async function openChapterNotes(){
     const rows=list.map((h,i)=>({h,n:notes[i]})).sort((a,b)=>Number(a.h.blockIndex||0)-Number(b.h.blockIndex||0)||Number(a.h.startOffset||0)-Number(b.h.startOffset||0));
     rows.forEach(({h,n})=>{
       const b=document.createElement('button');b.className='annotation-row';
-      b.innerHTML=`<span><span class="annotation-dot" style="background:${h.color||'#ffe58a'}"></span>${safeText(String(h.quote||'').slice(0,120))}</span><small>${safeText((n&&n.text)||(n&&n.title)||'')}</small>`;
+      b.innerHTML=`<span><span class="annotation-dot" style="background:${safeHighlightColor(h.color)}"></span>${safeText(String(h.quote||'').slice(0,120))}</span><small>${safeText((n&&n.text)||(n&&n.title)||'')}</small>`;
       b.onclick=()=>{closeAnnotationsPanel();const el=$('article').querySelector('.hl[data-hl-id="'+String(h.id).replace(/"/g,'')+'"]');if(el)el.scrollIntoView({block:'center'});else{const blocks=hlBlocks(hlRoot());const block=blocks[Number(h.blockIndex||0)];if(block)block.scrollIntoView({block:'center'})}};
       box.appendChild(b);
     });

@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f7f5f0">
-<meta name="offline-library-version" content="2.0.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:; media-src data: blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="offline-library-version" content="2.0.1">
 <title>我的私人图书馆</title>
 <style>
 :root{
@@ -1268,7 +1269,7 @@ else if (typeof exports === 'object'){
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const APP_VERSION='2.0.0';
+const APP_VERSION='2.0.1';
 const DB_NAME='OfflineJwLibrary', DB_VERSION=5;
 let idb, SQL, currentBook=null, currentIndex=0, fontSize=19, currentObjectUrls=[], bibleMode=false, bibleReturn=null;
 let assetUrlCache=new Map(), pronunciationOn=false, historyWriteAt=0, readerReturnSection=null, readerNavSection=null, readerOriginSection=null, readerReturnTarget=null, readerSessionTab=null;
@@ -1832,6 +1833,9 @@ function shouldMigrateId(b){
   return old===legacyIdFor(b)&&old!==idFor(b);
 }
 function safeText(v){return String(v??'').replace(/[<>]/g,'')}
+const HL_COLORS=new Set(['#ffe58a','#b7e4c7','#bcd9f2','#f4b6b6']);
+function safeHighlightColor(c){const v=String(c||'').toLowerCase();return HL_COLORS.has(v)?v:'#ffe58a'}
+function cleanInlineHtml(raw){try{return cleanHtml(String(raw||''),{}).body}catch(e){return safeText(raw)}}
 function bytesHex(s){return new Uint8Array(s.match(/.{2}/g).map(x=>parseInt(x,16)))}
 function xor(a,b){const o=new Uint8Array(a.length);for(let i=0;i<a.length;i++)o[i]=a[i]^b[i];return o}
 let _aesTables=null;
@@ -2074,7 +2078,7 @@ function cleanHtml(raw,assetMap){
 async function allTags(){return reqP(tx('tags').getAll())}
 async function saveTag(tag){return reqP(tx('tags','readwrite').put(tag))}
 async function allHighlights(){return reqP(tx('highlights').getAll())}
-async function saveHighlight(h){return reqP(tx('highlights','readwrite').put(h))}
+async function saveHighlight(h){if(h)h.color=safeHighlightColor(h.color);return reqP(tx('highlights','readwrite').put(h))}
 async function getHighlightsForDoc(bookId,docId){return reqP(tx('highlights').index('byBookDoc').getAll([String(bookId),String(docId)]))}
 async function getHighlightsForBook(bookId){return reqP(tx('highlights').index('byBook').getAll(String(bookId)))}
 async function getHighlightsForNote(noteId){return reqP(tx('highlights').index('byNote').getAll(String(noteId)))}
@@ -5260,7 +5264,7 @@ async function showDoc(anchor=''){
   const clean=cleanHtml(html,map),style=document.createElement('style');style.textContent=clean.styles||'';$('article').appendChild(style);
   const content=document.createElement('div');content.className='publication-content publication-content-'+kind;content.innerHTML=clean.body;
   const hasHeading=!!content.querySelector('h1,h2,.documentTitle,.title');
-  if(!hasHeading&&!d.bibleChapter&&(d.titleRich||d.title)){const head=document.createElement('header');head.className='reader-generated-heading';const h=document.createElement('h1');h.innerHTML=d.titleRich||safeText(d.title);head.appendChild(h);if(d.subtitleRich||d.subtitle){const sub=document.createElement('p');sub.className='reader-generated-subtitle';sub.innerHTML=d.subtitleRich||safeText(d.subtitle);head.appendChild(sub)}content.insertBefore(head,content.firstChild)}
+  if(!hasHeading&&!d.bibleChapter&&(d.titleRich||d.title)){const head=document.createElement('header');head.className='reader-generated-heading';const h=document.createElement('h1');h.innerHTML=cleanInlineHtml(d.titleRich||safeText(d.title));head.appendChild(h);if(d.subtitleRich||d.subtitle){const sub=document.createElement('p');sub.className='reader-generated-subtitle';sub.innerHTML=cleanInlineHtml(d.subtitleRich||safeText(d.subtitle));head.appendChild(sub)}content.insertBefore(head,content.firstChild)}
   if(epoch!==tabEpoch)return false;
   $('article').appendChild(content);
   applyBibleCrossRefMarkers(content,currentBook);
@@ -5508,7 +5512,7 @@ function wrapHighlight(block,start,end,id,color){
     const {node,from,to}=targets[i];let target=node;
     if(to<target.data.length)target.splitText(to);
     if(from>0)target=target.splitText(from);
-    const span=document.createElement('span');span.className='hl';span.dataset.hlId=id;span.style.backgroundColor=color||'#ffe58a';span.style.borderRadius='3px';span.style.cursor='pointer';
+    const span=document.createElement('span');span.className='hl';span.dataset.hlId=id;span.style.backgroundColor=safeHighlightColor(color);span.style.borderRadius='3px';span.style.cursor='pointer';
     target.parentNode.insertBefore(span,target);span.appendChild(target);
   }
   return true;
@@ -6227,7 +6231,7 @@ async function showHighlightActions(el,id){
 async function updateHighlightColor(id,color){
   const h=await getOne('highlights',id);if(!h)return;
   h.color=color;await saveHighlight(h);
-  document.querySelectorAll('.hl[data-hl-id="'+CSS.escape(String(id))+'"]').forEach(el=>{el.style.backgroundColor=color});
+  document.querySelectorAll('.hl[data-hl-id="'+CSS.escape(String(id))+'"]').forEach(el=>{el.style.backgroundColor=safeHighlightColor(color)});
 }
 async function clearHighlight(id){
   const h=await getOne('highlights',id);if(!h)return;
@@ -6318,7 +6322,7 @@ async function openChapterNotes(){
     const rows=list.map((h,i)=>({h,n:notes[i]})).sort((a,b)=>Number(a.h.blockIndex||0)-Number(b.h.blockIndex||0)||Number(a.h.startOffset||0)-Number(b.h.startOffset||0));
     rows.forEach(({h,n})=>{
       const b=document.createElement('button');b.className='annotation-row';
-      b.innerHTML=`<span><span class="annotation-dot" style="background:${h.color||'#ffe58a'}"></span>${safeText(String(h.quote||'').slice(0,120))}</span><small>${safeText((n&&n.text)||(n&&n.title)||'')}</small>`;
+      b.innerHTML=`<span><span class="annotation-dot" style="background:${safeHighlightColor(h.color)}"></span>${safeText(String(h.quote||'').slice(0,120))}</span><small>${safeText((n&&n.text)||(n&&n.title)||'')}</small>`;
       b.onclick=()=>{closeAnnotationsPanel();const el=$('article').querySelector('.hl[data-hl-id="'+String(h.id).replace(/"/g,'')+'"]');if(el)el.scrollIntoView({block:'center'});else{const blocks=hlBlocks(hlRoot());const block=blocks[Number(h.blockIndex||0)];if(block)block.scrollIntoView({block:'center'})}};
       box.appendChild(b);
     });
@@ -8013,15 +8017,22 @@ $('backupInput').onchange=async e=>{
     const result=await streamLibraryBackup(f,{
       onFormat:(format)=>{restoreFormat=format;if(format==='offline-library-notes-v1')throw new Error('这是笔记备份，请使用“恢复笔记”。');if(!libraryFormats.includes(format))throw new Error('备份文件格式不正确')},
       onProgress:(bytes)=>{readBytes=bytes;say('正在恢复图书馆',`正在读取备份…\n${fmtMb(bytes)} / ${fmtMb(f.size)}`,true)},
-      onBook:async(book)=>{
+      onBook:async(book,bookIndex)=>{
         const full=await unpackValue(book);
         const source=full&&full.__source?full.__source:null;
         if(full&&'__source'in full)delete full.__source;
         const oldId=full.id;
         const map=buildRestoreIdMap([full]);map.forEach((v,k)=>idMap.set(k,v));
         if(!full.categoryPath)full.categoryPath=classifyPublication(full);
-        await persistBook(full);
-        if(source){try{await saveBookSource(full.id,source);sourceCount++}catch(err){logDiag('warn','恢复原始包失败',{id:full.id,message:err&&err.message||String(err)})}}
+        // Source-first books have no parsed body. Save the package first so a
+        // failed package write cannot leave an empty, unreadable book behind.
+        if(source){
+          try{await saveBookSource(full.id,source)}
+          catch(err){throw new Error(`第 ${bookIndex} 本原始包恢复失败：${err&&err.message||String(err)}`)}
+        }
+        try{await persistBook(full)}
+        catch(err){if(source){try{await deleteBookSource(full.id)}catch(e){}};throw err}
+        if(source){sourceCount++;await markBookSource(full.id,source)}
         if(String(oldId)!==String(full.id))await deleteBookSource(oldId);
         bookCount++;
         say('正在恢复图书馆',`正在读取备份…\n已恢复 ${bookCount} 本 · ${fmtMb(readBytes)} / ${fmtMb(f.size)}`,true);
@@ -8143,6 +8154,7 @@ async function exportBookJwpub(book,mode='original'){
 }
 function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();const t=setTimeout(()=>URL.revokeObjectURL(u),600000);try{if(t&&t.unref)t.unref()}catch(e){}}
 const APP_UPDATE_NOTES=[
+  '2.0.1 · 安全加固/恢复顺序/构建检查/分享修复',
   '2.0 · 原始包分享/重新导入/备份 v2/搜索范围分组/source-first',
   '1.0 · 统一阅读器题头/栏目位置恢复/相关链接浮窗/笔记标记/每日经文分页',
   '0.14 · 界面一致性/统一图标与菜单/使用说明/无障碍',

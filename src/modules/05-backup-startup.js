@@ -314,15 +314,22 @@ $('backupInput').onchange=async e=>{
     const result=await streamLibraryBackup(f,{
       onFormat:(format)=>{restoreFormat=format;if(format==='offline-library-notes-v1')throw new Error('这是笔记备份，请使用“恢复笔记”。');if(!libraryFormats.includes(format))throw new Error('备份文件格式不正确')},
       onProgress:(bytes)=>{readBytes=bytes;say('正在恢复图书馆',`正在读取备份…\n${fmtMb(bytes)} / ${fmtMb(f.size)}`,true)},
-      onBook:async(book)=>{
+      onBook:async(book,bookIndex)=>{
         const full=await unpackValue(book);
         const source=full&&full.__source?full.__source:null;
         if(full&&'__source'in full)delete full.__source;
         const oldId=full.id;
         const map=buildRestoreIdMap([full]);map.forEach((v,k)=>idMap.set(k,v));
         if(!full.categoryPath)full.categoryPath=classifyPublication(full);
-        await persistBook(full);
-        if(source){try{await saveBookSource(full.id,source);sourceCount++}catch(err){logDiag('warn','恢复原始包失败',{id:full.id,message:err&&err.message||String(err)})}}
+        // Source-first books have no parsed body. Save the package first so a
+        // failed package write cannot leave an empty, unreadable book behind.
+        if(source){
+          try{await saveBookSource(full.id,source)}
+          catch(err){throw new Error(`第 ${bookIndex} 本原始包恢复失败：${err&&err.message||String(err)}`)}
+        }
+        try{await persistBook(full)}
+        catch(err){if(source){try{await deleteBookSource(full.id)}catch(e){}};throw err}
+        if(source){sourceCount++;await markBookSource(full.id,source)}
         if(String(oldId)!==String(full.id))await deleteBookSource(oldId);
         bookCount++;
         say('正在恢复图书馆',`正在读取备份…\n已恢复 ${bookCount} 本 · ${fmtMb(readBytes)} / ${fmtMb(f.size)}`,true);
@@ -444,6 +451,7 @@ async function exportBookJwpub(book,mode='original'){
 }
 function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();const t=setTimeout(()=>URL.revokeObjectURL(u),600000);try{if(t&&t.unref)t.unref()}catch(e){}}
 const APP_UPDATE_NOTES=[
+  '2.0.1 · 安全加固/恢复顺序/构建检查/分享修复',
   '2.0 · 原始包分享/重新导入/备份 v2/搜索范围分组/source-first',
   '1.0 · 统一阅读器题头/栏目位置恢复/相关链接浮窗/笔记标记/每日经文分页',
   '0.14 · 界面一致性/统一图标与菜单/使用说明/无障碍',

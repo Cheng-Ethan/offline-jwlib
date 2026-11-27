@@ -1,6 +1,13 @@
 # 更新记录 / Changelog
 
-> 当前版本以 `project.json` 为准：**2.0.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
+> 当前版本以 `project.json` 为准：**2.0.1**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
+
+## 2.0.1（2026-11-27）
+- 安全：可生成的标题/副标题富文本先经过 `cleanInlineHtml()`；高亮颜色只允许内置四种；新增 CSP，禁止外部脚本和网络连接。
+- 恢复：source-first 书先写原始包再写书；原始包失败会中止并清理，避免留下没有正文的空书。
+- 测试：新增 `package.json` 与 `tests/build-check.mjs`，检查版本、模块解析、占位符、主/分发哈希、外部资源与 CSP。
+- 分享：不再给 `navigator.share` 传 `title`，避免 iPhone 额外生成只含文件名的“文本”文件。
+- 构建：移除过时的 `offline_library_cf.html` 产物。
 
 ## 2.0.0（2026-11-27）
 - 新增可选「保留原始包以便分享」：开启后，导入的 PUB 会在应用内保留完整原始文件，导出时逐字节原样输出 JWPUB。
@@ -83,8 +90,9 @@
 
 ## English summary
 
-The current version is defined by `project.json`: **2.0.0**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
+The current version is defined by `project.json`: **2.0.1**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
 
+- **2.0.1** — security hardening for rich titles and highlight colours, a restrictive network CSP, source-package-first restore ordering, build checks via `npm test`, and removal of the extra `title` from file sharing.
 - **2.0.0** — optional exact original-package retention with byte-identical JWPUB sharing and identity-checked re-import; source-first reading from the original SQLite for articles, Bible text/ranges/search, daily text, extracts, commentaries and images; scoped and grouped search; backup v2 including original packages, system state and localStorage; reader menu icons, swipe chapter icons and reordered actions.
 - **1.0.0** — stable baseline for the current reader and UI work. Unified reader header (back, two-line publication/chapter title, three-dot menu) with table of contents, search, paging, bookmark, notes, language version, pronunciation and font size inside the menu; per-tab article, back history and exact paragraph position persisted across reloads and imports; navigable link-preview titles that open the target paragraph and join the tab history; warnings above link popovers with their own close button; footnotes and cross-references with resolved text in paragraph/verse info; pencil note markers; clear blue block highlight for the active verse/paragraph and one merged outline per highlighted line; a four-disc colour button with yellow front and green, blue and pink arcs layered behind it, opening four large colour discs; fuller 1:1 information, note and copy icons; previous/next-day labels for the daily text. Answer fields in publications are one line tall by default and grow as more text is typed.
 - **0.14.0** — UI consistency pass: shared type/radius/shadow/semantic-colour tokens; one linear SVG icon set; four-item More menu with nested backup and settings views; in-app help; one highlight-colour control; restored chapter-notes entry; pager states and arrow-key paging; in-app translatable confirmations; focus management, Escape handling, 44px touch targets and reduced-motion support.

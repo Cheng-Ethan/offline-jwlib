@@ -1,6 +1,6 @@
 # 离线图书馆模块化项目 0.4.0
 
-> ⚠️ 这是 0.4.0 时期的历史文档，保留作参考。当前代码为 **2.0.0**，请以 [README.md](README.md)、[使用指南](docs/user/USAGE.md) 和 [移动端说明](docs/user/MOBILE.md) 为准。
+> ⚠️ 这是 0.4.0 时期的历史文档，保留作参考。当前代码为 **2.0.1**，请以 [README.md](README.md)、[使用指南](docs/user/USAGE.md) 和 [移动端说明](docs/user/MOBILE.md) 为准。
 
 ## 构建
 1. 解压项目文件夹。
