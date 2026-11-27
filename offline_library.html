@@ -2165,6 +2165,13 @@ async function deleteBookSource(id){
 async function countBookSources(){
   try{const db=await openSourceDB();return await reqP(db.transaction('sources','readonly').objectStore('sources').count())}catch(e){return 0}
 }
+async function bookSourceTotalBytes(){
+  try{
+    const db=await openSourceDB();
+    const rows=await reqP(db.transaction('sources','readonly').objectStore('sources').getAll());
+    return rows.reduce((n,r)=>n+Number(r&&r.size||0),0);
+  }catch(e){return 0}
+}
 // Experimental 2.0 read path: open the stored original JWPUB, query SQLite on
 // demand and decrypt one document. Parsed data remains the fallback.
 const sourceDbCache=new Map(),sourceDocCache=new Map();
@@ -7369,11 +7376,21 @@ async function writeBase64(u8,sink,onBytes,state){
   if(Date.now()-state.lastYield>60){await tick();state.lastYield=Date.now()}
  }
 }
+async function writeBlobBase64(blob,sink,onBytes,state){
+ const BLOCK=3*0x8000;
+ for(let i=0;i<blob.size;i+=BLOCK){
+  const block=new Uint8Array(await blob.slice(i,Math.min(i+BLOCK,blob.size)).arrayBuffer());
+  let bin='';
+  for(let j=0;j<block.length;j+=0x8000)bin+=String.fromCharCode(...block.subarray(j,Math.min(j+0x8000,block.length)));
+  sink.write(btoa(bin));
+  if(onBytes)onBytes(block.length);
+  if(Date.now()-state.lastYield>60){await tick();state.lastYield=Date.now()}
+ }
+}
 async function writePackedValue(v,sink,onBytes,state){
  if(v instanceof Blob){
-  const buf=await v.arrayBuffer();
   sink.write('{"__offlineType":"Blob","mime":'+JSON.stringify(v.type||'')+',"data":"');
-  await writeBase64(new Uint8Array(buf),sink,onBytes,state);
+  await writeBlobBase64(v,sink,onBytes,state);
   sink.write('"}');return;
  }
  if(v instanceof ArrayBuffer){
@@ -7460,27 +7477,31 @@ async function backupNotes(){
 }
 async function backupLibrary(){
   try{
-    const metas=await allBooks();const est=metas.reduce((n,m)=>n+Number(m.estimatedSize||0),0);
-    if(est>150*1048576&&!(await askConfirm(t('备份整个图书馆'),`此设备上的资料约 ${Math.round(est/1048576)} MB，导出完整备份可能较慢或失败。`,'继续')))return;
-    let done=0,lastPaint=0,bookCount=0;
+    const metas=await allBooks();
+    const sourceBytes=await bookSourceTotalBytes();
+    const est=metas.reduce((n,m)=>n+Number(m.estimatedSize||0),0)+sourceBytes;
+    const sourceMb=Math.round(sourceBytes/1048576);
+    if(est>150*1048576&&!(await askConfirm(t('备份整个图书馆'),`此设备上的资料约 ${Math.round(est/1048576)} MB${sourceMb?`（其中原始包约 ${sourceMb} MB）`:''}，导出完整备份可能较慢或失败。`,'继续')))return;
+    let done=0,lastPaint=0,bookCount=0,sourceCount=0;
     const paint=(label,force)=>{
       const now=Date.now();
       if(!force&&now-lastPaint<250)return;
       lastPaint=now;
       const pct=est>0?Math.min(100,Math.round(done/est*100)):0;
-      say('正在备份图书馆',`${label}\n\n计划：${metas.length} 份出版物，约 ${fmtMb(est)}\n已打包：${fmtMb(done)} / ${fmtMb(est)}（${pct}%）\n以上体积为估算值，实际文件会因 Base64 编码而更大。`);
+      say('正在备份图书馆',`${label}\n\n计划：${metas.length} 份出版物${sourceCount?`（含 ${sourceCount} 个原始包）`:''}，约 ${fmtMb(est)}\n已打包：${fmtMb(done)} / ${fmtMb(est)}（${pct}%）\n以上体积为估算值，实际文件会因 Base64 编码而更大。`);
     };
     paint('正在读取笔记、标签和划线…',true);
     await tick();
     const [notes,tags,highlights,marks,history,categories]=await Promise.all([reqP(tx('notes').getAll()),reqP(tx('tags').getAll()),reqP(tx('highlights').getAll()),reqP(tx('bookmarks').getAll()),reqP(tx('history').getAll()),reqP(tx('categories').getAll())]);
     const sink=createJsonSink(),state={lastYield:Date.now()};
-    sink.write('{"format":"offline-library-library-v1","appVersion":'+JSON.stringify(APP_VERSION)+',"createdAt":'+JSON.stringify(new Date().toISOString())+',"books":[');
+    sink.write('{"format":"offline-library-library-v2","appVersion":'+JSON.stringify(APP_VERSION)+',"createdAt":'+JSON.stringify(new Date().toISOString())+',"books":[');
     for(let i=0;i<metas.length;i++){
       const m=metas[i];
       paint(`正在读取：${m.title||m.id}（${i+1}/${metas.length}）`,true);
       const full=await loadBook(m.id,{assets:true});
       if(!full)continue;
-      const label=`正在打包：${full.title||m.id}（${i+1}/${metas.length}）`;
+      try{const src=await getBookSource(m.id);if(src){full.__source=src;sourceCount++}}catch(e){}
+      const label=`正在打包：${full.title||m.id}（${i+1}/${metas.length}）${full.__source?'，含原始包':''}`;
       paint(label,true);
       if(bookCount)sink.write(',');
       await writePackedValue(full,sink,b=>{done+=b;paint(label)},state);
@@ -7494,11 +7515,11 @@ async function backupLibrary(){
       await writePackedValue(value||[],sink,()=>{},state);
     }
     sink.write('}');
-    paint(`正在生成备份文件（${metas.length} 份出版物、${(notes||[]).length} 条笔记）…`,true);
+    paint(`正在生成备份文件（${metas.length} 份出版物、${sourceCount} 个原始包、${(notes||[]).length} 条笔记）…`,true);
     await tick();
-    download(new Blob(sink.parts(),{type:'application/json'}),'offline-library-library-v1.json');
+    download(new Blob(sink.parts(),{type:'application/json'}),'offline-library-library-v2.json');
     try{$('modal').style.display='none'}catch(e){}
-    logDiag('info','导出图书馆备份',{books:bookCount,notes:(notes||[]).length,tags:(tags||[]).length,highlights:(highlights||[]).length,estimatedBytes:est});
+    logDiag('info','导出图书馆备份',{format:'offline-library-library-v2',books:bookCount,sources:sourceCount,notes:(notes||[]).length,tags:(tags||[]).length,highlights:(highlights||[]).length,estimatedBytes:est});
   }catch(err){say('备份失败',err.message||String(err));logDiag('error','导出图书馆备份失败',{message:err.message||String(err)})}
 }
 // Read a v1 library backup one book at a time instead of JSON.parse-ing the
@@ -7589,7 +7610,7 @@ $('backupInput').onchange=async e=>{
   let restoreFormat='';
   try{
     const f=e.target.files[0];if(!f)return;
-    const libraryFormats=['offline-library-backup-v1','offline-library-backup-v2','offline-library-backup-v3','offline-library-library-v1'];
+    const libraryFormats=['offline-library-backup-v1','offline-library-backup-v2','offline-library-backup-v3','offline-library-library-v1','offline-library-library-v2'];
     if(restoreMode==='notes'){
       let head='';try{head=await f.slice(0,4096).text()}catch(err){}
       if(!/"format"\s*:\s*"offline-library-notes-v1"/.test(head))throw new Error('这是图书馆备份，请使用“恢复整个图书馆”。');
@@ -7608,15 +7629,21 @@ $('backupInput').onchange=async e=>{
     }
     if(!(await askConfirm(t('恢复整个图书馆'),'恢复整个图书馆会按出版物 ID 覆盖/合并此设备上的记录，并导入笔记、标签、划线、书签和阅读历史。','继续')))return;
     say('正在恢复图书馆','正在读取备份文件…',true);await tick();
-    let idMap=new Map(),bookCount=0,readBytes=0;
+    let idMap=new Map(),bookCount=0,readBytes=0,sourceCount=0;
     const result=await streamLibraryBackup(f,{
       onFormat:(format)=>{restoreFormat=format;if(format==='offline-library-notes-v1')throw new Error('这是笔记备份，请使用“恢复笔记”。');if(!libraryFormats.includes(format))throw new Error('备份文件格式不正确')},
       onProgress:(bytes)=>{readBytes=bytes;say('正在恢复图书馆',`正在读取备份…\n${fmtMb(bytes)} / ${fmtMb(f.size)}`,true)},
       onBook:async(book)=>{
         const full=await unpackValue(book);
+        const source=full&&full.__source?full.__source:null;
+        if(full&&'__source'in full)delete full.__source;
+        const oldId=full.id;
         const map=buildRestoreIdMap([full]);map.forEach((v,k)=>idMap.set(k,v));
         if(!full.categoryPath)full.categoryPath=classifyPublication(full);
-        await persistBook(full);bookCount++;
+        await persistBook(full);
+        if(source){try{await saveBookSource(full.id,source);sourceCount++}catch(err){logDiag('warn','恢复原始包失败',{id:full.id,message:err&&err.message||String(err)})}}
+        if(String(oldId)!==String(full.id))await deleteBookSource(oldId);
+        bookCount++;
         say('正在恢复图书馆',`正在读取备份…\n已恢复 ${bookCount} 本 · ${fmtMb(readBytes)} / ${fmtMb(f.size)}`,true);
       }
     });
@@ -7630,8 +7657,8 @@ $('backupInput').onchange=async e=>{
     for(const c of categories)await saveOne('categories',c);
     await refreshCanonicalAnchorsAfterRestore();
     await renderBooks();
-    say('恢复完成',`恢复/合并出版物 ${bookCount} 本、笔记 ${notes.length} 条、标签 ${tags.length} 个、划线 ${highlights.length} 条、书签 ${marks.length} 条、阅读记录 ${history.length} 条。`);
-    logDiag('info','恢复备份',{format:restoreFormat,books:bookCount,notes:notes.length,tags:tags.length,highlights:highlights.length});
+    say('恢复完成',`恢复/合并出版物 ${bookCount} 本${sourceCount?`（含原始包 ${sourceCount} 个）`:''}、笔记 ${notes.length} 条、标签 ${tags.length} 个、划线 ${highlights.length} 条、书签 ${marks.length} 条、阅读记录 ${history.length} 条。`);
+    logDiag('info','恢复备份',{format:restoreFormat,books:bookCount,sources:sourceCount,notes:notes.length,tags:tags.length,highlights:highlights.length});
   }catch(err){say('恢复失败',err.message||String(err));logDiag('error','恢复备份失败',{message:err.message||String(err),format:restoreFormat})}finally{e.target.value=''}
 };
 async function shareFile(blob,name){

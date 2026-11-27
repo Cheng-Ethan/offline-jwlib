@@ -903,6 +903,13 @@ async function deleteBookSource(id){
 async function countBookSources(){
   try{const db=await openSourceDB();return await reqP(db.transaction('sources','readonly').objectStore('sources').count())}catch(e){return 0}
 }
+async function bookSourceTotalBytes(){
+  try{
+    const db=await openSourceDB();
+    const rows=await reqP(db.transaction('sources','readonly').objectStore('sources').getAll());
+    return rows.reduce((n,r)=>n+Number(r&&r.size||0),0);
+  }catch(e){return 0}
+}
 // Experimental 2.0 read path: open the stored original JWPUB, query SQLite on
 // demand and decrypt one document. Parsed data remains the fallback.
 const sourceDbCache=new Map(),sourceDocCache=new Map();

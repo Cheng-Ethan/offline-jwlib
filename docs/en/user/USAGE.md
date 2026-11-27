@@ -59,7 +59,7 @@ The Daily Text reader stays minimal: no bottom action bar; paging is labelled pr
 
 In **More → Backup & restore**:
 
-- **Backup library** → `offline-library-library-v1.json`: all publications, assets, notes, tags, highlights, bookmarks, history and categories.
+- **Backup library** → `offline-library-library-v2.json`: all publications, assets, notes, tags, highlights, bookmarks, history and categories. Books with an original package include the original JWPUB too, so the backup can approach twice the library size.
 - **Backup notes** → `offline-library-notes-v1.json`: notes, tags and highlights only.
 
 A confirmation appears above roughly 150 MB. The actual file is larger than the estimate because of Base64 encoding.
@@ -72,11 +72,11 @@ A confirmation appears above roughly 150 MB. The actual file is larger than the 
 
 On mobile the system share sheet opens first. If JW Library is not listed, choose **Save to Files**, then share/open it to JW Library from the Files app. Desktop browsers save to Downloads.
 
-Books imported before this feature lack the package; the share menu asks for one re-import. The original file can be deleted again afterwards. The package uses extra space; the current full backup does not include it.
+Books imported before this feature lack the package; the share menu asks for one re-import. The original file can be deleted again afterwards. The package uses extra space and is included in full backups, so a backup can approach twice the library size.
 
 ### Restore
 
-- Full library: accepts `offline-library-backup-v1/v2/v3` and `offline-library-library-v1`; merges/overwrites by publication ID and remaps legacy IDs so notes stay aligned.
+- Full library: accepts `offline-library-backup-v1/v2/v3` and `offline-library-library-v1/v2`; merges/overwrites by publication ID, remaps legacy IDs so notes stay aligned, and restores original packages from v2 backups.
 - Notes: only accepts `offline-library-notes-v1`.
 
 Full-library restore uses `file.stream()`; unsupported browsers show an error — use desktop Chrome. Restore is not atomic, so back up current data first.

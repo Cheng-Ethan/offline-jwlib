@@ -6,13 +6,14 @@
 
 | Identifier | Direction | Notes |
 |---|---|---|
-| `offline-library-library-v1` | export + restore | Current full backup |
+| `offline-library-library-v2` | export + restore | Current full backup, each book may carry its original package |
+| `offline-library-library-v1` | restore only | Legacy full backup without original packages |
 | `offline-library-notes-v1` | export + restore | Current notes backup |
 | `offline-library-backup-v1` | restore only | Legacy full backup |
 | `offline-library-backup-v2` | restore only | Legacy full backup with binary packing |
 | `offline-library-backup-v3` | restore only | Legacy full backup |
 
-Exports are `application/json`. Filenames are fixed to `offline-library-library-v1.json` or `offline-library-notes-v1.json`.
+Exports are `application/json`. The full backup filename is fixed to `offline-library-library-v2.json`; the notes backup uses `offline-library-notes-v1.json`.
 
 ## 2. Notes backup
 
@@ -35,7 +36,7 @@ Top-level structure (streamed by `backupLibrary()`):
 
 ```json
 {
-  "format": "offline-library-library-v1",
+  "format": "offline-library-library-v2",
   "appVersion": "1.0.0",
   "createdAt": "2026-11-24T00:00:00.000Z",
   "books": [ "<packed book>" ],
@@ -48,7 +49,15 @@ Top-level structure (streamed by `backupLibrary()`):
 }
 ```
 
-Each `book` comes from `loadBook(id, { assets: true })`, including metadata, documents, assets and the import report. The optional original package (separate `OfflineJwLibrarySources` database) is not included in the full backup yet.
+Each `book` comes from `loadBook(id, { assets: true })`, including metadata, documents, assets and the import report.
+
+### 3.0 Original packages
+
+v2 adds an optional `__source` field to each `book`, holding the `OfflineJwLibrarySources` record for that book (`name`, `size`, `jwpub` Blob or the legacy `innerZip` / `manifestBytes` / `db` / `files`). On export:
+
+- books with a stored package include the complete original `.jwpub`, so the backup can approach twice the library size;
+- books without one simply omit `__source`;
+- restoring v2 calls `persistBook()` and then `saveBookSource()`; restoring v1 leaves any package already on the device untouched.
 
 ### 3.1 Binary packing
 
@@ -73,6 +82,7 @@ pick file
   → unpackValue() per book
   → buildRestoreIdMap() remaps legacy IDs
   → persistBook()
+  → if __source exists, saveBookSource()
   → unpack tail notes/tags/highlights/bookmarks/history/categories
   → remapUserDataIds()
   → write stores
@@ -109,7 +119,8 @@ Legacy book IDs may be `lang_symbol_year[_issue]`. During restore:
 
 ## 7. User notes
 
-- Backup JSON is **not encrypted**; it contains book titles, notes and possibly import reports.
-- Large exports show progress; above 150 MB a confirmation is required.
+- Backup JSON is **not encrypted**; it contains book titles, notes, possibly import reports and (v2) the original PUB packages.
+- v2 backups restore into 2.0 and later; 1.0.0 can only restore v1 backups and ignores `__source`.
+- Large exports show progress; above 150 MB a confirmation is required. Backups with original packages approach twice the library size.
 - Base64 makes the file roughly one third larger than the stored data.
 - Always export before upgrading or switching Sitecase projects, and keep the old project until verification succeeds.

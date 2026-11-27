@@ -6,13 +6,14 @@
 
 | 标识 | 方向 | 说明 |
 |---|---|---|
-| `offline-library-library-v1` | 导出 + 恢复 | 当前完整备份格式 |
+| `offline-library-library-v2` | 导出 + 恢复 | 当前完整备份格式，每本可带原始包 |
+| `offline-library-library-v1` | 仅恢复 | 旧完整备份格式，不含原始包 |
 | `offline-library-notes-v1` | 导出 + 恢复 | 当前笔记备份格式 |
 | `offline-library-backup-v1` | 仅恢复 | 历史完整备份 |
 | `offline-library-backup-v2` | 仅恢复 | 历史完整备份，含二进制打包 |
 | `offline-library-backup-v3` | 仅恢复 | 历史完整备份 |
 
-导出文件均为 `application/json`。文件名固定为 `offline-library-library-v1.json` 或 `offline-library-notes-v1.json`。
+导出文件均为 `application/json`。完整备份文件名固定为 `offline-library-library-v2.json`，笔记备份为 `offline-library-notes-v1.json`。
 
 ## 2. 笔记备份
 
@@ -35,7 +36,7 @@
 
 ```json
 {
-  "format": "offline-library-library-v1",
+  "format": "offline-library-library-v2",
   "appVersion": "1.0.0",
   "createdAt": "2026-11-24T00:00:00.000Z",
   "books": [ "<packed book>" ],
@@ -48,7 +49,15 @@
 }
 ```
 
-每本 `book` 是 `loadBook(id, { assets: true })` 的结果，包含元数据、文档、资源与导入报告等。可选的原始包（独立 `OfflineJwLibrarySources` 数据库）目前不包含在完整备份中。
+每本 `book` 是 `loadBook(id, { assets: true })` 的结果，包含元数据、文档、资源与导入报告等。
+
+### 3.0 原始包
+
+v2 在每本 `book` 上增加可选字段 `__source`，内容为 `OfflineJwLibrarySources` 中该书的记录（`name`、`size`、`jwpub` Blob 或旧版 `innerZip` / `manifestBytes` / `db` / `files`）。导出时：
+
+- 有原始包的书会把完整原始 `.jwpub` 一并写入，备份因此可能接近图书馆体积的两倍；
+- 没有原始包的书照常导出，`__source` 省略；
+- 恢复 v2 时先 `persistBook()`，再 `saveBookSource()`；恢复 v1 时保留设备上已有的原始包。
 
 ### 3.1 二进制包装
 
@@ -73,6 +82,7 @@
   → 逐本 unpackValue()
   → buildRestoreIdMap() 重映射旧 ID
   → persistBook() 写入
+  → 如有 __source，saveBookSource() 写入原始包
   → unpack 尾部 notes/tags/highlights/bookmarks/history/categories
   → remapUserDataIds()
   → 写回各 store
@@ -109,7 +119,8 @@
 
 ## 7. 用户注意事项
 
-- 备份 JSON **未加密**，包含书目、笔记与可能的导入报告。
-- 大备份导出会显示进度；超过 150 MB 需确认。
+- 备份 JSON **未加密**，包含书目、笔记、可能的导入报告以及（v2）原始 PUB 包。
+- v2 备份可以恢复到 2.0 及以后版本；1.0.0 只能恢复 v1 备份，不识别 `__source`。
+- 大备份导出会显示进度；超过 150 MB 需确认。含原始包的备份体积接近图书馆的两倍。
 - Base64 会让文件比 IndexedDB 中的实际体积大约 1/3。
 - 升级或换 Sitecase 项目前务必导出备份，并保留旧项目直到验证完成。
