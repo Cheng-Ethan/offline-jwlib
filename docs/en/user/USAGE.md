@@ -53,7 +53,19 @@ The Daily Text reader stays minimal: no bottom action bar; paging is labelled pr
 
 > This data is stored unencrypted on your device. Backup JSON is unencrypted too; avoid exporting sensitive data on shared devices.
 
-## 5. Backup and restore
+## 5. App lock and recovery code
+
+Enable it in **More → Settings & diagnostics → App lock**:
+
+- Set a password of at least 6 characters; a one-time **recovery code** is shown once. Keep it offline.
+- Startup/reload requires the password; after the configured background time (5/15/30/60 minutes) the app locks again.
+- If you forget the password, unlock with the recovery code, then change the password in Settings.
+- If both are lost, the only option is **Erase all data**; there is no remote admin backdoor.
+- Enabling the lock requires every publication to have an original package and source-first mode; older books without one must be re-imported.
+- Original packages, notes/tags/highlights/bookmarks/history/categories and backups are encrypted; titles and table-of-contents metadata remain plaintext.
+- The lock cannot be disabled; you can change the password or regenerate the recovery code.
+
+## 6. Backup and restore
 
 ### Export
 

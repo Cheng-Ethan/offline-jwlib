@@ -75,6 +75,10 @@ When `sourceReadEnabled()` is on, `showDoc()` calls `sourceDocHtml()`: it opens 
 
 When `sourceFirstEnabled()` is on, a successful import with a saved original package calls `stripBookDocHtml()`, `stripBookAuxHtml()`, `stripBibleContent()` and `stripAssets()`: ordinary body HTML, extract/commentary/daily-text HTML, Bible `verseRows/chapterRows` ciphertext plus key/iv, and `bookAssets` image/font records are cleared while TOC, indexes and structure remain. `showDoc()`, `ensureDocHtml()`, `loadAssetsForHtml()` (via `sourceAssetBlob()`), search, meetings, link previews, note popovers, daily text and Bible chapter/range text all read from the original package on demand. Existing books are unchanged; the diagnostics action **Clean existing books from original packages** runs the same cleanup for books that already have a package.
 
+### 4.1c App lock and encryption layer
+
+The optional app lock derives a KEK from the password with PBKDF2-SHA256 (310k iterations) and uses AES-GCM to wrap a random DEK; the recovery code derives a separate KEK that wraps the same DEK. Lock metadata is stored both in `localStorage` and in the `system` `lockMeta` record, so either copy can restore the lock screen at startup. Enabling the lock first requires every book to have an original package, runs `stripAllSourceBooks()`, then `encryptExistingSources()` and `sealExistingUserData()`; afterwards `saveBookSource()`/`getBookSource()` and `saveOne()`/`getOne()`/`getAllUser()` encrypt/decrypt automatically. Backups are whole-file `.olvault` envelopes; restore unwraps the DEK from the header `lock`. The original JWPUB bytes are never modified and are decrypted back unchanged for export.
+
 ### 4.2 Metadata + split stores + generations
 
 - `buildBookMeta()` builds light metadata;

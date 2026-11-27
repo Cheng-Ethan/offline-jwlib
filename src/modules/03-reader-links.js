@@ -840,7 +840,7 @@ function addVerseNoteMarker(note){
   placeGutterMarker(host,m,verse);
 }
 async function applyVerseNotesForDoc(bookId,docId){
-  let notes=[];try{notes=await reqP(tx('notes').getAll())}catch(e){return}
+  let notes=[];try{notes=await getAllUser('notes')}catch(e){return}
   for(const n of notes)if(n.kind==='verse'&&String(n.bookId)===String(bookId)&&String(n.docId)===String(docId))addVerseNoteMarker(n);
 }
 function addBlockNoteMarker(note){
@@ -856,7 +856,7 @@ function addBlockNoteMarker(note){
   placeGutterMarker(host,m,block);
 }
 async function applyBlockNotesForDoc(bookId,docId){
-  let notes=[];try{notes=await reqP(tx('notes').getAll())}catch(e){return}
+  let notes=[];try{notes=await getAllUser('notes')}catch(e){return}
   for(const n of notes)if(n.kind==='paragraph'&&String(n.bookId)===String(bookId)&&String(n.docId)===String(docId))addBlockNoteMarker(n);
 }
 async function openVerseNote(noteId){
@@ -913,7 +913,7 @@ async function crossLanguageNotesFor(book,doc){
     }
   }catch(e){}
   try{
-    const notes=await reqP(tx('notes').getAll());
+    const notes=await getAllUser('notes');
     for(const n of notes){
       if(!n.bookId||!siblingIds.has(String(n.bookId))||n.kind==='answer')continue;
       if(String(n.mepsDocId||'')!==String(doc.mepsId)||!n.pid)continue;
@@ -1603,7 +1603,7 @@ async function setupAnswerFields(bookId,docId){
   if(!fields.length)return;
   const doc=currentBook&&currentBook.docs[currentIndex];
   const canonical={seriesKey:seriesKeyFor(currentBook),mepsDocId:String(doc&&doc.mepsId||'')};
-  let notes=[];try{notes=await reqP(tx('notes').getAll())}catch(e){}
+  let notes=[];try{notes=await getAllUser('notes')}catch(e){}
   const map=new Map(notes.filter(n=>n.kind==='answer'&&String(n.bookId)===String(bookId)&&String(n.docId)===String(docId)).map(n=>[String(n.fieldKey),n]));
   fields.forEach((el,idx)=>{
     const key=el.id||el.name||('field-'+idx);

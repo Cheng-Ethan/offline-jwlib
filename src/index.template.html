@@ -30,7 +30,7 @@
       <button class="btn secondary" id="backupBtn" data-i18n="导出备份">导出备份</button>
       <button class="btn ghost" id="restoreBtn" data-i18n="恢复备份">恢复备份</button>
       <input id="fileInput" type="file" accept=".jwpub,.pub,application/octet-stream" multiple hidden>
-      <input id="backupInput" type="file" accept=".json,application/json" hidden>
+      <input id="backupInput" type="file" accept=".json,.olvault,application/json,application/octet-stream" hidden>
       <input id="languagePackInput" type="file" accept=".json,application/json" hidden>
     </div>
     <div class="crumbs" id="breadcrumbs" style="display:none"></div>
@@ -167,6 +167,20 @@
 
 <div class="modal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle"><div class="modalbox"><h2 id="confirmTitle"></h2><div id="confirmText" class="status" role="status" aria-live="polite"></div><div class="modal-actions"><button class="btn ghost" id="confirmCancel"></button><button class="btn" id="confirmOk"></button></div></div></div>
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modalbox"><button class="iconbtn modal-close" id="modalClose" aria-label="关闭" data-i18n-aria-label="关闭"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button><h2 id="modalTitle" data-i18n="提示">提示</h2><div id="modalText" class="status" role="status" aria-live="polite"></div><div class="toolbar"><button class="btn" id="modalOk" data-i18n="知道了">知道了</button></div></div></div>
+
+<section class="lock-screen" id="lockScreen" hidden>
+  <div class="lock-box">
+    <div class="lock-logo">书</div>
+    <h1 data-i18n="应用已锁定">应用已锁定</h1>
+    <p class="sub" id="lockHint" data-i18n="输入密码继续">输入密码继续</p>
+    <input class="lock-input" id="lockPassword" type="password" autocomplete="current-password" data-i18n-placeholder="密码" placeholder="密码">
+    <input class="lock-input" id="lockRecovery" type="text" autocomplete="off" spellcheck="false" data-i18n-placeholder="恢复码" placeholder="恢复码" hidden>
+    <div class="lock-error" id="lockError" role="alert"></div>
+    <button class="btn" id="lockUnlock" data-i18n="解锁">解锁</button>
+    <button class="btn secondary" id="lockUseRecovery" data-i18n="使用恢复码">使用恢复码</button>
+    <button class="btn ghost" id="lockReset" data-i18n="忘记密码">忘记密码</button>
+  </div>
+</section>
 
 <script>window.__CATEGORY_CONFIG__=@@CATEGORIES_JSON@@;</script>
 <!-- JSZip embedded for Sitecase single-file compatibility -->

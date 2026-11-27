@@ -9,6 +9,7 @@
 | `offline-library-library-v2` | export + restore | Current full backup, each book may carry its original package |
 | `offline-library-library-v1` | restore only | Legacy full backup without original packages |
 | `offline-library-notes-v1` | export + restore | Current notes backup |
+| `offline-library-vault-v1` | export + restore | Encrypted `.olvault` envelope when app lock is enabled |
 | `offline-library-backup-v1` | restore only | Legacy full backup |
 | `offline-library-backup-v2` | restore only | Legacy full backup with binary packing |
 | `offline-library-backup-v3` | restore only | Legacy full backup |
@@ -20,7 +21,7 @@ Exports are `application/json`. The full backup filename is fixed to `offline-li
 ```json
 {
   "format": "offline-library-notes-v1",
-  "appVersion": "2.0.1",
+  "appVersion": "2.1.0",
   "createdAt": "2026-11-24T00:00:00.000Z",
   "notes": [],
   "tags": [],
@@ -37,7 +38,7 @@ Top-level structure (streamed by `backupLibrary()`):
 ```json
 {
   "format": "offline-library-library-v2",
-  "appVersion": "2.0.1",
+  "appVersion": "2.1.0",
   "createdAt": "2026-11-24T00:00:00.000Z",
   "books": [ "<packed book>" ],
   "notes": [ "<packed notes>" ],
@@ -76,6 +77,16 @@ v2 adds an optional `__source` field to each `book`, holding the `OfflineJwLibra
 `unpackValue()` restores them to `Blob` / `ArrayBuffer` / TypedArray by `__offlineType`. `undefined`, functions and symbols are skipped; non-finite numbers become `null`.
 
 Export is not one `JSON.stringify`: `createJsonSink()` emits Blob parts in ~1 MB text chunks, so mobile devices do not hold hundreds of MB of Base64 strings in memory.
+
+### 3.2 Encrypted backups with app lock
+
+When the app lock is enabled, full and notes backups are written as `.olvault` files:
+
+```text
+"OLVAULT1\n" + 4-byte header length + JSON header + AES-GCM ciphertext
+```
+
+The header holds `format: "offline-library-vault-v1"`, `appVersion`, `createdAt` and `lock` (the same salt / iterations / wrapped DEK / recovery data as `offlineLibraryLock`). The ciphertext uses the current data key. Restore asks for the password or recovery code; a new device installs the same lock after a successful restore. The whole file is encrypted, so large backups need more memory on low-memory devices.
 
 ## 4. Restore flow
 

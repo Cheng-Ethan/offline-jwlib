@@ -4,7 +4,7 @@
 
 > An offline, single-file, local-first JWPUB reader. Open one HTML, import `.jwpub` / `.pub`, unpack/decrypt/parse/read/annotate in the browser — no server, no outbound application requests.
 
-Current version: **2.0.1** (initial baseline 0.13.0, see [AGENTS.md](AGENTS.md)).
+Current version: **2.1.0** (initial baseline 0.13.0, see [AGENTS.md](AGENTS.md)).
 
 ---
 

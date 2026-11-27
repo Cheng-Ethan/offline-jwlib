@@ -9,6 +9,7 @@
 | `offline-library-library-v2` | 导出 + 恢复 | 当前完整备份格式，每本可带原始包 |
 | `offline-library-library-v1` | 仅恢复 | 旧完整备份格式，不含原始包 |
 | `offline-library-notes-v1` | 导出 + 恢复 | 当前笔记备份格式 |
+| `offline-library-vault-v1` | 导出 + 恢复 | 应用锁启用后的 `.olvault` 加密备份外层 |
 | `offline-library-backup-v1` | 仅恢复 | 历史完整备份 |
 | `offline-library-backup-v2` | 仅恢复 | 历史完整备份，含二进制打包 |
 | `offline-library-backup-v3` | 仅恢复 | 历史完整备份 |
@@ -20,7 +21,7 @@
 ```json
 {
   "format": "offline-library-notes-v1",
-  "appVersion": "2.0.1",
+  "appVersion": "2.1.0",
   "createdAt": "2026-11-24T00:00:00.000Z",
   "notes": [],
   "tags": [],
@@ -37,7 +38,7 @@
 ```json
 {
   "format": "offline-library-library-v2",
-  "appVersion": "2.0.1",
+  "appVersion": "2.1.0",
   "createdAt": "2026-11-24T00:00:00.000Z",
   "books": [ "<packed book>" ],
   "notes": [ "<packed notes>" ],
@@ -76,6 +77,16 @@ v2 在每本 `book` 上增加可选字段 `__source`，内容为 `OfflineJwLibra
 `unpackValue()` 按 `__offlineType` 还原为 `Blob` / `ArrayBuffer` / TypedArray。`undefined`、函数、symbol 会被跳过；非有限数字写成 `null`。
 
 导出不是一次性 `JSON.stringify`：它用 `createJsonSink()` 按约 1 MB 文本块生成 Blob part，避免移动端一次性把数百 MB Base64 字符串放进内存。
+
+### 3.2 应用锁加密备份
+
+启用应用锁后，完整备份和笔记备份输出 `.olvault` 文件：
+
+```text
+"OLVAULT1\n" + 4 字节头部长度 + JSON 头部 + AES-GCM 密文
+```
+
+头部包含 `format: "offline-library-vault-v1"`、`appVersion`、`createdAt` 和 `lock`（与本地 `offlineLibraryLock` 相同的 salt / iterations / wrapped DEK / recovery 信息）。密文使用当前数据密钥加密，恢复时输入密码或恢复码；新设备恢复成功后会安装同一应用锁。整个文件加密，因此大备份在低内存设备上需要更多内存。
 
 ## 4. 恢复流程
 

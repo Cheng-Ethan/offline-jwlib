@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const APP_VERSION='2.0.1';
+const APP_VERSION='2.1.0';
 const DB_NAME='OfflineJwLibrary', DB_VERSION=5;
 let idb, SQL, currentBook=null, currentIndex=0, fontSize=19, currentObjectUrls=[], bibleMode=false, bibleReturn=null;
 let assetUrlCache=new Map(), pronunciationOn=false, historyWriteAt=0, readerReturnSection=null, readerNavSection=null, readerOriginSection=null, readerReturnTarget=null, readerSessionTab=null;
@@ -16,6 +16,8 @@ let sectionViews={};
 let sectionPageHistory={home:[],bible:[],library:[],meetings:[],study:[]};
 const READER_CACHE_ID='readerPanelCache';
 let readerCacheTimer=null,readerCacheLoaded=false,readerCacheTab='home';
+const LOCK_META_KEY='offlineLibraryLock';
+let vaultKey=null,vaultRawKey=null,lockHiddenAt=0;
 function readerCachePayload(){return {id:READER_CACHE_ID,views:sectionViews,history:sectionPageHistory,tab:primarySection,updatedAt:Date.now()}}
 function scheduleReaderCacheSave(){
   if(!readerCacheLoaded||readerCacheTimer)return;
@@ -282,6 +284,7 @@ Object.assign(I18N.ko,{"上一章":"이전 장","下一章":"다음 장"});
 Object.assign(I18N.en,{"当前文件":"Current file","所选资料":"Selected publication"});
 Object.assign(I18N.ja,{"当前文件":"現在のファイル","所选资料":"選択した資料"});
 Object.assign(I18N.ko,{"当前文件":"현재 파일","所选资料":"선택한 자료"});
+Object.assign(I18N.en,{"应用已锁定":"App locked","输入密码继续":"Enter your password to continue","密码":"Password","解锁":"Unlock","使用恢复码":"Use recovery code","恢复码":"Recovery code","忘记密码":"Forgot password","密码或恢复码不正确":"Incorrect password or recovery code","输入恢复码继续":"Enter your recovery code to continue","以下出版物没有原始包，请先重新导入":"These publications have no original package; re-import them first","保存恢复码":"Save your recovery code","恢复码只显示一次，请离线保存。忘记密码时用它重置并保留数据。":"The recovery code is shown once. Keep it offline; it resets your password and preserves data.","复制":"Copy","我已保存":"I saved it","设置应用密码":"Set app password","密码至少 6 位。启用后数据会加密，请先导出备份。":"At least 6 characters. Data will be encrypted; export a backup first.","再次输入密码":"Confirm password","后台自动锁定":"Auto-lock after background","分钟":"minutes","启用应用锁":"Enable app lock","密码至少需要 6 位":"Password must be at least 6 characters","两次密码不一致":"Passwords do not match","应用锁":"App lock","更改密码":"Change password","重新生成恢复码":"Regenerate recovery code","立即锁定":"Lock now","新密码（至少 6 位）":"New password (at least 6 characters)","再次输入新密码":"Confirm new password","密码已更改。":"Password changed.","旧恢复码将立即失效。继续？":"The old recovery code will stop working. Continue?","清空":"Erase","清空全部数据":"Erase all data","没有恢复码时只能清空全部出版物、笔记和设置。请先确认已经备份。继续？":"Without the recovery code, all publications, notes and settings must be erased. Confirm you have a backup. Continue?","这会删除本机所有图书馆数据，无法撤销。":"This deletes all library data on this device and cannot be undone.","无法解锁":"Cannot unlock","恢复码已复制到剪贴板。":"Recovery code copied to the clipboard.","输入备份密码或恢复码":"Enter the backup password or recovery code","应用锁已启用，请先解锁":"The app lock is enabled; unlock it first","应用锁已启用。请用密码解锁后重新生成恢复码。":"The app lock is enabled. Unlock with your password, then regenerate the recovery code."});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
@@ -533,8 +536,39 @@ function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open
 };req.onsuccess=()=>{idb=req.result;idb.onversionchange=()=>idb.close();try{navigator.storage?.persist?.().catch(()=>{})}catch(e){}resolve(idb)};req.onerror=()=>reject(req.error)})}
 function tx(store,mode='readonly'){return idb.transaction(store,mode).objectStore(store)}
 function reqP(r){return new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
-async function getOne(store,key){return reqP(tx(store).get(key))}
-async function saveOne(store,v){return reqP(tx(store,'readwrite').put(v))}
+const USER_ENC_FIELDS={
+  notes:['title','text','quote'],
+  tags:['name'],
+  highlights:['quote'],
+  bookmarks:['title','bookTitle'],
+  history:['title','bookTitle','originalFilename'],
+  categories:['name']
+};
+async function sealUserRecord(store,rec){
+  if(!vaultKey||!rec||!USER_ENC_FIELDS[store])return rec;
+  const out={...rec};
+  for(const field of USER_ENC_FIELDS[store]){
+    const v=out[field];
+    if(typeof v==='string'&&v&&!v.startsWith('enc:v1:'))out[field]=await sealVaultString(v,'user:'+store);
+  }
+  return out;
+}
+async function openUserRecord(store,rec){
+  if(!rec||!USER_ENC_FIELDS[store])return rec;
+  const out={...rec};
+  for(const field of USER_ENC_FIELDS[store])out[field]=await openVaultString(out[field],'user:'+store);
+  return out;
+}
+async function getAllUser(store){
+  const rows=await reqP(tx(store).getAll());
+  return Promise.all(rows.map(r=>openUserRecord(store,r)));
+}
+async function getAllUserIndex(store,index,key){
+  const rows=await reqP(tx(store).index(index).getAll(key));
+  return Promise.all(rows.map(r=>openUserRecord(store,r)));
+}
+async function getOne(store,key){return openUserRecord(store,await reqP(tx(store).get(key)))}
+async function saveOne(store,v){const sealed=await sealUserRecord(store,v);return reqP(tx(store,'readwrite').put(sealed))}
 // The long-term identity follows the same idea as JW Library's own user data:
 // language + key symbol + issue. The year is only needed to derive the content
 // encryption key, so a new yearly edition of the same publication keeps the
@@ -569,6 +603,89 @@ function safeText(v){return String(v??'').replace(/[<>]/g,'')}
 const HL_COLORS=new Set(['#ffe58a','#b7e4c7','#bcd9f2','#f4b6b6']);
 function safeHighlightColor(c){const v=String(c||'').toLowerCase();return HL_COLORS.has(v)?v:'#ffe58a'}
 function cleanInlineHtml(raw){try{return cleanHtml(String(raw||''),{}).body}catch(e){return safeText(raw)}}
+// ---- optional application lock / vault ------------------------------------
+function lockMeta(){try{const v=JSON.parse(localStorage.getItem(LOCK_META_KEY)||'null');return v&&v.version===1?v:null}catch(e){return null}}
+function lockEnabled(){return !!lockMeta()}
+function saveLockMeta(meta){try{localStorage.setItem(LOCK_META_KEY,JSON.stringify(meta))}catch(e){}}
+async function persistLockMeta(meta){saveLockMeta(meta);try{await saveOne('system',{id:'lockMeta',meta})}catch(e){}}
+async function ensureLockMetaLoaded(){
+  if(lockMeta())return true;
+  try{
+    await openDB();
+    const rec=await reqP(tx('system').get('lockMeta'));
+    if(rec&&rec.meta&&rec.meta.version===1){saveLockMeta(rec.meta);return true}
+  }catch(e){}
+  return false;
+}
+function vaultReady(){return !!vaultKey}
+function randomBytes(n){const u=new Uint8Array(n);crypto.getRandomValues(u);return u}
+function toB64(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode(...u8.subarray(i,i+0x8000));return btoa(s)}
+function fromB64(s){const bin=atob(String(s||''));const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u}
+async function deriveKek(secret,salt,iterations=310000){
+  if(!(crypto&&crypto.subtle))throw new Error('当前浏览器不支持加密，无法启用应用锁。');
+  const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function wrapRawKey(raw,kek){const iv=randomBytes(12);const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv},kek,raw);const out=new Uint8Array(12+cipher.byteLength);out.set(iv);out.set(new Uint8Array(cipher),12);return toB64(out)}
+async function unwrapRawKey(wrapped,kek){const all=fromB64(wrapped);const iv=all.subarray(0,12),cipher=all.subarray(12);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv},kek,cipher))}
+async function importVaultKey(raw){return crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['encrypt','decrypt'])}
+async function setVaultRaw(raw){vaultRawKey=new Uint8Array(raw);vaultKey=await importVaultKey(vaultRawKey)}
+function clearVaultKey(){vaultKey=null;vaultRawKey=null}
+function normalizeRecovery(code){return String(code||'').toUpperCase().replace(/[^A-Z2-9]/g,'')}
+function generateRecovery(){const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';const raw=randomBytes(48);let out='';for(let i=0;i<48;i++){out+=alphabet[raw[i]%alphabet.length];if(i%4===3&&i<47)out+='-'}return out}
+async function createVaultLock(password,timeout=5){
+  if(!password||String(password).length<6)throw new Error('密码至少需要 6 位。');
+  const salt=randomBytes(16),recoverySalt=randomBytes(16),raw=randomBytes(32),iterations=310000;
+  const kek=await deriveKek(password,salt,iterations),wrapped=await wrapRawKey(raw,kek);
+  const recovery=generateRecovery();
+  const rek=await deriveKek(normalizeRecovery(recovery),recoverySalt,iterations);
+  const recoveryWrapped=await wrapRawKey(raw,rek);
+  const meta={version:1,salt:toB64(salt),iterations,wrapped,recoverySalt:toB64(recoverySalt),recoveryWrapped,timeout:Math.max(1,Number(timeout)||5),createdAt:Date.now()};
+  await persistLockMeta(meta);await setVaultRaw(raw);return recovery;
+}
+async function unlockVaultWithPassword(password){
+  const meta=lockMeta();if(!meta)return true;
+  const kek=await deriveKek(String(password||''),fromB64(meta.salt),meta.iterations);
+  const raw=await unwrapRawKey(meta.wrapped,kek);await setVaultRaw(raw);return true;
+}
+async function unlockVaultWithRecovery(code){
+  const meta=lockMeta();if(!meta)return true;
+  const kek=await deriveKek(normalizeRecovery(code),fromB64(meta.recoverySalt),meta.iterations);
+  const raw=await unwrapRawKey(meta.recoveryWrapped,kek);await setVaultRaw(raw);return true;
+}
+async function changeVaultPassword(password){
+  if(!vaultRawKey)throw new Error('应用锁未解锁。');
+  if(!password||String(password).length<6)throw new Error('密码至少需要 6 位。');
+  const meta=lockMeta();if(!meta)throw new Error('应用锁未启用。');
+  const salt=randomBytes(16),kek=await deriveKek(password,salt,meta.iterations);
+  meta.salt=toB64(salt);meta.wrapped=await wrapRawKey(vaultRawKey,kek);meta.changedAt=Date.now();await persistLockMeta(meta);
+}
+async function regenerateVaultRecovery(){
+  if(!vaultRawKey)throw new Error('应用锁未解锁。');
+  const meta=lockMeta();if(!meta)throw new Error('应用锁未启用。');
+  const recovery=generateRecovery(),salt=randomBytes(16);
+  const kek=await deriveKek(normalizeRecovery(recovery),salt,meta.iterations);
+  meta.recoverySalt=toB64(salt);meta.recoveryWrapped=await wrapRawKey(vaultRawKey,kek);meta.recoveryChangedAt=Date.now();await persistLockMeta(meta);
+  return recovery;
+}
+async function encryptBytesWithKey(bytes,key,aad){const iv=randomBytes(12);const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:aad?new TextEncoder().encode(aad):undefined},key,bytes);const out=new Uint8Array(12+cipher.byteLength);out.set(iv);out.set(new Uint8Array(cipher),12);return out}
+async function decryptBytesWithKey(data,key,aad){if(data.length<13)throw new Error('密文无效');const iv=data.subarray(0,12),cipher=data.subarray(12);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:aad?new TextEncoder().encode(aad):undefined},key,cipher))}
+async function encryptVaultBytes(bytes,aad){if(!vaultKey)throw new Error('应用锁未解锁。');return encryptBytesWithKey(bytes,vaultKey,aad)}
+async function decryptVaultBytes(data,aad){if(!vaultKey)throw new Error('应用锁未解锁。');return decryptBytesWithKey(data,vaultKey,aad)}
+async function unwrapVaultKeyFromMeta(meta,secret){
+  if(!meta||meta.version!==1)throw new Error('备份缺少应用锁信息。');
+  const candidates=[['password',meta.salt,meta.wrapped],['recovery',meta.recoverySalt,meta.recoveryWrapped]];
+  for(const [kind,salt,wrapped] of candidates){
+    try{
+      const kek=await deriveKek(kind==='recovery'?normalizeRecovery(secret):String(secret||''),fromB64(salt),meta.iterations);
+      const raw=await unwrapRawKey(wrapped,kek);
+      return {key:await importVaultKey(raw),raw};
+    }catch(e){}
+  }
+  throw new Error('密码或恢复码不正确');
+}
+async function sealVaultString(s,aad){if(!vaultKey||!s)return s;const bytes=await encryptVaultBytes(new TextEncoder().encode(String(s)),aad);return 'enc:v1:'+toB64(bytes)}
+async function openVaultString(s,aad){const v=String(s||'');if(!v.startsWith('enc:v1:'))return v;if(!vaultKey)return v;try{const bytes=await decryptVaultBytes(fromB64(v.slice(7)),aad);return new TextDecoder().decode(bytes)}catch(e){return v}}
 function bytesHex(s){return new Uint8Array(s.match(/.{2}/g).map(x=>parseInt(x,16)))}
 function xor(a,b){const o=new Uint8Array(a.length);for(let i=0;i<a.length;i++)o[i]=a[i]^b[i];return o}
 let _aesTables=null;
@@ -808,13 +925,13 @@ function cleanHtml(raw,assetMap){
   return {body,styles};
 }
 
-async function allTags(){return reqP(tx('tags').getAll())}
-async function saveTag(tag){return reqP(tx('tags','readwrite').put(tag))}
-async function allHighlights(){return reqP(tx('highlights').getAll())}
-async function saveHighlight(h){if(h)h.color=safeHighlightColor(h.color);return reqP(tx('highlights','readwrite').put(h))}
-async function getHighlightsForDoc(bookId,docId){return reqP(tx('highlights').index('byBookDoc').getAll([String(bookId),String(docId)]))}
-async function getHighlightsForBook(bookId){return reqP(tx('highlights').index('byBook').getAll(String(bookId)))}
-async function getHighlightsForNote(noteId){return reqP(tx('highlights').index('byNote').getAll(String(noteId)))}
+async function allTags(){return getAllUser('tags')}
+async function saveTag(tag){return saveOne('tags',tag)}
+async function allHighlights(){return getAllUser('highlights')}
+async function saveHighlight(h){if(h)h.color=safeHighlightColor(h.color);return saveOne('highlights',h)}
+async function getHighlightsForDoc(bookId,docId){return getAllUserIndex('highlights','byBookDoc',[String(bookId),String(docId)])}
+async function getHighlightsForBook(bookId){return getAllUserIndex('highlights','byBook',String(bookId))}
+async function getHighlightsForNote(noteId){return getAllUserIndex('highlights','byNote',String(noteId))}
 async function deleteHighlight(id){return reqP(tx('highlights','readwrite').delete(id))}
 async function deleteNoteCascade(id){
   return new Promise((res,rej)=>{
@@ -885,7 +1002,16 @@ function openSourceDB(){
 }
 async function getBookSource(id){
   const db=await openSourceDB();
-  return reqP(db.transaction('sources','readonly').objectStore('sources').get(id));
+  const rec=await reqP(db.transaction('sources','readonly').objectStore('sources').get(id));
+  if(!rec)return null;
+  if(rec.jwpubEnc){
+    if(!vaultKey)throw new Error('应用锁未解锁，无法读取原始包。');
+    const bytes=await decryptVaultBytes(rec.jwpubEnc,'source:'+id);
+    const out={...rec,jwpub:new Blob([bytes],{type:'application/octet-stream'}),importedAt:rec.importedAt||Date.now()};
+    delete out.jwpubEnc;
+    return out;
+  }
+  return rec;
 }
 async function saveBookSource(id,source){
   if(!id||!source)return null;
@@ -895,8 +1021,15 @@ async function saveBookSource(id,source){
   if(!jwpub&&!source.innerZip&&!source.db)return null;
   let rec=null;
   if(jwpub){
-    rec={id,name:source.name||`${id}.jwpub`,size:Number(source.size||0)||jwpub.size,jwpub,importedAt:source.importedAt||Date.now()};
+    const base={id,name:source.name||`${id}.jwpub`,size:Number(source.size||0)||jwpub.size,importedAt:source.importedAt||Date.now()};
+    if(vaultKey){
+      const bytes=new Uint8Array(await jwpub.arrayBuffer());
+      rec={...base,jwpubEnc:await encryptVaultBytes(bytes,'source:'+id)};
+    }else{
+      rec={...base,jwpub};
+    }
   }else{
+    if(vaultKey)throw new Error('这份原始包是旧格式，请重新导入后再启用应用锁。');
     const manifestBytes=source.manifestBytes instanceof Blob?new Uint8Array(await source.manifestBytes.arrayBuffer()):source.manifestBytes;
     const innerZipBlob=source.innerZip instanceof Blob?source.innerZip:source.innerZip?new Blob([source.innerZip]):null;
     const dbBlob=source.db instanceof Blob?source.db:(source.dbBytes||source.db)?new Blob([source.dbBytes||source.db]):null;
@@ -1147,15 +1280,52 @@ async function stripAssets(bookId){
 async function stripAllSourceBooks(){
   const metas=await allBooks();let books=0,docs=0,aux=0,bible=0,assets=0;
   for(const m of metas){
-    if(!m.hasSource)continue;
+    let has=!!m.hasSource;
+    if(!has){try{const src=await getBookSource(m.id);has=!!src}catch(e){}}
+    if(!has)continue;
     books++;
     docs+=await stripBookDocHtml(m.id);
     aux+=await stripBookAuxHtml(m.id);
     bible+=await stripBibleContent(m.id);
     assets+=await stripAssets(m.id);
+    if(!m.hasSource){try{await markBookSource(m.id,{name:m.sourceName||m.originalFilename||'',size:m.sourceSize||0})}catch(e){}}
   }
   closeSourceDbs();
   return {books,docs,aux,bible,assets};
+}
+async function encryptExistingSources(){
+  const db=await openSourceDB();
+  const rows=await reqP(db.transaction('sources','readonly').objectStore('sources').getAll());
+  const old=[];let n=0;
+  for(const rec of rows){
+    if(rec.jwpubEnc)continue;
+    if(!rec.jwpub){old.push(rec.name||rec.id);continue}
+    await saveBookSource(rec.id,{...rec,jwpub:rec.jwpub});
+    n++;
+  }
+  if(old.length)throw new Error(`以下原始包是旧格式，请重新导入后再启用应用锁：${old.slice(0,5).join('、')}${old.length>5?'…':''}`);
+  return n;
+}
+async function sealExistingUserData(){
+  const stores=Object.keys(USER_ENC_FIELDS);let n=0;
+  for(const store of stores){
+    const rows=await reqP(tx(store).getAll());
+    if(!rows.length)continue;
+    const sealed=[];
+    for(const rec of rows)sealed.push(await sealUserRecord(store,rec));
+    await new Promise((res,rej)=>{const t=idb.transaction(store,'readwrite');for(const rec of sealed)t.objectStore(store).put(rec);t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('加密用户数据事务被中止'))});
+    n+=sealed.length;
+  }
+  return n;
+}
+async function auditPlaintextBooks(){
+  const metas=await allBooks();
+  const missing=[];
+  for(const m of metas){
+    if(!m.hasSource){missing.push(m.displayTitle||m.title||m.id);continue}
+    try{const src=await getBookSource(m.id);if(!src||!src.jwpub)missing.push(m.displayTitle||m.title||m.id)}catch(e){missing.push(m.displayTitle||m.title||m.id)}
+  }
+  return missing;
 }
 async function sourceBibleRangeHtml(bookId,first,last){
   const {db,ki}=await openBookSourceDb(bookId);
@@ -1515,10 +1685,10 @@ async function ensureStableIds(){
     return Number(b.importedAt||b.gen||0)-Number(a.importedAt||a.gen||0);
   });
   let notes=[],highlights=[],marks=[],history=[];
-  try{notes=await reqP(tx('notes').getAll())}catch(e){}
-  try{highlights=await reqP(tx('highlights').getAll())}catch(e){}
-  try{marks=await reqP(tx('bookmarks').getAll())}catch(e){}
-  try{history=await reqP(tx('history').getAll())}catch(e){}
+  try{notes=await getAllUser('notes')}catch(e){}
+  try{highlights=await getAllUser('highlights')}catch(e){}
+  try{marks=await getAllUser('bookmarks')}catch(e){}
+  try{history=await getAllUser('history')}catch(e){}
   const remapId=(id,oldId,newId)=>{const s=String(id);if(s.startsWith('answer:'+oldId+':'))return 'answer:'+newId+s.slice(('answer:'+oldId).length);if(s.startsWith(oldId+':'))return newId+s.slice(oldId.length);return s};
   let migrated=0;const failed=[];
   for(const meta of metas){
@@ -1598,7 +1768,7 @@ async function ensureCanonicalAnchors(){
   if(flag&&flag.done)return;
   let metas=[];try{metas=await reqP(tx('bookMeta').getAll())}catch(e){}
   const metaMap=new Map(metas.map(m=>[String(m.id),m]));
-  let notes=[],highlights=[];try{notes=await reqP(tx('notes').getAll())}catch(e){}try{highlights=await reqP(tx('highlights').getAll())}catch(e){}
+  let notes=[],highlights=[];try{notes=await getAllUser('notes')}catch(e){}try{highlights=await getAllUser('highlights')}catch(e){}
   const docCache=new Map();
   const docFor=async(bookId,docId)=>{
     const key=String(bookId)+':'+String(docId);

@@ -1,6 +1,14 @@
 # 更新记录 / Changelog
 
-> 当前版本以 `project.json` 为准：**2.0.1**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
+> 当前版本以 `project.json` 为准：**2.1.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
+
+## 2.1.0（2026-11-27）
+- 新增可选应用锁：首次设置密码，启动/刷新需要解锁，后台超过设定时间自动锁定。
+- 密码用 PBKDF2-SHA256 派生密钥，数据密钥用 AES-GCM 包裹；首次设置生成一次性恢复码。
+- 忘记密码可用恢复码解锁并保留数据；恢复码也丢失时只能清空全部数据，不提供远程管理员后门。
+- 启用应用锁要求所有出版物都有原始包并切换为 source-first；原始包、用户数据（笔记/标签/高亮/书签/历史/分类）和备份都会加密，目录/书名等元数据保持明文。
+- 完整备份和笔记备份在启用应用锁后输出加密的 `.olvault` 文件；恢复时需要密码或恢复码，并可在新设备上安装同一应用锁。
+- 应用锁只能更改密码/重生成恢复码，不提供关闭开关，避免误操作导致数据无法解密。
 
 ## 2.0.1（2026-11-27）
 - 安全：可生成的标题/副标题富文本先经过 `cleanInlineHtml()`；高亮颜色只允许内置四种；新增 CSP，禁止外部脚本和网络连接。
@@ -90,8 +98,9 @@
 
 ## English summary
 
-The current version is defined by `project.json`: **2.0.1**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
+The current version is defined by `project.json`: **2.1.0**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
 
+- **2.1.0** — optional app lock with PBKDF2/AES-GCM password protection, a one-time recovery code, background auto-lock, encrypted source packages, user-data fields and portable `.olvault` backups; enabling the lock requires source-first books and all publications to have an original package.
 - **2.0.1** — security hardening for rich titles and highlight colours, a restrictive network CSP, source-package-first restore ordering, build checks via `npm test`, and removal of the extra `title` from file sharing.
 - **2.0.0** — optional exact original-package retention with byte-identical JWPUB sharing and identity-checked re-import; source-first reading from the original SQLite for articles, Bible text/ranges/search, daily text, extracts, commentaries and images; scoped and grouped search; backup v2 including original packages, system state and localStorage; reader menu icons, swipe chapter icons and reordered actions.
 - **1.0.0** — stable baseline for the current reader and UI work. Unified reader header (back, two-line publication/chapter title, three-dot menu) with table of contents, search, paging, bookmark, notes, language version, pronunciation and font size inside the menu; per-tab article, back history and exact paragraph position persisted across reloads and imports; navigable link-preview titles that open the target paragraph and join the tab history; warnings above link popovers with their own close button; footnotes and cross-references with resolved text in paragraph/verse info; pencil note markers; clear blue block highlight for the active verse/paragraph and one merged outline per highlighted line; a four-disc colour button with yellow front and green, blue and pink arcs layered behind it, opening four large colour discs; fuller 1:1 information, note and copy icons; previous/next-day labels for the daily text. Answer fields in publications are one line tall by default and grow as more text is typed.

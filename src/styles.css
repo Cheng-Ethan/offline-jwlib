@@ -608,3 +608,15 @@ body.daily-reader .bottom-tools{display:none!important}
 .link-popover-close svg{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .book-action{display:flex;align-items:center;gap:9px}
 .book-action svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--muted)}
+.lock-screen{position:fixed;inset:0;z-index:200002;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 20%,#ffffff 0,#f7f5f0 58%,#ece8df 100%)}
+.lock-screen[hidden]{display:none!important}
+.lock-box{width:min(400px,100%);background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 24px 70px rgba(38,48,54,.18);padding:28px 24px;text-align:center;display:flex;flex-direction:column;gap:10px}
+.lock-logo{width:56px;height:56px;margin:0 auto 4px;border-radius:16px;background:var(--green);color:#fff;display:grid;place-items:center;font-size:22px;font-weight:800}
+.lock-box h1{margin:0;font-size:22px}
+.lock-box .sub{margin:0 0 8px}
+.lock-input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font:inherit;text-align:center}
+.lock-input:focus{outline:2px solid var(--green);outline-offset:1px}
+.lock-error{min-height:20px;color:var(--danger);font-size:12px;line-height:1.4}
+.lock-box .btn{width:100%;padding:12px}
+.lock-recovery-code{font:700 18px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;word-break:break-all;background:#f4f6f8;border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0;user-select:text}
+#confirmModal,#modal{z-index:200010}

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f7f5f0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:; media-src data: blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
-<meta name="offline-library-version" content="2.0.1">
+<meta name="offline-library-version" content="2.1.0">
 <title>我的私人图书馆</title>
 <style>
 :root{
@@ -617,6 +617,18 @@ body.daily-reader .bottom-tools{display:none!important}
 .link-popover-close svg{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .book-action{display:flex;align-items:center;gap:9px}
 .book-action svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--muted)}
+.lock-screen{position:fixed;inset:0;z-index:200002;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 20%,#ffffff 0,#f7f5f0 58%,#ece8df 100%)}
+.lock-screen[hidden]{display:none!important}
+.lock-box{width:min(400px,100%);background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 24px 70px rgba(38,48,54,.18);padding:28px 24px;text-align:center;display:flex;flex-direction:column;gap:10px}
+.lock-logo{width:56px;height:56px;margin:0 auto 4px;border-radius:16px;background:var(--green);color:#fff;display:grid;place-items:center;font-size:22px;font-weight:800}
+.lock-box h1{margin:0;font-size:22px}
+.lock-box .sub{margin:0 0 8px}
+.lock-input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font:inherit;text-align:center}
+.lock-input:focus{outline:2px solid var(--green);outline-offset:1px}
+.lock-error{min-height:20px;color:var(--danger);font-size:12px;line-height:1.4}
+.lock-box .btn{width:100%;padding:12px}
+.lock-recovery-code{font:700 18px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;word-break:break-all;background:#f4f6f8;border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0;user-select:text}
+#confirmModal,#modal{z-index:200010}
 </style>
 </head>
 <body>
@@ -640,7 +652,7 @@ body.daily-reader .bottom-tools{display:none!important}
       <button class="btn secondary" id="backupBtn" data-i18n="导出备份">导出备份</button>
       <button class="btn ghost" id="restoreBtn" data-i18n="恢复备份">恢复备份</button>
       <input id="fileInput" type="file" accept=".jwpub,.pub,application/octet-stream" multiple hidden>
-      <input id="backupInput" type="file" accept=".json,application/json" hidden>
+      <input id="backupInput" type="file" accept=".json,.olvault,application/json,application/octet-stream" hidden>
       <input id="languagePackInput" type="file" accept=".json,application/json" hidden>
     </div>
     <div class="crumbs" id="breadcrumbs" style="display:none"></div>
@@ -777,6 +789,20 @@ body.daily-reader .bottom-tools{display:none!important}
 
 <div class="modal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle"><div class="modalbox"><h2 id="confirmTitle"></h2><div id="confirmText" class="status" role="status" aria-live="polite"></div><div class="modal-actions"><button class="btn ghost" id="confirmCancel"></button><button class="btn" id="confirmOk"></button></div></div></div>
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modalbox"><button class="iconbtn modal-close" id="modalClose" aria-label="关闭" data-i18n-aria-label="关闭"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button><h2 id="modalTitle" data-i18n="提示">提示</h2><div id="modalText" class="status" role="status" aria-live="polite"></div><div class="toolbar"><button class="btn" id="modalOk" data-i18n="知道了">知道了</button></div></div></div>
+
+<section class="lock-screen" id="lockScreen" hidden>
+  <div class="lock-box">
+    <div class="lock-logo">书</div>
+    <h1 data-i18n="应用已锁定">应用已锁定</h1>
+    <p class="sub" id="lockHint" data-i18n="输入密码继续">输入密码继续</p>
+    <input class="lock-input" id="lockPassword" type="password" autocomplete="current-password" data-i18n-placeholder="密码" placeholder="密码">
+    <input class="lock-input" id="lockRecovery" type="text" autocomplete="off" spellcheck="false" data-i18n-placeholder="恢复码" placeholder="恢复码" hidden>
+    <div class="lock-error" id="lockError" role="alert"></div>
+    <button class="btn" id="lockUnlock" data-i18n="解锁">解锁</button>
+    <button class="btn secondary" id="lockUseRecovery" data-i18n="使用恢复码">使用恢复码</button>
+    <button class="btn ghost" id="lockReset" data-i18n="忘记密码">忘记密码</button>
+  </div>
+</section>
 
 <script>window.__CATEGORY_CONFIG__={
   "version": 1,
@@ -1269,7 +1295,7 @@ else if (typeof exports === 'object'){
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const APP_VERSION='2.0.1';
+const APP_VERSION='2.1.0';
 const DB_NAME='OfflineJwLibrary', DB_VERSION=5;
 let idb, SQL, currentBook=null, currentIndex=0, fontSize=19, currentObjectUrls=[], bibleMode=false, bibleReturn=null;
 let assetUrlCache=new Map(), pronunciationOn=false, historyWriteAt=0, readerReturnSection=null, readerNavSection=null, readerOriginSection=null, readerReturnTarget=null, readerSessionTab=null;
@@ -1283,6 +1309,8 @@ let sectionViews={};
 let sectionPageHistory={home:[],bible:[],library:[],meetings:[],study:[]};
 const READER_CACHE_ID='readerPanelCache';
 let readerCacheTimer=null,readerCacheLoaded=false,readerCacheTab='home';
+const LOCK_META_KEY='offlineLibraryLock';
+let vaultKey=null,vaultRawKey=null,lockHiddenAt=0;
 function readerCachePayload(){return {id:READER_CACHE_ID,views:sectionViews,history:sectionPageHistory,tab:primarySection,updatedAt:Date.now()}}
 function scheduleReaderCacheSave(){
   if(!readerCacheLoaded||readerCacheTimer)return;
@@ -1549,6 +1577,7 @@ Object.assign(I18N.ko,{"上一章":"이전 장","下一章":"다음 장"});
 Object.assign(I18N.en,{"当前文件":"Current file","所选资料":"Selected publication"});
 Object.assign(I18N.ja,{"当前文件":"現在のファイル","所选资料":"選択した資料"});
 Object.assign(I18N.ko,{"当前文件":"현재 파일","所选资料":"선택한 자료"});
+Object.assign(I18N.en,{"应用已锁定":"App locked","输入密码继续":"Enter your password to continue","密码":"Password","解锁":"Unlock","使用恢复码":"Use recovery code","恢复码":"Recovery code","忘记密码":"Forgot password","密码或恢复码不正确":"Incorrect password or recovery code","输入恢复码继续":"Enter your recovery code to continue","以下出版物没有原始包，请先重新导入":"These publications have no original package; re-import them first","保存恢复码":"Save your recovery code","恢复码只显示一次，请离线保存。忘记密码时用它重置并保留数据。":"The recovery code is shown once. Keep it offline; it resets your password and preserves data.","复制":"Copy","我已保存":"I saved it","设置应用密码":"Set app password","密码至少 6 位。启用后数据会加密，请先导出备份。":"At least 6 characters. Data will be encrypted; export a backup first.","再次输入密码":"Confirm password","后台自动锁定":"Auto-lock after background","分钟":"minutes","启用应用锁":"Enable app lock","密码至少需要 6 位":"Password must be at least 6 characters","两次密码不一致":"Passwords do not match","应用锁":"App lock","更改密码":"Change password","重新生成恢复码":"Regenerate recovery code","立即锁定":"Lock now","新密码（至少 6 位）":"New password (at least 6 characters)","再次输入新密码":"Confirm new password","密码已更改。":"Password changed.","旧恢复码将立即失效。继续？":"The old recovery code will stop working. Continue?","清空":"Erase","清空全部数据":"Erase all data","没有恢复码时只能清空全部出版物、笔记和设置。请先确认已经备份。继续？":"Without the recovery code, all publications, notes and settings must be erased. Confirm you have a backup. Continue?","这会删除本机所有图书馆数据，无法撤销。":"This deletes all library data on this device and cannot be undone.","无法解锁":"Cannot unlock","恢复码已复制到剪贴板。":"Recovery code copied to the clipboard.","输入备份密码或恢复码":"Enter the backup password or recovery code","应用锁已启用，请先解锁":"The app lock is enabled; unlock it first","应用锁已启用。请用密码解锁后重新生成恢复码。":"The app lock is enabled. Unlock with your password, then regenerate the recovery code."});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
@@ -1800,8 +1829,39 @@ function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open
 };req.onsuccess=()=>{idb=req.result;idb.onversionchange=()=>idb.close();try{navigator.storage?.persist?.().catch(()=>{})}catch(e){}resolve(idb)};req.onerror=()=>reject(req.error)})}
 function tx(store,mode='readonly'){return idb.transaction(store,mode).objectStore(store)}
 function reqP(r){return new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
-async function getOne(store,key){return reqP(tx(store).get(key))}
-async function saveOne(store,v){return reqP(tx(store,'readwrite').put(v))}
+const USER_ENC_FIELDS={
+  notes:['title','text','quote'],
+  tags:['name'],
+  highlights:['quote'],
+  bookmarks:['title','bookTitle'],
+  history:['title','bookTitle','originalFilename'],
+  categories:['name']
+};
+async function sealUserRecord(store,rec){
+  if(!vaultKey||!rec||!USER_ENC_FIELDS[store])return rec;
+  const out={...rec};
+  for(const field of USER_ENC_FIELDS[store]){
+    const v=out[field];
+    if(typeof v==='string'&&v&&!v.startsWith('enc:v1:'))out[field]=await sealVaultString(v,'user:'+store);
+  }
+  return out;
+}
+async function openUserRecord(store,rec){
+  if(!rec||!USER_ENC_FIELDS[store])return rec;
+  const out={...rec};
+  for(const field of USER_ENC_FIELDS[store])out[field]=await openVaultString(out[field],'user:'+store);
+  return out;
+}
+async function getAllUser(store){
+  const rows=await reqP(tx(store).getAll());
+  return Promise.all(rows.map(r=>openUserRecord(store,r)));
+}
+async function getAllUserIndex(store,index,key){
+  const rows=await reqP(tx(store).index(index).getAll(key));
+  return Promise.all(rows.map(r=>openUserRecord(store,r)));
+}
+async function getOne(store,key){return openUserRecord(store,await reqP(tx(store).get(key)))}
+async function saveOne(store,v){const sealed=await sealUserRecord(store,v);return reqP(tx(store,'readwrite').put(sealed))}
 // The long-term identity follows the same idea as JW Library's own user data:
 // language + key symbol + issue. The year is only needed to derive the content
 // encryption key, so a new yearly edition of the same publication keeps the
@@ -1836,6 +1896,89 @@ function safeText(v){return String(v??'').replace(/[<>]/g,'')}
 const HL_COLORS=new Set(['#ffe58a','#b7e4c7','#bcd9f2','#f4b6b6']);
 function safeHighlightColor(c){const v=String(c||'').toLowerCase();return HL_COLORS.has(v)?v:'#ffe58a'}
 function cleanInlineHtml(raw){try{return cleanHtml(String(raw||''),{}).body}catch(e){return safeText(raw)}}
+// ---- optional application lock / vault ------------------------------------
+function lockMeta(){try{const v=JSON.parse(localStorage.getItem(LOCK_META_KEY)||'null');return v&&v.version===1?v:null}catch(e){return null}}
+function lockEnabled(){return !!lockMeta()}
+function saveLockMeta(meta){try{localStorage.setItem(LOCK_META_KEY,JSON.stringify(meta))}catch(e){}}
+async function persistLockMeta(meta){saveLockMeta(meta);try{await saveOne('system',{id:'lockMeta',meta})}catch(e){}}
+async function ensureLockMetaLoaded(){
+  if(lockMeta())return true;
+  try{
+    await openDB();
+    const rec=await reqP(tx('system').get('lockMeta'));
+    if(rec&&rec.meta&&rec.meta.version===1){saveLockMeta(rec.meta);return true}
+  }catch(e){}
+  return false;
+}
+function vaultReady(){return !!vaultKey}
+function randomBytes(n){const u=new Uint8Array(n);crypto.getRandomValues(u);return u}
+function toB64(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode(...u8.subarray(i,i+0x8000));return btoa(s)}
+function fromB64(s){const bin=atob(String(s||''));const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u}
+async function deriveKek(secret,salt,iterations=310000){
+  if(!(crypto&&crypto.subtle))throw new Error('当前浏览器不支持加密，无法启用应用锁。');
+  const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function wrapRawKey(raw,kek){const iv=randomBytes(12);const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv},kek,raw);const out=new Uint8Array(12+cipher.byteLength);out.set(iv);out.set(new Uint8Array(cipher),12);return toB64(out)}
+async function unwrapRawKey(wrapped,kek){const all=fromB64(wrapped);const iv=all.subarray(0,12),cipher=all.subarray(12);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv},kek,cipher))}
+async function importVaultKey(raw){return crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['encrypt','decrypt'])}
+async function setVaultRaw(raw){vaultRawKey=new Uint8Array(raw);vaultKey=await importVaultKey(vaultRawKey)}
+function clearVaultKey(){vaultKey=null;vaultRawKey=null}
+function normalizeRecovery(code){return String(code||'').toUpperCase().replace(/[^A-Z2-9]/g,'')}
+function generateRecovery(){const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';const raw=randomBytes(48);let out='';for(let i=0;i<48;i++){out+=alphabet[raw[i]%alphabet.length];if(i%4===3&&i<47)out+='-'}return out}
+async function createVaultLock(password,timeout=5){
+  if(!password||String(password).length<6)throw new Error('密码至少需要 6 位。');
+  const salt=randomBytes(16),recoverySalt=randomBytes(16),raw=randomBytes(32),iterations=310000;
+  const kek=await deriveKek(password,salt,iterations),wrapped=await wrapRawKey(raw,kek);
+  const recovery=generateRecovery();
+  const rek=await deriveKek(normalizeRecovery(recovery),recoverySalt,iterations);
+  const recoveryWrapped=await wrapRawKey(raw,rek);
+  const meta={version:1,salt:toB64(salt),iterations,wrapped,recoverySalt:toB64(recoverySalt),recoveryWrapped,timeout:Math.max(1,Number(timeout)||5),createdAt:Date.now()};
+  await persistLockMeta(meta);await setVaultRaw(raw);return recovery;
+}
+async function unlockVaultWithPassword(password){
+  const meta=lockMeta();if(!meta)return true;
+  const kek=await deriveKek(String(password||''),fromB64(meta.salt),meta.iterations);
+  const raw=await unwrapRawKey(meta.wrapped,kek);await setVaultRaw(raw);return true;
+}
+async function unlockVaultWithRecovery(code){
+  const meta=lockMeta();if(!meta)return true;
+  const kek=await deriveKek(normalizeRecovery(code),fromB64(meta.recoverySalt),meta.iterations);
+  const raw=await unwrapRawKey(meta.recoveryWrapped,kek);await setVaultRaw(raw);return true;
+}
+async function changeVaultPassword(password){
+  if(!vaultRawKey)throw new Error('应用锁未解锁。');
+  if(!password||String(password).length<6)throw new Error('密码至少需要 6 位。');
+  const meta=lockMeta();if(!meta)throw new Error('应用锁未启用。');
+  const salt=randomBytes(16),kek=await deriveKek(password,salt,meta.iterations);
+  meta.salt=toB64(salt);meta.wrapped=await wrapRawKey(vaultRawKey,kek);meta.changedAt=Date.now();await persistLockMeta(meta);
+}
+async function regenerateVaultRecovery(){
+  if(!vaultRawKey)throw new Error('应用锁未解锁。');
+  const meta=lockMeta();if(!meta)throw new Error('应用锁未启用。');
+  const recovery=generateRecovery(),salt=randomBytes(16);
+  const kek=await deriveKek(normalizeRecovery(recovery),salt,meta.iterations);
+  meta.recoverySalt=toB64(salt);meta.recoveryWrapped=await wrapRawKey(vaultRawKey,kek);meta.recoveryChangedAt=Date.now();await persistLockMeta(meta);
+  return recovery;
+}
+async function encryptBytesWithKey(bytes,key,aad){const iv=randomBytes(12);const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:aad?new TextEncoder().encode(aad):undefined},key,bytes);const out=new Uint8Array(12+cipher.byteLength);out.set(iv);out.set(new Uint8Array(cipher),12);return out}
+async function decryptBytesWithKey(data,key,aad){if(data.length<13)throw new Error('密文无效');const iv=data.subarray(0,12),cipher=data.subarray(12);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:aad?new TextEncoder().encode(aad):undefined},key,cipher))}
+async function encryptVaultBytes(bytes,aad){if(!vaultKey)throw new Error('应用锁未解锁。');return encryptBytesWithKey(bytes,vaultKey,aad)}
+async function decryptVaultBytes(data,aad){if(!vaultKey)throw new Error('应用锁未解锁。');return decryptBytesWithKey(data,vaultKey,aad)}
+async function unwrapVaultKeyFromMeta(meta,secret){
+  if(!meta||meta.version!==1)throw new Error('备份缺少应用锁信息。');
+  const candidates=[['password',meta.salt,meta.wrapped],['recovery',meta.recoverySalt,meta.recoveryWrapped]];
+  for(const [kind,salt,wrapped] of candidates){
+    try{
+      const kek=await deriveKek(kind==='recovery'?normalizeRecovery(secret):String(secret||''),fromB64(salt),meta.iterations);
+      const raw=await unwrapRawKey(wrapped,kek);
+      return {key:await importVaultKey(raw),raw};
+    }catch(e){}
+  }
+  throw new Error('密码或恢复码不正确');
+}
+async function sealVaultString(s,aad){if(!vaultKey||!s)return s;const bytes=await encryptVaultBytes(new TextEncoder().encode(String(s)),aad);return 'enc:v1:'+toB64(bytes)}
+async function openVaultString(s,aad){const v=String(s||'');if(!v.startsWith('enc:v1:'))return v;if(!vaultKey)return v;try{const bytes=await decryptVaultBytes(fromB64(v.slice(7)),aad);return new TextDecoder().decode(bytes)}catch(e){return v}}
 function bytesHex(s){return new Uint8Array(s.match(/.{2}/g).map(x=>parseInt(x,16)))}
 function xor(a,b){const o=new Uint8Array(a.length);for(let i=0;i<a.length;i++)o[i]=a[i]^b[i];return o}
 let _aesTables=null;
@@ -2075,13 +2218,13 @@ function cleanHtml(raw,assetMap){
   return {body,styles};
 }
 
-async function allTags(){return reqP(tx('tags').getAll())}
-async function saveTag(tag){return reqP(tx('tags','readwrite').put(tag))}
-async function allHighlights(){return reqP(tx('highlights').getAll())}
-async function saveHighlight(h){if(h)h.color=safeHighlightColor(h.color);return reqP(tx('highlights','readwrite').put(h))}
-async function getHighlightsForDoc(bookId,docId){return reqP(tx('highlights').index('byBookDoc').getAll([String(bookId),String(docId)]))}
-async function getHighlightsForBook(bookId){return reqP(tx('highlights').index('byBook').getAll(String(bookId)))}
-async function getHighlightsForNote(noteId){return reqP(tx('highlights').index('byNote').getAll(String(noteId)))}
+async function allTags(){return getAllUser('tags')}
+async function saveTag(tag){return saveOne('tags',tag)}
+async function allHighlights(){return getAllUser('highlights')}
+async function saveHighlight(h){if(h)h.color=safeHighlightColor(h.color);return saveOne('highlights',h)}
+async function getHighlightsForDoc(bookId,docId){return getAllUserIndex('highlights','byBookDoc',[String(bookId),String(docId)])}
+async function getHighlightsForBook(bookId){return getAllUserIndex('highlights','byBook',String(bookId))}
+async function getHighlightsForNote(noteId){return getAllUserIndex('highlights','byNote',String(noteId))}
 async function deleteHighlight(id){return reqP(tx('highlights','readwrite').delete(id))}
 async function deleteNoteCascade(id){
   return new Promise((res,rej)=>{
@@ -2152,7 +2295,16 @@ function openSourceDB(){
 }
 async function getBookSource(id){
   const db=await openSourceDB();
-  return reqP(db.transaction('sources','readonly').objectStore('sources').get(id));
+  const rec=await reqP(db.transaction('sources','readonly').objectStore('sources').get(id));
+  if(!rec)return null;
+  if(rec.jwpubEnc){
+    if(!vaultKey)throw new Error('应用锁未解锁，无法读取原始包。');
+    const bytes=await decryptVaultBytes(rec.jwpubEnc,'source:'+id);
+    const out={...rec,jwpub:new Blob([bytes],{type:'application/octet-stream'}),importedAt:rec.importedAt||Date.now()};
+    delete out.jwpubEnc;
+    return out;
+  }
+  return rec;
 }
 async function saveBookSource(id,source){
   if(!id||!source)return null;
@@ -2162,8 +2314,15 @@ async function saveBookSource(id,source){
   if(!jwpub&&!source.innerZip&&!source.db)return null;
   let rec=null;
   if(jwpub){
-    rec={id,name:source.name||`${id}.jwpub`,size:Number(source.size||0)||jwpub.size,jwpub,importedAt:source.importedAt||Date.now()};
+    const base={id,name:source.name||`${id}.jwpub`,size:Number(source.size||0)||jwpub.size,importedAt:source.importedAt||Date.now()};
+    if(vaultKey){
+      const bytes=new Uint8Array(await jwpub.arrayBuffer());
+      rec={...base,jwpubEnc:await encryptVaultBytes(bytes,'source:'+id)};
+    }else{
+      rec={...base,jwpub};
+    }
   }else{
+    if(vaultKey)throw new Error('这份原始包是旧格式，请重新导入后再启用应用锁。');
     const manifestBytes=source.manifestBytes instanceof Blob?new Uint8Array(await source.manifestBytes.arrayBuffer()):source.manifestBytes;
     const innerZipBlob=source.innerZip instanceof Blob?source.innerZip:source.innerZip?new Blob([source.innerZip]):null;
     const dbBlob=source.db instanceof Blob?source.db:(source.dbBytes||source.db)?new Blob([source.dbBytes||source.db]):null;
@@ -2414,15 +2573,52 @@ async function stripAssets(bookId){
 async function stripAllSourceBooks(){
   const metas=await allBooks();let books=0,docs=0,aux=0,bible=0,assets=0;
   for(const m of metas){
-    if(!m.hasSource)continue;
+    let has=!!m.hasSource;
+    if(!has){try{const src=await getBookSource(m.id);has=!!src}catch(e){}}
+    if(!has)continue;
     books++;
     docs+=await stripBookDocHtml(m.id);
     aux+=await stripBookAuxHtml(m.id);
     bible+=await stripBibleContent(m.id);
     assets+=await stripAssets(m.id);
+    if(!m.hasSource){try{await markBookSource(m.id,{name:m.sourceName||m.originalFilename||'',size:m.sourceSize||0})}catch(e){}}
   }
   closeSourceDbs();
   return {books,docs,aux,bible,assets};
+}
+async function encryptExistingSources(){
+  const db=await openSourceDB();
+  const rows=await reqP(db.transaction('sources','readonly').objectStore('sources').getAll());
+  const old=[];let n=0;
+  for(const rec of rows){
+    if(rec.jwpubEnc)continue;
+    if(!rec.jwpub){old.push(rec.name||rec.id);continue}
+    await saveBookSource(rec.id,{...rec,jwpub:rec.jwpub});
+    n++;
+  }
+  if(old.length)throw new Error(`以下原始包是旧格式，请重新导入后再启用应用锁：${old.slice(0,5).join('、')}${old.length>5?'…':''}`);
+  return n;
+}
+async function sealExistingUserData(){
+  const stores=Object.keys(USER_ENC_FIELDS);let n=0;
+  for(const store of stores){
+    const rows=await reqP(tx(store).getAll());
+    if(!rows.length)continue;
+    const sealed=[];
+    for(const rec of rows)sealed.push(await sealUserRecord(store,rec));
+    await new Promise((res,rej)=>{const t=idb.transaction(store,'readwrite');for(const rec of sealed)t.objectStore(store).put(rec);t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('加密用户数据事务被中止'))});
+    n+=sealed.length;
+  }
+  return n;
+}
+async function auditPlaintextBooks(){
+  const metas=await allBooks();
+  const missing=[];
+  for(const m of metas){
+    if(!m.hasSource){missing.push(m.displayTitle||m.title||m.id);continue}
+    try{const src=await getBookSource(m.id);if(!src||!src.jwpub)missing.push(m.displayTitle||m.title||m.id)}catch(e){missing.push(m.displayTitle||m.title||m.id)}
+  }
+  return missing;
 }
 async function sourceBibleRangeHtml(bookId,first,last){
   const {db,ki}=await openBookSourceDb(bookId);
@@ -2782,10 +2978,10 @@ async function ensureStableIds(){
     return Number(b.importedAt||b.gen||0)-Number(a.importedAt||a.gen||0);
   });
   let notes=[],highlights=[],marks=[],history=[];
-  try{notes=await reqP(tx('notes').getAll())}catch(e){}
-  try{highlights=await reqP(tx('highlights').getAll())}catch(e){}
-  try{marks=await reqP(tx('bookmarks').getAll())}catch(e){}
-  try{history=await reqP(tx('history').getAll())}catch(e){}
+  try{notes=await getAllUser('notes')}catch(e){}
+  try{highlights=await getAllUser('highlights')}catch(e){}
+  try{marks=await getAllUser('bookmarks')}catch(e){}
+  try{history=await getAllUser('history')}catch(e){}
   const remapId=(id,oldId,newId)=>{const s=String(id);if(s.startsWith('answer:'+oldId+':'))return 'answer:'+newId+s.slice(('answer:'+oldId).length);if(s.startsWith(oldId+':'))return newId+s.slice(oldId.length);return s};
   let migrated=0;const failed=[];
   for(const meta of metas){
@@ -2865,7 +3061,7 @@ async function ensureCanonicalAnchors(){
   if(flag&&flag.done)return;
   let metas=[];try{metas=await reqP(tx('bookMeta').getAll())}catch(e){}
   const metaMap=new Map(metas.map(m=>[String(m.id),m]));
-  let notes=[],highlights=[];try{notes=await reqP(tx('notes').getAll())}catch(e){}try{highlights=await reqP(tx('highlights').getAll())}catch(e){}
+  let notes=[],highlights=[];try{notes=await getAllUser('notes')}catch(e){}try{highlights=await getAllUser('highlights')}catch(e){}
   const docCache=new Map();
   const docFor=async(bookId,docId)=>{
     const key=String(bookId)+':'+String(docId);
@@ -3614,7 +3810,7 @@ async function ensureCategoryIds(){
   try{await reqP(tx('system','readwrite').put({id:'categoryIdsV1',done:true,at:Date.now(),changed}))}catch(e){}
 }
 async function loadCustomCategories(){
-  try{const rows=await reqP(tx('categories').getAll());CUSTOM_CATEGORIES=new Map(rows.map(r=>[String(r.id),r]))}catch(e){CUSTOM_CATEGORIES=new Map()}
+  try{const rows=await getAllUser('categories');CUSTOM_CATEGORIES=new Map(rows.map(r=>[String(r.id),r]))}catch(e){CUSTOM_CATEGORIES=new Map()}
   return CUSTOM_CATEGORIES;
 }
 async function createCustomCategory(name){
@@ -4026,6 +4222,7 @@ async function renderMoreDashboard(books){
   const keepSource=document.createElement('button');keepSource.className='btn secondary'+(keepSourceEnabled()?' active':'');keepSource.textContent=t('保留原始包以便分享');keepSource.setAttribute('aria-pressed',keepSourceEnabled()?'true':'false');keepSource.onclick=()=>{const on=!keepSourceEnabled();setKeepSource(on);keepSource.classList.toggle('active',on);keepSource.setAttribute('aria-pressed',on?'true':'false');say(t('保留原始包以便分享'),on?t('开启后，导入的 PUB 会在应用内保留完整原始文件，便于以后逐字节导出 JWPUB。会占用更多空间。'):t('已关闭原始包保存；已保存的原始包不会被删除。'))};settings.appendChild(keepSource);
   const sourceRead=document.createElement('button');sourceRead.className='btn secondary'+(sourceReadEnabled()?' active':'');sourceRead.textContent=t('从原始包读取正文（实验）');sourceRead.setAttribute('aria-pressed',sourceReadEnabled()?'true':'false');sourceRead.onclick=()=>{const on=!sourceReadEnabled();setSourceRead(on);sourceRead.classList.toggle('active',on);sourceRead.setAttribute('aria-pressed',on?'true':'false');if(!on)closeSourceDbs();say(t('从原始包读取正文（实验）'),on?t('开启后，打开有原始包的出版物时，会直接从原始 SQLite 查询并解密当前文档；失败时回退到解析数据。'):t('实验功能已关闭。'))};settings.appendChild(sourceRead);
   const sourceFirst=document.createElement('button');sourceFirst.className='btn secondary'+(sourceFirstEnabled()?' active':'');sourceFirst.textContent=t('以原始包为主（实验）');sourceFirst.setAttribute('aria-pressed',sourceFirstEnabled()?'true':'false');sourceFirst.onclick=async()=>{if(!sourceFirstEnabled()){const ok=await askConfirm(t('以原始包为主（实验）'),t('开启后，新导入的出版物只保留目录/元数据，正文从原始包按需读取；旧书不受影响，重新导入后才会切换。已清理的正文不会自动恢复。'),t('开启'));if(!ok)return;setSourceFirst(true);if(!keepSourceEnabled()){setKeepSource(true);keepSource.classList.add('active');keepSource.setAttribute('aria-pressed','true')}}else setSourceFirst(false);sourceFirst.classList.toggle('active',sourceFirstEnabled());sourceFirst.setAttribute('aria-pressed',sourceFirstEnabled()?'true':'false');say(t('以原始包为主（实验）'),sourceFirstEnabled()?t('已开启。重新导入出版物后生效。'):t('已关闭。已清理的正文需要重新导入才能恢复。'))};settings.appendChild(sourceFirst);
+  const appLock=document.createElement('button');appLock.className='btn secondary';appLock.textContent=t('应用锁');appLock.onclick=()=>showLockSettings();settings.appendChild(appLock);
   const langPack=document.createElement('button');langPack.className='btn secondary';langPack.textContent=t('导入语言包');langPack.onclick=()=>{const f=$('languagePackInput');if(f)f.click()};settings.appendChild(langPack);
   const diagPanel=sectionPanel(t('系统诊断'),'');
   const diagBox=document.createElement('div');diagBox.className='status';diagBox.style.cssText='white-space:pre-wrap;font-size:12px;max-height:320px;overflow:auto;background:#f6f8f9;border:1px solid #e3e8ea;border-radius:8px;padding:10px;margin:8px 0';
@@ -4412,7 +4609,7 @@ async function renderMeetings(books){
 
 async function showHistoryPanel(){
   const all=await allBooks();const visible=all.filter(bookInContentFilter);const ids=new Set(visible.map(b=>b.id));
-  const hs=(await reqP(tx('history').getAll())).filter(h=>ids.has(h.bookId)).sort((a,b)=>Number(b.openedAt||0)-Number(a.openedAt||0)).slice(0,100);
+  const hs=(await getAllUser('history')).filter(h=>ids.has(h.bookId)).sort((a,b)=>Number(b.openedAt||0)-Number(a.openedAt||0)).slice(0,100);
   const list=$('historyList');list.innerHTML='';
   if(!hs.length){const e=document.createElement('div');e.className='section-empty';e.textContent=t('还没有阅读记录。阅读文章后会自动记录');list.appendChild(e)}
   else hs.forEach(h=>{
@@ -4426,7 +4623,7 @@ async function showHistoryPanel(){
 function closeHistoryPanel(){const p=$('historyPanel');p.classList.remove('show');restorePanelFocus(p)}
 async function renderHistory(books){
   const ids=new Set((books||[]).map(b=>b.id));
-  const hs=(await reqP(tx('history').getAll())).filter(h=>!ids.size||ids.has(h.bookId)).sort((a,b)=>Number(b.openedAt||0)-Number(a.openedAt||0));
+  const hs=(await getAllUser('history')).filter(h=>!ids.size||ids.has(h.bookId)).sort((a,b)=>Number(b.openedAt||0)-Number(a.openedAt||0));
   const panel=sectionPanel(t('最近阅读'),hs.length?`${t('共')} ${hs.length} ${t('项')}`:t('还没有阅读记录。阅读文章后会自动记录'));
   if(!hs.length){
     const e=document.createElement('div');e.className='section-empty';e.textContent=t('阅读任意文章后，这里会自动生成可点击的阅读记录。');panel.appendChild(e);return;
@@ -4649,7 +4846,7 @@ async function renderStudy(books){
   studyState.books=books;
   try{$('libraryTitle').textContent=t('个人研读');$('librarySubtitle').textContent=''}catch(e){}
   const dash=$('sectionDashboard');dash.innerHTML='';
-  const [tags,notes]=await Promise.all([allTags(),reqP(tx('notes').getAll())]);
+  const [tags,notes]=await Promise.all([allTags(),getAllUser('notes')]);
   studyState.tags=tags||[];
   studyState.notes=(notes||[]).filter(n=>n.kind!=='answer');
   const shell=document.createElement('section');shell.className='study-shell';
@@ -4716,7 +4913,7 @@ function showSystemMenu(anchor,view){
 }
 
 async function deletePublication(book){
- const [notes,marks,history]=await Promise.all([reqP(tx('notes').getAll()),reqP(tx('bookmarks').getAll()),reqP(tx('history').getAll())]);
+ const [notes,marks,history]=await Promise.all([getAllUser('notes'),getAllUser('bookmarks'),getAllUser('history')]);
  const stores=['books','bookMeta','bookAux','notes','bookmarks','history'];const t=idb.transaction(stores,'readwrite');
  t.objectStore('books').delete(book.id);t.objectStore('bookMeta').delete(book.id);t.objectStore('bookAux').delete(book.id);for(const n of notes)if(n.bookId===book.id)t.objectStore('notes').delete(n.id);
  for(const m of marks)if(m.bookId===book.id)t.objectStore('bookmarks').delete(m.id);for(const h of history)if(h.bookId===book.id)t.objectStore('history').delete(h.id);
@@ -5572,7 +5769,7 @@ function addVerseNoteMarker(note){
   placeGutterMarker(host,m,verse);
 }
 async function applyVerseNotesForDoc(bookId,docId){
-  let notes=[];try{notes=await reqP(tx('notes').getAll())}catch(e){return}
+  let notes=[];try{notes=await getAllUser('notes')}catch(e){return}
   for(const n of notes)if(n.kind==='verse'&&String(n.bookId)===String(bookId)&&String(n.docId)===String(docId))addVerseNoteMarker(n);
 }
 function addBlockNoteMarker(note){
@@ -5588,7 +5785,7 @@ function addBlockNoteMarker(note){
   placeGutterMarker(host,m,block);
 }
 async function applyBlockNotesForDoc(bookId,docId){
-  let notes=[];try{notes=await reqP(tx('notes').getAll())}catch(e){return}
+  let notes=[];try{notes=await getAllUser('notes')}catch(e){return}
   for(const n of notes)if(n.kind==='paragraph'&&String(n.bookId)===String(bookId)&&String(n.docId)===String(docId))addBlockNoteMarker(n);
 }
 async function openVerseNote(noteId){
@@ -5645,7 +5842,7 @@ async function crossLanguageNotesFor(book,doc){
     }
   }catch(e){}
   try{
-    const notes=await reqP(tx('notes').getAll());
+    const notes=await getAllUser('notes');
     for(const n of notes){
       if(!n.bookId||!siblingIds.has(String(n.bookId))||n.kind==='answer')continue;
       if(String(n.mepsDocId||'')!==String(doc.mepsId)||!n.pid)continue;
@@ -6335,7 +6532,7 @@ async function setupAnswerFields(bookId,docId){
   if(!fields.length)return;
   const doc=currentBook&&currentBook.docs[currentIndex];
   const canonical={seriesKey:seriesKeyFor(currentBook),mepsDocId:String(doc&&doc.mepsId||'')};
-  let notes=[];try{notes=await reqP(tx('notes').getAll())}catch(e){}
+  let notes=[];try{notes=await getAllUser('notes')}catch(e){}
   const map=new Map(notes.filter(n=>n.kind==='answer'&&String(n.bookId)===String(bookId)&&String(n.docId)===String(docId)).map(n=>[String(n.fieldKey),n]));
   fields.forEach((el,idx)=>{
     const key=el.id||el.name||('field-'+idx);
@@ -7820,18 +8017,48 @@ function remapRestoredIds(books,notes,highlights,marks,history){
   const idMap=buildRestoreIdMap(books);
   remapUserDataIds(idMap,notes,highlights,marks,history);
 }
+const VAULT_BACKUP_MAGIC='OLVAULT1\n';
+let pendingVaultInstall=null;
+async function installPendingVault(){
+  if(!pendingVaultInstall||lockEnabled())return;
+  const pending=pendingVaultInstall;pendingVaultInstall=null;
+  await persistLockMeta(pending.lock);
+  await setVaultRaw(pending.raw);
+  logDiag('info','从加密备份安装应用锁',{format:'offline-library-vault-v1'});
+}
+async function isVaultBackup(file){try{return (await file.slice(0,VAULT_BACKUP_MAGIC.length).text())===VAULT_BACKUP_MAGIC}catch(e){return false}}
+async function decryptVaultBackupFile(file){
+  const lenBuf=await file.slice(VAULT_BACKUP_MAGIC.length,VAULT_BACKUP_MAGIC.length+4).arrayBuffer();
+  const len=new DataView(lenBuf).getUint32(0);
+  const header=JSON.parse(await file.slice(VAULT_BACKUP_MAGIC.length+4,VAULT_BACKUP_MAGIC.length+4+len).text());
+  const cipher=new Uint8Array(await file.slice(VAULT_BACKUP_MAGIC.length+4+len).arrayBuffer());
+  const secret=prompt(t('输入备份密码或恢复码'));
+  if(secret===null)return null;
+  const unlocked=await unwrapVaultKeyFromMeta(header.lock,secret);
+  const plain=await decryptBytesWithKey(cipher,unlocked.key,'backup');
+  if(!lockEnabled())pendingVaultInstall={lock:header.lock,raw:unlocked.raw};
+  return new Blob([plain],{type:'application/json'});
+}
+async function saveBackupBlob(raw,plainName){
+  if(!(lockEnabled()&&vaultKey)){download(raw,plainName);return}
+  const cipher=await encryptVaultBytes(new Uint8Array(await raw.arrayBuffer()),'backup');
+  const header={format:'offline-library-vault-v1',appVersion:APP_VERSION,createdAt:new Date().toISOString(),lock:lockMeta()};
+  const hb=new TextEncoder().encode(JSON.stringify(header));
+  const len=new Uint8Array(4);new DataView(len.buffer).setUint32(0,hb.length);
+  download(new Blob([VAULT_BACKUP_MAGIC,len,hb,cipher],{type:'application/octet-stream'}),plainName.replace(/\.json$/,'')+'.olvault');
+}
 async function backupNotes(){
   try{
-    const [notes,tags,highlights]=await Promise.all([reqP(tx('notes').getAll()),reqP(tx('tags').getAll()),reqP(tx('highlights').getAll())]);
+    const [notes,tags,highlights]=await Promise.all([getAllUser('notes'),getAllUser('tags'),getAllUser('highlights')]);
     const data={format:'offline-library-notes-v1',appVersion:APP_VERSION,createdAt:new Date().toISOString(),notes:notes||[],tags:tags||[],highlights:highlights||[]};
-    download(new Blob([JSON.stringify(data)],{type:'application/json'}),'offline-library-notes-v1.json');
+    await saveBackupBlob(new Blob([JSON.stringify(data)],{type:'application/json'}),'offline-library-notes-v1.json');
     logDiag('info','导出笔记备份',{notes:(notes||[]).length,tags:(tags||[]).length,highlights:(highlights||[]).length});
   }catch(err){say('备份失败',err.message||String(err));logDiag('error','导出笔记备份失败',{message:err.message||String(err)})}
 }
-const RESTORE_DERIVED_SYSTEM_IDS=new Set(['canonicalAnchorsV1','migratedV3','migratedStableIds','categoryIdsV1']);
+const RESTORE_DERIVED_SYSTEM_IDS=new Set(['canonicalAnchorsV1','migratedV3','migratedStableIds','categoryIdsV1','lockMeta']);
 function snapshotLocalStorage(){
   const out={};
-  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('offlineLibrary'))out[k]=localStorage.getItem(k)}}catch(e){}
+  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('offlineLibrary')&&k!==LOCK_META_KEY)out[k]=localStorage.getItem(k)}}catch(e){}
   return out;
 }
 async function snapshotSystemStore(){
@@ -7876,7 +8103,7 @@ async function backupLibrary(){
     };
     paint('正在读取笔记、标签和划线…',true);
     await tick();
-    const [notes,tags,highlights,marks,history,categories,system,localStorageData]=await Promise.all([reqP(tx('notes').getAll()),reqP(tx('tags').getAll()),reqP(tx('highlights').getAll()),reqP(tx('bookmarks').getAll()),reqP(tx('history').getAll()),reqP(tx('categories').getAll()),snapshotSystemStore(),snapshotLocalStorage()]);
+    const [notes,tags,highlights,marks,history,categories,system,localStorageData]=await Promise.all([getAllUser('notes'),getAllUser('tags'),getAllUser('highlights'),getAllUser('bookmarks'),getAllUser('history'),getAllUser('categories'),snapshotSystemStore(),snapshotLocalStorage()]);
     const sink=createJsonSink(),state={lastYield:Date.now()};
     sink.write('{"format":"offline-library-library-v2","appVersion":'+JSON.stringify(APP_VERSION)+',"createdAt":'+JSON.stringify(new Date().toISOString())+',"books":[');
     for(let i=0;i<metas.length;i++){
@@ -7901,7 +8128,7 @@ async function backupLibrary(){
     sink.write('}');
     paint(`正在生成备份文件（${metas.length} 份出版物、${sourceCount} 个原始包、${(notes||[]).length} 条笔记）…`,true);
     await tick();
-    download(new Blob(sink.parts(),{type:'application/json'}),'offline-library-library-v2.json');
+    await saveBackupBlob(new Blob(sink.parts(),{type:'application/json'}),'offline-library-library-v2.json');
     try{$('modal').style.display='none'}catch(e){}
     logDiag('info','导出图书馆备份',{format:'offline-library-library-v2',books:bookCount,sources:sourceCount,notes:(notes||[]).length,tags:(tags||[]).length,highlights:(highlights||[]).length,estimatedBytes:est});
   }catch(err){say('备份失败',err.message||String(err));logDiag('error','导出图书馆备份失败',{message:err.message||String(err)})}
@@ -7993,7 +8220,13 @@ function startRestore(mode){restoreMode=mode==='notes'?'notes':'library';try{$('
 $('backupInput').onchange=async e=>{
   let restoreFormat='';
   try{
-    const f=e.target.files[0];if(!f)return;
+    let f=e.target.files[0];if(!f)return;
+    pendingVaultInstall=null;
+    if(await isVaultBackup(f)){
+      const decrypted=await decryptVaultBackupFile(f);
+      if(!decrypted)return;
+      f=decrypted;
+    }
     const libraryFormats=['offline-library-backup-v1','offline-library-backup-v2','offline-library-backup-v3','offline-library-library-v1','offline-library-library-v2'];
     if(restoreMode==='notes'){
       let head='';try{head=await f.slice(0,4096).text()}catch(err){}
@@ -8001,6 +8234,7 @@ $('backupInput').onchange=async e=>{
       const d=JSON.parse(await f.text());
       if(d.format!=='offline-library-notes-v1')throw new Error('备份文件格式不正确');
       restoreFormat=d.format;
+      await installPendingVault();
       const notes=d.notes||[],tags=d.tags||[],highlights=d.highlights||[];
       for(const tg of tags)await saveOne('tags',tg);
       for(const n of notes)await saveOne('notes',n);
@@ -8012,6 +8246,7 @@ $('backupInput').onchange=async e=>{
       return;
     }
     if(!(await askConfirm(t('恢复整个图书馆'),'恢复整个图书馆会按出版物 ID 覆盖/合并此设备上的记录，并导入笔记、标签、划线、书签和阅读历史。','继续')))return;
+    await installPendingVault();
     say('正在恢复图书馆','正在读取备份文件…',true);await tick();
     let idMap=new Map(),bookCount=0,readBytes=0,sourceCount=0;
     const result=await streamLibraryBackup(f,{
@@ -8154,6 +8389,7 @@ async function exportBookJwpub(book,mode='original'){
 }
 function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();const t=setTimeout(()=>URL.revokeObjectURL(u),600000);try{if(t&&t.unref)t.unref()}catch(e){}}
 const APP_UPDATE_NOTES=[
+  '2.1.0 · 应用锁/恢复码/加密备份',
   '2.0.1 · 安全加固/恢复顺序/构建检查/分享修复',
   '2.0 · 原始包分享/重新导入/备份 v2/搜索范围分组/source-first',
   '1.0 · 统一阅读器题头/栏目位置恢复/相关链接浮窗/笔记标记/每日经文分页',
@@ -8188,20 +8424,177 @@ async function showAbout(){
     say(t('设置与关于'),lines.join('\n'));
   }catch(e){say(t('设置与关于'),e.message||String(e))}
 }
-const _settingsBtn=$('settingsBtn');if(_settingsBtn)_settingsBtn.onclick=showAbout;
-window.addEventListener('pagehide',()=>{saveReaderCache().catch(()=>{});closeSourceDbs()});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveReaderCache().catch(()=>{})});
-(async()=>{
+let appBooted=false;
+function showLockScreen(message=''){
+  const screen=$('lockScreen');if(!screen)return;
+  screen.hidden=false;screen.style.display='flex';
+  const err=$('lockError');if(err)err.textContent=message||'';
+  const pw=$('lockPassword'),rc=$('lockRecovery');
+  if(pw){pw.hidden=false;pw.value='';try{pw.focus()}catch(e){}}
+  if(rc){rc.hidden=true;rc.value=''}
+  const hint=$('lockHint');if(hint)hint.textContent=t('输入密码继续');
+}
+function hideLockScreen(){const screen=$('lockScreen');if(screen){screen.hidden=true;screen.style.display='none'}}
+function lockNow(){
+  if(!lockEnabled())return;
+  clearVaultKey();
+  try{closeSourceDbs()}catch(e){}
+  try{document.getElementById('vaultPanel')?.remove();document.getElementById('exportPanel')?.remove()}catch(e){}
+  bookLoadCache.clear();
+  currentBook=null;currentIndex=0;
+  studyState={books:[],tags:[],notes:[],query:'',tagFilter:new Set()};
+  try{CUSTOM_CATEGORIES.clear()}catch(e){}
+  try{publicationSearchCache.clear();bibleSearchCache.clear();readerLangCache={key:'',at:0,list:[]}}catch(e){}
+  annotationState=null;noteEditorState=null;contextActionState=null;verseActionState=null;blockActionState=null;
+  try{clearUrls()}catch(e){}
+  try{$('article').innerHTML='';$('annotationsList').innerHTML='';$('historyList').innerHTML='';$('readerSearchResults').innerHTML='';$('readerSearchRecent').innerHTML=''}catch(e){}
+  try{$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid'}catch(e){}
+  showLockScreen();
+}
+async function resetAllAppData(){
+  clearVaultKey();
+  try{closeSourceDbs()}catch(e){}
+  try{if(sourceDbPromise){const sdb=await sourceDbPromise;if(sdb)sdb.close()}}catch(e){}
+  try{idb&&idb.close()}catch(e){}
+  await new Promise(res=>{const r=indexedDB.deleteDatabase(DB_NAME);r.onsuccess=r.onerror=r.onblocked=()=>res()});
+  await new Promise(res=>{const r=indexedDB.deleteDatabase(SOURCE_DB_NAME);r.onsuccess=r.onerror=r.onblocked=()=>res()});
+  try{for(const k of Object.keys(localStorage))if(k.startsWith('offlineLibrary'))localStorage.removeItem(k)}catch(e){}
+  location.reload();
+}
+async function enterAppFromLock(){
+  hideLockScreen();
+  if(!appBooted){await bootApp();return}
+  try{await loadReaderCache();await renderBooks();}catch(e){say(t('无法解锁'),e.message||String(e))}
+}
+function bindLockUI(){
+  const unlock=$('lockUnlock'),recovery=$('lockUseRecovery'),reset=$('lockReset');
+  if(!unlock)return;
+  unlock.onclick=async()=>{
+    const err=$('lockError');if(err)err.textContent='';
+    const pw=$('lockPassword'),rc=$('lockRecovery');
+    const usingRecovery=rc&&!rc.hidden;
+    const secret=usingRecovery?rc.value:pw.value;
+    try{
+      if(usingRecovery)await unlockVaultWithRecovery(secret);else await unlockVaultWithPassword(secret);
+      await enterAppFromLock();
+    }catch(e){if(err)err.textContent=t('密码或恢复码不正确')}
+  };
+  if(recovery)recovery.onclick=()=>{
+    const pw=$('lockPassword'),rc=$('lockRecovery'),hint=$('lockHint');
+    const usingRecovery=rc&&rc.hidden;
+    if(rc)rc.hidden=!usingRecovery;
+    if(pw)pw.hidden=usingRecovery;
+    if(hint)hint.textContent=usingRecovery?t('输入恢复码继续'):t('输入密码继续');
+    try{(usingRecovery?rc:pw).focus()}catch(e){}
+  };
+  if(reset)reset.onclick=async()=>{
+    if(!(await askConfirm(t('忘记密码'),t('没有恢复码时只能清空全部出版物、笔记和设置。请先确认已经备份。继续？'),t('清空'))))return;
+    if(!(await askConfirm(t('清空全部数据'),t('这会删除本机所有图书馆数据，无法撤销。'),t('清空'))))return;
+    await resetAllAppData();
+  };
+  for(const id of ['lockPassword','lockRecovery']){const el=$(id);if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')unlock.click()})}
+}
+async function enableVault(password,timeout){
+  if(lockEnabled()&&!vaultKey)throw new Error(t('应用锁已启用，请先解锁'));
+  const missing=await auditPlaintextBooks();
+  if(missing.length)throw new Error(`${t('以下出版物没有原始包，请先重新导入')}：${missing.slice(0,5).join('、')}${missing.length>5?'…':''}`);
+  await stripAllSourceBooks();
+  let recovery=null;
+  if(!lockEnabled())recovery=await createVaultLock(password,timeout);
+  await encryptExistingSources();
+  await sealExistingUserData();
+  closeSourceDbs();
+  return recovery;
+}
+function showVaultPanel(html,onReady){
+  document.getElementById('vaultPanel')?.remove();
+  const panel=document.createElement('div');panel.id='vaultPanel';
+  panel.style.cssText='position:fixed;inset:0;z-index:200001;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;padding:20px';
+  panel.onclick=e=>{if(e.target===panel)panel.remove()};
+  const box=document.createElement('div');box.style.cssText='background:#fff;color:#172026;border-radius:16px;padding:22px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.28);font:14px/1.55 system-ui,-apple-system,sans-serif';
+  box.innerHTML=html;panel.appendChild(box);document.body.appendChild(panel);
+  if(onReady)onReady(box,panel);
+}
+function showRecoveryCode(code){
+  showVaultPanel(`<h2 style="margin:0 0 8px">${t('保存恢复码')}</h2><div class="status">${t('恢复码只显示一次，请离线保存。忘记密码时用它重置并保留数据。')}</div><div class="lock-recovery-code">${safeText(code)}</div><div class="modal-actions"><button class="btn secondary" id="vaultCopy">${t('复制')}</button><button class="btn" id="vaultDone">${t('我已保存')}</button></div>`,(box,panel)=>{
+    box.querySelector('#vaultCopy').onclick=async()=>{try{await copyText(code);say(t('已复制'),t('恢复码已复制到剪贴板。'))}catch(e){}};
+    box.querySelector('#vaultDone').onclick=()=>panel.remove();
+  });
+}
+function showLockSetup(firstRun=false){
+  showVaultPanel(`<h2 style="margin:0 0 8px">${t('设置应用密码')}</h2><div class="status">${t('密码至少 6 位。启用后数据会加密，请先导出备份。')}</div><input class="lock-input" id="vaultPw" type="password" autocomplete="new-password" placeholder="${t('密码')}" style="margin:8px 0"><input class="lock-input" id="vaultPw2" type="password" autocomplete="new-password" placeholder="${t('再次输入密码')}" style="margin:8px 0"><label class="sub" style="display:flex;gap:8px;align-items:center">${t('后台自动锁定')} <select id="vaultTimeout"><option value="5">5 ${t('分钟')}</option><option value="15">15 ${t('分钟')}</option><option value="30">30 ${t('分钟')}</option><option value="60">60 ${t('分钟')}</option></select></label><div class="lock-error" id="vaultErr" role="alert"></div><div class="modal-actions"><button class="btn secondary" id="vaultCancel">${t('取消')}</button><button class="btn" id="vaultCreate">${t('启用应用锁')}</button></div>`,(box,panel)=>{
+    box.querySelector('#vaultCancel').onclick=()=>{panel.remove();if(firstRun)localStorage.setItem('offlineLibraryLockPrompted','1')};
+    box.querySelector('#vaultCreate').onclick=async()=>{
+      const pw=box.querySelector('#vaultPw').value,pw2=box.querySelector('#vaultPw2').value,err=box.querySelector('#vaultErr'),btn=box.querySelector('#vaultCreate');
+      if(!pw||pw.length<6){err.textContent=t('密码至少需要 6 位');return}
+      if(pw!==pw2){err.textContent=t('两次密码不一致');return}
+      btn.disabled=true;err.textContent='';
+      try{
+        const timeout=Number(box.querySelector('#vaultTimeout').value)||5;
+        const recovery=await enableVault(pw,timeout);
+        panel.remove();localStorage.setItem('offlineLibraryLockPrompted','1');
+        if(recovery)showRecoveryCode(recovery);else say(t('应用锁'),t('应用锁已启用。请用密码解锁后重新生成恢复码。'));
+        await renderBooks();
+      }catch(e){err.textContent=e.message||String(e);btn.disabled=false}
+    };
+  });
+}
+function showLockSettings(){
+  if(!lockEnabled()){showLockSetup(false);return}
+  showVaultPanel(`<h2 style="margin:0 0 8px">${t('应用锁')}</h2><div class="modal-actions" style="flex-direction:column"><button class="btn secondary" id="vaultChangePw">${t('更改密码')}</button><button class="btn secondary" id="vaultNewRecovery">${t('重新生成恢复码')}</button><button class="btn secondary" id="vaultLockNow">${t('立即锁定')}</button><button class="btn ghost" id="vaultClose">${t('取消')}</button></div>`,(box,panel)=>{
+    box.querySelector('#vaultClose').onclick=()=>panel.remove();
+    box.querySelector('#vaultLockNow').onclick=()=>{panel.remove();lockNow()};
+    box.querySelector('#vaultChangePw').onclick=async()=>{
+      const pw=prompt(t('新密码（至少 6 位）'));if(!pw)return;const pw2=prompt(t('再次输入新密码'));if(pw!==pw2){say(t('更改密码'),t('两次密码不一致'));return}
+      try{await changeVaultPassword(pw);say(t('更改密码'),t('密码已更改。'))}catch(e){say(t('更改密码'),e.message||String(e))}
+    };
+    box.querySelector('#vaultNewRecovery').onclick=async()=>{
+      if(!(await askConfirm(t('重新生成恢复码'),t('旧恢复码将立即失效。继续？'),t('继续'))))return;
+      try{const code=await regenerateVaultRecovery();panel.remove();showRecoveryCode(code)}catch(e){say(t('重新生成恢复码'),e.message||String(e))}
+    };
+  });
+}
+async function bootApp(){
   try{
     applyI18n();await openDB();await ensureMigrated();await ensureCategoryIds();
     await loadReaderCache();
     await renderBooks();
-    // Resume the tab the user was in. If that tab had an article open, its
-    // saved paragraph position is restored instead of starting at the top.
     const startTab=readerCacheTab||'home';
     if(startTab!=='home')await setPrimaryNav(startTab,{});
     else if(sectionViews.home)await activateTab('home',false,{});
+    appBooted=true;
+    if(!lockEnabled()&&!localStorage.getItem('offlineLibraryLockPrompted')){
+      localStorage.setItem('offlineLibraryLockPrompted','1');
+      setTimeout(()=>{if(!lockEnabled())showLockSetup(true)},400);
+    }
   }catch(e){say('本地存储不可用','当前浏览器或容器未允许本地存储，无法保存图书：'+e.message)}
+}
+const _settingsBtn=$('settingsBtn');if(_settingsBtn)_settingsBtn.onclick=showAbout;
+window.addEventListener('pagehide',()=>{saveReaderCache().catch(()=>{});closeSourceDbs();if(lockEnabled()&&vaultKey)lockHiddenAt=Date.now()});
+window.addEventListener('pageshow',()=>{
+  if(lockEnabled()&&vaultKey&&lockHiddenAt){
+    const mins=Number((lockMeta()||{}).timeout||5);
+    if(Date.now()-lockHiddenAt>=mins*60000)lockNow();
+    lockHiddenAt=0;
+  }
+});
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){
+    saveReaderCache().catch(()=>{});
+    if(lockEnabled()&&vaultKey)lockHiddenAt=Date.now();
+    return;
+  }
+  if(lockEnabled()&&vaultKey&&lockHiddenAt){
+    const mins=Number((lockMeta()||{}).timeout||5);
+    if(Date.now()-lockHiddenAt>=mins*60000)lockNow();
+    lockHiddenAt=0;
+  }
+});
+(async()=>{
+  applyI18n();bindLockUI();
+  if(!lockMeta())await ensureLockMetaLoaded();
+  if(lockEnabled()&&!vaultKey){showLockScreen();return}
+  await bootApp();
 })();
 })();
 </script>
