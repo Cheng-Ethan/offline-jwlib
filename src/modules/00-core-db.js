@@ -918,8 +918,8 @@ async function bookSourceTotalBytes(){
 }
 // Experimental 2.0 read path: open the stored original JWPUB, query SQLite on
 // demand and decrypt one document. Parsed data remains the fallback.
-const sourceDbCache=new Map(),sourceDocCache=new Map();
-const SOURCE_DB_CACHE_MAX=1,SOURCE_DOC_CACHE_MAX=8;
+const sourceDbCache=new Map(),sourceDocCache=new Map(),sourceAssetCache=new Map();
+const SOURCE_DB_CACHE_MAX=1,SOURCE_DOC_CACHE_MAX=8,SOURCE_ASSET_CACHE_MAX=16;
 function sourceReadEnabled(){try{return localStorage.getItem('offlineLibrarySourceRead')==='1'}catch(e){return false}}
 function setSourceRead(on){try{localStorage.setItem('offlineLibrarySourceRead',on?'1':'0')}catch(e){}}
 function sourceFirstEnabled(){try{return localStorage.getItem('offlineLibrarySourceFirst')==='1'}catch(e){return false}}
@@ -981,9 +981,10 @@ async function openBookSourceDb(bookId){
   }else if(rec.db){
     dbBytes=await rec.db.arrayBuffer();
   }
+  let inner=null;
   if(!dbBytes){
     if(!innerBytes)throw new Error('原始包缺少 SQLite');
-    const inner=await JSZip.loadAsync(new Uint8Array(innerBytes));
+    inner=await JSZip.loadAsync(new Uint8Array(innerBytes));
     const preferred=manifest.publication&&manifest.publication.fileName;
     let dbEntry=preferred?inner.file(preferred):null;
     if(!dbEntry){for(const [name,entry] of Object.entries(inner.files)){if(!entry.dir&&/\.(db|sqlite|sqlite3)$/i.test(name)){dbEntry=entry;break}}}
@@ -994,7 +995,9 @@ async function openBookSourceDb(bookId){
   const db=new SQL.Database(dbBytes);
   const pub=sourcePubMeta(db);
   const ki=await keyIv(pub);
-  const entry={db,ki,bookId:key};
+  const assetIndex=new Map();
+  if(inner)for(const name of Object.keys(inner.files)){if(!inner.files[name].dir)assetIndex.set(resourceKey(name),name)}
+  const entry={db,ki,bookId:key,inner,assetIndex};
   sourceDbCache.set(key,entry);
   while(sourceDbCache.size>SOURCE_DB_CACHE_MAX){
     const [oldKey,old]=sourceDbCache.entries().next().value;
@@ -1051,6 +1054,24 @@ async function sourceDatedTextHtml(bookId,datedTextId){
   while(sourceDocCache.size>SOURCE_DOC_CACHE_MAX)sourceDocCache.delete(sourceDocCache.keys().next().value);
   return html;
 }
+async function sourceAssetBlob(bookId,name){
+  const key=resourceKey(name);
+  if(!key)return null;
+  const cacheKey=String(bookId)+':'+key;
+  if(sourceAssetCache.has(cacheKey)){
+    const v=sourceAssetCache.get(cacheKey);sourceAssetCache.delete(cacheKey);sourceAssetCache.set(cacheKey,v);return v;
+  }
+  const {inner,assetIndex}=await openBookSourceDb(bookId);
+  if(!inner||!assetIndex)return null;
+  const actual=assetIndex.get(key);
+  if(!actual)return null;
+  const entry=inner.file(actual);
+  if(!entry)return null;
+  const blob=await entry.async('blob');
+  sourceAssetCache.set(cacheKey,blob);
+  while(sourceAssetCache.size>SOURCE_ASSET_CACHE_MAX)sourceAssetCache.delete(sourceAssetCache.keys().next().value);
+  return blob;
+}
 async function sourceCommentaryHtml(bookId,commentary){
   const id=normId(commentary&&commentary.id);
   const kind=commentary&&commentary.kind==='verse'?'verse':'paragraph';
@@ -1092,17 +1113,27 @@ async function stripBibleContent(bookId){
   bookLoadCache.delete(String(bookId));
   return changed;
 }
+async function stripAssets(bookId){
+  let recs=[];try{recs=await reqP(tx('bookAssets').index('byBook').getAll(bookId))}catch(e){return 0}
+  if(!recs.length)return 0;
+  const t=idb.transaction('bookAssets','readwrite'),store=t.objectStore('bookAssets');
+  for(const rec of recs)store.delete(rec.key);
+  await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('清理资源事务被中止'))});
+  bookLoadCache.delete(String(bookId));
+  return recs.length;
+}
 async function stripAllSourceBooks(){
-  const metas=await allBooks();let books=0,docs=0,aux=0,bible=0;
+  const metas=await allBooks();let books=0,docs=0,aux=0,bible=0,assets=0;
   for(const m of metas){
     if(!m.hasSource)continue;
     books++;
     docs+=await stripBookDocHtml(m.id);
     aux+=await stripBookAuxHtml(m.id);
     bible+=await stripBibleContent(m.id);
+    assets+=await stripAssets(m.id);
   }
   closeSourceDbs();
-  return {books,docs,aux,bible};
+  return {books,docs,aux,bible,assets};
 }
 async function sourceBibleRangeHtml(bookId,first,last){
   const {db,ki}=await openBookSourceDb(bookId);
@@ -1160,7 +1191,7 @@ async function sourceBibleChapterHtml(bookId,bookNum,chapter){
 }
 function closeSourceDbs(){
   for(const e of sourceDbCache.values()){try{e.db.close()}catch(err){}}
-  sourceDbCache.clear();sourceDocCache.clear();
+  sourceDbCache.clear();sourceDocCache.clear();sourceAssetCache.clear();
 }
 
 function dailyDateKey(offset,year){
@@ -1364,6 +1395,9 @@ async function loadAssetsForHtml(bookId,gen,html){
     try{rec=await reqP(tx('bookAssets').get(`${bookId}:${gen}:${name}`))}catch(e){}
     if(!rec){try{rec=await reqP(tx('bookAssets').get(`${bookId}:${gen}:${name.toLowerCase()}`))}catch(e){}}
     if(rec)out.push({name:rec.name,blob:rec.blob});
+    else if(sourceFirstEnabled()||sourceReadEnabled()){
+      try{const blob=await sourceAssetBlob(bookId,name);if(blob)out.push({name,blob})}catch(e){}
+    }
   }
   return out;
 }
