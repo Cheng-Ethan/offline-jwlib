@@ -2319,6 +2319,41 @@ async function stripBookAuxHtml(bookId){
   bookLoadCache.delete(String(bookId));
   return changed;
 }
+async function stripBibleContent(bookId){
+  const aux=await reqP(tx('bookAux').get(bookId));if(!aux||!aux.bibleData)return 0;
+  const data=aux.bibleData;
+  let changed=0;
+  for(const v of data.verseRows||[]){if(v.content){v.content=null;changed++}}
+  for(const c of data.chapterRows||[]){if(c.content){c.content=null;changed++}}
+  if(data.keyHex){data.keyHex='';changed++}
+  if(data.ivHex){data.ivHex='';changed++}
+  if(changed)await reqP(tx('bookAux','readwrite').put(aux));
+  bookLoadCache.delete(String(bookId));
+  return changed;
+}
+async function sourceBibleRangeHtml(bookId,first,last){
+  const {db,ki}=await openBookSourceDb(bookId);
+  let verses=[],stmt=null;
+  try{
+    stmt=db.prepare('SELECT * FROM "BibleVerse" WHERE "BibleVerseId" BETWEEN ? AND ? ORDER BY "BibleVerseId"');
+    stmt.bind([Number(first),Number(last)]);
+    while(stmt.step())verses.push(stmt.getAsObject());
+  }catch(e){
+    verses=rows(db,'BibleVerse').filter(v=>{const id=Number(pick(v,['BibleVerseId','Id'],0));return id>=Number(first)&&id<=Number(last)});
+  }finally{try{stmt&&stmt.free()}catch(e){}}
+
+  let html='';
+  for(const v of verses){
+    const id=Number(pick(v,['BibleVerseId','Id'],0));
+    const blob=bytes(pick(v,['Content'],null));if(!blob)continue;
+    try{
+      const text=(await decryptContentAny(blob,ki)).html;
+      const label=String(pick(v,['Label'],'')).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+      html+=`<div class="bible-verse" data-bible-verse="${id}"><sup>${safeText(label)}</sup> ${text}</div>`;
+    }catch(e){}
+  }
+  return html;
+}
 async function sourceBibleChapterHtml(bookId,bookNum,chapter){
   const cacheKey=`bible:${bookId}:${bookNum}:${chapter}`;
   if(sourceDocCache.has(cacheKey)){
@@ -5159,7 +5194,7 @@ async function openBibleChapterReader(bookId,bookNum,chapter,verse=0,origin=null
   if(!full)return false;
   const data=full.bibleData||{};
   let html='';
-  if(sourceReadEnabled()){
+  if(sourceFirstEnabled()||sourceReadEnabled()){
     try{html=await sourceBibleChapterHtml(bookId,bookNum,chapter)}
     catch(e){logDiag('warn','从原始包读取圣经章节失败',{bookId,bookNum,chapter,message:e&&e.message||String(e)})}
   }
@@ -5214,6 +5249,10 @@ async function bibleRangeHtml(bibleBook,range){
   const last=resolveBibleVerseId(data,range.book,range.endChapter,range.endVerse);
   if(first===undefined||last===undefined||last<first)return {html:'',data,reason:'no-index'};
   if(last-first+1>120)return {html:'',data,reason:'too-large'};
+  if(sourceFirstEnabled()||sourceReadEnabled()){
+    try{const sourceHtml=await sourceBibleRangeHtml(bibleBook.id,first,last);if(sourceHtml)return {html:sourceHtml,data,reason:'source'}}
+    catch(e){logDiag('warn','从原始包读取经文范围失败',{bookId:bibleBook.id,first,last,message:e&&e.message||String(e)})}
+  }
   let html='';
   for(let id=first;id<=last;id++){
     const rowIndex=data.verseIndex?.[id],row=rowIndex===undefined?null:data.verseRows?.[rowIndex];if(!row)continue;
@@ -5789,7 +5828,7 @@ async function ensureBibleSearchIndex(book,run,status){
   for(const key of todo){
     if(run!==readerSearchRunId)return cache;
     const parts=key.split(':'),b=Number(parts[0]),c=Number(parts[1]);
-    let verses=[];try{verses=await bibleVersesForSearch(data,b,c)}catch(e){}
+    let verses=[];try{verses=await bibleVersesForSearch(book,data,b,c)}catch(e){}
     cache.set(key,verses);done++;
     if(done%20===0||done===todo.length){
       if(run!==readerSearchRunId)return cache;
@@ -5800,7 +5839,13 @@ async function ensureBibleSearchIndex(book,run,status){
   if(run===readerSearchRunId)status.textContent=t('搜索中…');
   return cache;
 }
-async function bibleVersesForSearch(data,b,c){
+async function bibleVersesForSearch(book,data,b,c){
+  if(sourceFirstEnabled()||sourceReadEnabled()){
+    try{
+      const sourceHtml=await sourceBibleChapterHtml(book.id,b,c);
+      if(sourceHtml){const verses=versesFromChapterHtml(sourceHtml);if(verses.length)return verses}
+    }catch(e){}
+  }
   const key=`${b}:${c}`,idx=data.chapterIndex?.[key],row=idx!==undefined?data.chapterRows?.[idx]:null;
   let html='';
   if(row&&row.content){try{html=await decryptContent(bytes(row.content),{key:bytesHex(data.keyHex),iv:bytesHex(data.ivHex)})}catch(e){}}
@@ -7229,6 +7274,8 @@ async function importFiles(files,opts={}){
      catch(stripErr){logDiag('warn','清理解析正文失败',{id:b.id,message:stripErr.message||String(stripErr)})}
      try{const n=await stripBookAuxHtml(b.id);logDiag('info','按原始包为主清理辅助正文',{id:b.id,parts:n})}
      catch(stripErr){logDiag('warn','清理辅助正文失败',{id:b.id,message:stripErr.message||String(stripErr)})}
+     try{const n=await stripBibleContent(b.id);if(n)logDiag('info','按原始包为主清理圣经密文',{id:b.id,parts:n})}
+     catch(stripErr){logDiag('warn','清理圣经密文失败',{id:b.id,message:stripErr.message||String(stripErr)})}
    }
    if(sourceSaved)closeSourceDbs();
    ok.push(`${b.displayTitle||b.title}（${f.name}）`);logDiag('info','导入成功',{file:f.name,id:b.id,docs:b.docs?.length,assets:b.assets?.length,report:b.importReport});

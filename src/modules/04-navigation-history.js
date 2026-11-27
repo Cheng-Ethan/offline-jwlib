@@ -45,6 +45,8 @@ async function importFiles(files,opts={}){
      catch(stripErr){logDiag('warn','清理解析正文失败',{id:b.id,message:stripErr.message||String(stripErr)})}
      try{const n=await stripBookAuxHtml(b.id);logDiag('info','按原始包为主清理辅助正文',{id:b.id,parts:n})}
      catch(stripErr){logDiag('warn','清理辅助正文失败',{id:b.id,message:stripErr.message||String(stripErr)})}
+     try{const n=await stripBibleContent(b.id);if(n)logDiag('info','按原始包为主清理圣经密文',{id:b.id,parts:n})}
+     catch(stripErr){logDiag('warn','清理圣经密文失败',{id:b.id,message:stripErr.message||String(stripErr)})}
    }
    if(sourceSaved)closeSourceDbs();
    ok.push(`${b.displayTitle||b.title}（${f.name}）`);logDiag('info','导入成功',{file:f.name,id:b.id,docs:b.docs?.length,assets:b.assets?.length,report:b.importReport});

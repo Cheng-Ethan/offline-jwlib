@@ -1057,6 +1057,41 @@ async function stripBookAuxHtml(bookId){
   bookLoadCache.delete(String(bookId));
   return changed;
 }
+async function stripBibleContent(bookId){
+  const aux=await reqP(tx('bookAux').get(bookId));if(!aux||!aux.bibleData)return 0;
+  const data=aux.bibleData;
+  let changed=0;
+  for(const v of data.verseRows||[]){if(v.content){v.content=null;changed++}}
+  for(const c of data.chapterRows||[]){if(c.content){c.content=null;changed++}}
+  if(data.keyHex){data.keyHex='';changed++}
+  if(data.ivHex){data.ivHex='';changed++}
+  if(changed)await reqP(tx('bookAux','readwrite').put(aux));
+  bookLoadCache.delete(String(bookId));
+  return changed;
+}
+async function sourceBibleRangeHtml(bookId,first,last){
+  const {db,ki}=await openBookSourceDb(bookId);
+  let verses=[],stmt=null;
+  try{
+    stmt=db.prepare('SELECT * FROM "BibleVerse" WHERE "BibleVerseId" BETWEEN ? AND ? ORDER BY "BibleVerseId"');
+    stmt.bind([Number(first),Number(last)]);
+    while(stmt.step())verses.push(stmt.getAsObject());
+  }catch(e){
+    verses=rows(db,'BibleVerse').filter(v=>{const id=Number(pick(v,['BibleVerseId','Id'],0));return id>=Number(first)&&id<=Number(last)});
+  }finally{try{stmt&&stmt.free()}catch(e){}}
+
+  let html='';
+  for(const v of verses){
+    const id=Number(pick(v,['BibleVerseId','Id'],0));
+    const blob=bytes(pick(v,['Content'],null));if(!blob)continue;
+    try{
+      const text=(await decryptContentAny(blob,ki)).html;
+      const label=String(pick(v,['Label'],'')).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+      html+=`<div class="bible-verse" data-bible-verse="${id}"><sup>${safeText(label)}</sup> ${text}</div>`;
+    }catch(e){}
+  }
+  return html;
+}
 async function sourceBibleChapterHtml(bookId,bookNum,chapter){
   const cacheKey=`bible:${bookId}:${bookNum}:${chapter}`;
   if(sourceDocCache.has(cacheKey)){

@@ -648,7 +648,7 @@ async function openBibleChapterReader(bookId,bookNum,chapter,verse=0,origin=null
   if(!full)return false;
   const data=full.bibleData||{};
   let html='';
-  if(sourceReadEnabled()){
+  if(sourceFirstEnabled()||sourceReadEnabled()){
     try{html=await sourceBibleChapterHtml(bookId,bookNum,chapter)}
     catch(e){logDiag('warn','从原始包读取圣经章节失败',{bookId,bookNum,chapter,message:e&&e.message||String(e)})}
   }
@@ -703,6 +703,10 @@ async function bibleRangeHtml(bibleBook,range){
   const last=resolveBibleVerseId(data,range.book,range.endChapter,range.endVerse);
   if(first===undefined||last===undefined||last<first)return {html:'',data,reason:'no-index'};
   if(last-first+1>120)return {html:'',data,reason:'too-large'};
+  if(sourceFirstEnabled()||sourceReadEnabled()){
+    try{const sourceHtml=await sourceBibleRangeHtml(bibleBook.id,first,last);if(sourceHtml)return {html:sourceHtml,data,reason:'source'}}
+    catch(e){logDiag('warn','从原始包读取经文范围失败',{bookId:bibleBook.id,first,last,message:e&&e.message||String(e)})}
+  }
   let html='';
   for(let id=first;id<=last;id++){
     const rowIndex=data.verseIndex?.[id],row=rowIndex===undefined?null:data.verseRows?.[rowIndex];if(!row)continue;
@@ -1278,7 +1282,7 @@ async function ensureBibleSearchIndex(book,run,status){
   for(const key of todo){
     if(run!==readerSearchRunId)return cache;
     const parts=key.split(':'),b=Number(parts[0]),c=Number(parts[1]);
-    let verses=[];try{verses=await bibleVersesForSearch(data,b,c)}catch(e){}
+    let verses=[];try{verses=await bibleVersesForSearch(book,data,b,c)}catch(e){}
     cache.set(key,verses);done++;
     if(done%20===0||done===todo.length){
       if(run!==readerSearchRunId)return cache;
@@ -1289,7 +1293,13 @@ async function ensureBibleSearchIndex(book,run,status){
   if(run===readerSearchRunId)status.textContent=t('搜索中…');
   return cache;
 }
-async function bibleVersesForSearch(data,b,c){
+async function bibleVersesForSearch(book,data,b,c){
+  if(sourceFirstEnabled()||sourceReadEnabled()){
+    try{
+      const sourceHtml=await sourceBibleChapterHtml(book.id,b,c);
+      if(sourceHtml){const verses=versesFromChapterHtml(sourceHtml);if(verses.length)return verses}
+    }catch(e){}
+  }
   const key=`${b}:${c}`,idx=data.chapterIndex?.[key],row=idx!==undefined?data.chapterRows?.[idx]:null;
   let html='';
   if(row&&row.content){try{html=await decryptContent(bytes(row.content),{key:bytesHex(data.keyHex),iv:bytesHex(data.ivHex)})}catch(e){}}
