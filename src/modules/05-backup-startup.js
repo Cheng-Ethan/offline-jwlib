@@ -351,7 +351,7 @@ $('backupInput').onchange=async e=>{
 async function shareFile(blob,name){
   if(!(typeof File==='function'&&navigator.canShare&&navigator.share))return 'unsupported';
   try{
-    const file=new File([blob],name,{type:'application/x-jwpub'});
+    const file=new File([blob],name,{type:'application/octet-stream'});
     if(!navigator.canShare({files:[file]}))return 'unsupported';
     await navigator.share({files:[file],title:name});
     return 'shared';
@@ -359,6 +359,9 @@ async function shareFile(blob,name){
     if(e&&e.name==='AbortError')return 'shared';
     return 'failed';
   }
+}
+function isIOSWebView(){
+  try{return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}catch(e){return false}
 }
 function exportBookFileName(book,src,mode){
   const original=String((src&&src.name)||book.originalFilename||book.manifestName||'').trim();
@@ -370,6 +373,10 @@ function exportBookFileName(book,src,mode){
 async function deliverExport(blob,name,book,exact){
   const result=await shareFile(blob,name);
   if(result==='unsupported'){
+    if(isIOSWebView()){
+      say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'));
+      return;
+    }
     download(blob,name);
     logDiag('info','保存原始 JWPUB',{id:book.id,size:blob.size,name,exact:!!exact});
     return;

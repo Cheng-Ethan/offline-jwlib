@@ -235,9 +235,9 @@ function updatePublication(book){
   input.click();
 }
 function promptReimportForShare(book){
-  // Keep this inside the original click gesture so iOS/Sitecase can open the
-  // file picker; the import dialog explains the one-time re-import.
-  try{$('fileInput').click()}catch(e){}
+  // Reuse the identity-checked re-import flow so an unrelated file cannot be
+  // accepted just because the user wanted to enable sharing.
+  updatePublication(book);
 }
 async function openCategoryPicker(book,anchor){
   closeBookActions();await loadCustomCategories();
