@@ -176,9 +176,10 @@ function syncPager(){
   const p=$('prevBtn'),n=$('nextBtn');if(!p||!n)return;
   if(!currentBook){p.disabled=true;n.disabled=true;return}
   const daily=isDailyTextPublication(currentBook)||categoryPath(currentBook)[0]==='daily';
-  const pKey=daily?'前一日':'上一节',nKey=daily?'后一日':'下一节';
-  p.setAttribute('data-i18n',pKey);p.textContent=t(pKey);
-  n.setAttribute('data-i18n',nKey);n.textContent=t(nKey);
+  const pKey=daily?'前一日':'上一章',nKey=daily?'后一日':'下一章';
+  const pLabel=$('prevBtnLabel'),nLabel=$('nextBtnLabel');
+  if(pLabel){pLabel.setAttribute('data-i18n',pKey);pLabel.textContent=t(pKey)}
+  if(nLabel){nLabel.setAttribute('data-i18n',nKey);nLabel.textContent=t(nKey)}
   if(bibleMode){
     const d=currentBook.docs[currentIndex],m=/^bible-(\d+)-(\d+)$/.exec(String(d&&d.id));
     if(!m){p.disabled=true;n.disabled=true;return}
@@ -265,12 +266,6 @@ function toggleReaderToolsMenu(){
 $('readerMoreBtn').onclick=e=>{e.stopPropagation();toggleReaderToolsMenu()};
 $('readerReimportBtn').onclick=()=>{closeReaderToolsMenu();if(currentBook)updatePublication(currentBook)};
 $('readerShareBtn').onclick=()=>{closeReaderToolsMenu();if(currentBook)openShareMenu(currentBook,$('readerMoreBtn'))};
-function updateReaderNavLabels(){
-  const bible=!!(currentBook&&(currentBook.bibleData||currentBook.hasBible||readerKind(currentBook)==='bible'));
-  const prev=$('prevBtnLabel'),next=$('nextBtnLabel');
-  if(prev){const key=bible?'上一章':'上一节';if(prev.getAttribute('data-i18n')!==key){prev.setAttribute('data-i18n',key);prev.textContent=t(key)}}
-  if(next){const key=bible?'下一章':'下一节';if(next.getAttribute('data-i18n')!==key){next.setAttribute('data-i18n',key);next.textContent=t(key)}}
-}
 function decorateReaderTools(){
   const map={tocBtn:'list',readerSearchBtn:'search',prevBtn:'swipeLeft',nextBtn:'swipeRight',bookmarkBtn:'starOn',noteBtn:'note',readerLangBtn:'language',pronunciationBtn:'language',fontDown:'minus',fontUp:'plus',readerReimportBtn:'download',readerShareBtn:'upload'};
   for(const [id,icon] of Object.entries(map)){
@@ -278,7 +273,6 @@ function decorateReaderTools(){
     const s=document.createElement('span');s.className='btn-icon';s.innerHTML=svgIcon(icon,18);
     b.insertBefore(s,b.firstChild);
   }
-  updateReaderNavLabels();
 }
 setTimeout(decorateReaderTools,0);
 $('readerToolsMenu').addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#readerLangBtn,#tocBtn,#readerSearchBtn,#noteBtn'))closeReaderToolsMenu()});

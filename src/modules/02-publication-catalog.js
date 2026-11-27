@@ -208,15 +208,18 @@ function updatePublication(book){
       const info=await readJwpubIdentity(f);
       const targetTitle=String(book.displayTitle||book.title||'');
       const fileTitle=String(info.displayTitle||info.title||info.fileName||'');
+      const currentFile=String(book.originalFilename||book.sourceName||book.manifestName||'');
+      const selectedFile=String(info.fileName||f.name||'');
       const targetIds=new Set([String(book.id),String(idFor(book))]);
       if(!targetIds.has(String(info.id))){
         try{$('modal').style.display='none'}catch(e){}
-        say(t('文件不匹配'),`${t('当前资料')}：${targetTitle}\n${t('所选文件')}：${fileTitle}\n${t('请选择同一出版物的 JWPUB 文件。')}`);
+        say(t('文件不匹配'),`${t('当前资料')}：${targetTitle}\n${t('当前文件')}：${currentFile||'—'}\n\n${t('所选资料')}：${fileTitle}\n${t('所选文件')}：${selectedFile||'—'}\n\n${t('请选择同一出版物的 JWPUB 文件。')}`);
         return;
       }
       try{$('modal').style.display='none'}catch(e){}
       const nameNote=fileTitle&&fileTitle!==targetTitle?`${t('所选文件名称为')}《${fileTitle}》，${t('与当前资料')}《${targetTitle}》${t('名称不同，但出版物 ID 一致。')}\n\n`:'';
-      if(!(await askConfirm(t('重新导入'),`${nameNote}${t('将用所选文件重新导入')}《${targetTitle}》。${t('笔记、标签、划线、书签和阅读历史会保留。')}`,t('重新导入'))))return;
+      const fileNote=`${t('当前文件')}：${currentFile||'—'}\n${t('所选文件')}：${selectedFile||'—'}\n\n`;
+      if(!(await askConfirm(t('重新导入'),`${nameNote}${fileNote}${t('将用所选文件重新导入')}《${targetTitle}》。${t('笔记、标签、划线、书签和阅读历史会保留。')}`,t('重新导入'))))return;
       await importFiles([f],{overwriteNames:new Set([f.name])});
       if($('reader').style.display==='block'&&currentBook&&String(currentBook.id)===String(book.id)){
         const oldDocId=currentBook.docs&&currentBook.docs[currentIndex]&&currentBook.docs[currentIndex].id;

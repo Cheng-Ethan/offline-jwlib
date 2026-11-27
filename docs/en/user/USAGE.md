@@ -28,7 +28,7 @@ The Daily Text reader stays minimal: no bottom action bar; paging is labelled pr
 ## 3. Reader
 
 - Header: back, a two-line title (publication name + current chapter/article) and a three-dot menu.
-- Three-dot menu: table of contents, search, previous/next section (previous/next day for the Daily Text), bookmark, notes, language version, pronunciation and font size.
+- Three-dot menu: table of contents, search, previous/next chapter (previous/next day for the Daily Text), bookmark, notes, language version, pronunciation and font size.
 - TOC: drawer on mobile; three-pane layout at ≥1100px (nav / TOC / article).
 - Tapping a verse or paragraph gives that verse/paragraph a clear blue block highlight; tap it again or tap beside it to clear it. Page margins and gaps between blocks do not select anything.
 - Answer boxes: fields such as “How would you answer?” start at a single line of height and only grow as you type.

@@ -279,6 +279,9 @@ Object.assign(I18N.ko,{"分享 / 保存":"공유 / 저장","分享 / 保存…":
 Object.assign(I18N.en,{"上一章":"Previous chapter","下一章":"Next chapter"});
 Object.assign(I18N.ja,{"上一章":"前の章","下一章":"次の章"});
 Object.assign(I18N.ko,{"上一章":"이전 장","下一章":"다음 장"});
+Object.assign(I18N.en,{"当前文件":"Current file","所选资料":"Selected publication"});
+Object.assign(I18N.ja,{"当前文件":"現在のファイル","所选资料":"選択した資料"});
+Object.assign(I18N.ko,{"当前文件":"현재 파일","所选资料":"선택한 자료"});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
