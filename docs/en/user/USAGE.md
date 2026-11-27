@@ -64,9 +64,9 @@ In **More → Backup & restore**:
 
 A confirmation appears above roughly 150 MB. The actual file is larger than the estimate because of Base64 encoding.
 
-### Update a publication
+### Re-import a publication
 
-On a publication card choose **More → Update this publication…**, then select the new JWPUB for the same publication. The app first reads its publication name and ID:
+On a publication card or in the reader top-right menu choose **Re-import**, then select the new JWPUB for the same publication. The app first reads its publication name and ID:
 
 - a different publication is rejected, so the wrong file cannot silently replace a book;
 - if the name differs but the publication ID matches, the app asks for confirmation;
@@ -76,7 +76,7 @@ On a publication card choose **More → Update this publication…**, then selec
 
 1. **More → Settings & diagnostics → Keep original package for sharing** is on by default; you can turn it off.
 2. New imports then keep a complete copy of the original file inside the app; the external `.jwpub` file can be deleted after import.
-3. On a publication card choose **More → Share / export… → Export / share original JWPUB…** and pick **original filename** or **readable name**. The exported file is byte-for-byte identical to the imported JWPUB.
+3. On a publication card or in the reader top-right menu choose **Share → Export / share original JWPUB…** and pick **original filename** or **readable name**. The exported file is byte-for-byte identical to the imported JWPUB.
 
 On mobile the system share sheet opens first. If JW Library is not listed, choose **Save to Files**, then share/open it to JW Library from the Files app. Desktop browsers save to Downloads.
 

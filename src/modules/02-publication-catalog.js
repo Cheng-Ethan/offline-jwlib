@@ -174,8 +174,8 @@ function openBookActions(book,anchor){
   const add=(label,fn,cls,icon)=>{const b=document.createElement('button');b.className='book-action '+(cls||'');b.innerHTML=svgIcon(icon||'right',18)+'<span></span>';b.lastChild.textContent=label;b.onclick=e=>{e.stopPropagation();closeBookActions();fn()};menu.appendChild(b)};
   add(book.favorite?t('取消收藏'):t('收藏该出版物'),async()=>{const meta=await getBookMeta(book.id);if(!meta)return;meta.favorite=!meta.favorite;await saveBookMeta(meta);renderSection()},'',book.favorite?'starOn':'star');
   add(t('移动分类'),()=>openCategoryPicker(book,anchor),'','folder');
-  add(t('更新该资料…'),()=>updatePublication(book),'','upload');
-  add(t('分享 / 导出…'),()=>openShareMenu(book,anchor),'','download');
+  add(t('重新导入'),()=>updatePublication(book),'','download');
+  add(t('分享'),()=>openShareMenu(book,anchor),'','upload');
   add(t('删除'),async()=>{if(!(await askConfirm(t('删除'),`确定删除《${book.displayTitle||book.title}》及其关联笔记、书签和阅读记录吗？`)))return;await deletePublication(book);renderSection()},'delete','trash');
   document.body.appendChild(menu);positionBookMenu(menu,anchor);bookMenuOpenedAt=Date.now();
 }
@@ -216,9 +216,9 @@ function updatePublication(book){
       }
       try{$('modal').style.display='none'}catch(e){}
       const nameNote=fileTitle&&fileTitle!==targetTitle?`${t('所选文件名称为')}《${fileTitle}》，${t('与当前资料')}《${targetTitle}》${t('名称不同，但出版物 ID 一致。')}\n\n`:'';
-      if(!(await askConfirm(t('更新该资料'),`${nameNote}${t('将用所选文件更新')}《${targetTitle}》。${t('笔记、标签、划线、书签和阅读历史会保留。')}`,t('更新'))))return;
+      if(!(await askConfirm(t('重新导入'),`${nameNote}${t('将用所选文件重新导入')}《${targetTitle}》。${t('笔记、标签、划线、书签和阅读历史会保留。')}`,t('重新导入'))))return;
       await importFiles([f],{overwriteNames:new Set([f.name])});
-    }catch(err){try{$('modal').style.display='none'}catch(e){};say(t('更新失败'),err.message||String(err))}
+    }catch(err){try{$('modal').style.display='none'}catch(e){};say(t('重新导入失败'),err.message||String(err))}
     finally{input.remove()}
   };
   input.click();

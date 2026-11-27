@@ -263,6 +263,8 @@ function toggleReaderToolsMenu(){
   else closeReaderToolsMenu();
 }
 $('readerMoreBtn').onclick=e=>{e.stopPropagation();toggleReaderToolsMenu()};
+$('readerReimportBtn').onclick=()=>{closeReaderToolsMenu();if(currentBook)updatePublication(currentBook)};
+$('readerShareBtn').onclick=()=>{closeReaderToolsMenu();if(currentBook)openShareMenu(currentBook,$('readerMoreBtn'))};
 $('readerToolsMenu').addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#readerLangBtn,#tocBtn,#readerSearchBtn,#noteBtn'))closeReaderToolsMenu()});
 document.addEventListener('click',e=>{
   const menu=$('readerToolsMenu');
