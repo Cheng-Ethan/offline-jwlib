@@ -499,6 +499,7 @@ async function renderMoreDashboard(books){
     mkDiagBtn(t('拼音自检'),()=>{const d=pinyinDebug();say(t('拼音自检'),Object.entries(d).map(([k,v])=>`${k}: ${v===null?'—':v}`).join('\n'))}),
     mkDiagBtn(t('复制诊断'),async()=>{try{if(!lastDiag)lastDiag=await buildDiagnostics();await copyText(JSON.stringify(lastDiag,null,2));say(t('已复制'),'诊断信息已复制到剪贴板。')}catch(e){say(t('复制失败'),e.message||String(e))}}),
     mkDiagBtn(t('下载诊断'),async()=>{try{if(!lastDiag)lastDiag=await buildDiagnostics();download(new Blob([JSON.stringify(lastDiag,null,2)],{type:'application/json'}),'offline-library-diagnostics.json')}catch(e){say(t('导出失败'),e.message||String(e))}}),
+    mkDiagBtn(t('按原始包清理现有书'),async()=>{if(!(await askConfirm(t('按原始包清理现有书'),t('会清空有原始包的书的解析正文、摘录、研究注释和圣经密文，之后从原始包读取。请先备份。继续？'),t('清理'))))return;try{const r=await stripAllSourceBooks();await renderDiag();say(t('清理完成'),`${t('已处理')} ${r.books} ${t('本出版物')}：${t('正文')} ${r.docs} · ${t('辅助')} ${r.aux} · ${t('圣经')} ${r.bible}`)}catch(e){say(t('清理失败'),e.message||String(e))}}),
     mkDiagBtn(t('清理旧版冗余'),async()=>{if(!(await askConfirm(t('清理旧版冗余'),'清理已被新版本取代的旧正文/媒体记录？不会删除当前版本。')))return;try{const n=await cleanOldGenerations();await renderDiag();say(t('清理完成'),`已检查 ${n} 份出版物。`)}catch(e){say(t('清理失败'),e.message||String(e))}})
   );
   diagPanel.appendChild(diagActions);

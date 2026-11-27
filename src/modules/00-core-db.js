@@ -264,6 +264,9 @@ Object.assign(I18N.ko,{"当前出版物":"현재 출판물","当前分类":"현�
 Object.assign(I18N.en,{"以原始包为主（实验）":"Use original package as primary (experimental)","开启后，新导入的出版物只保留目录/元数据，正文从原始包按需读取；旧书不受影响，重新导入后才会切换。已清理的正文不会自动恢复。":"When enabled, newly imported publications keep only metadata; bodies are read from the original package on demand. Existing books are unchanged until re-imported. Cleared bodies are not restored automatically.","开启":"Enable","已开启。重新导入出版物后生效。":"Enabled. Re-import publications to apply.","已关闭。已清理的正文需要重新导入才能恢复。":"Disabled. Cleared bodies require a re-import to restore."});
 Object.assign(I18N.ja,{"以原始包为主（实验）":"元パッケージを優先（実験）","开启后，新导入的出版物只保留目录/元数据，正文从原始包按需读取；旧书不受影响，重新导入后才会切换。已清理的正文不会自动恢复。":"有効にすると、新しくインポートした出版物はメタデータのみを保持し、本文は元パッケージから必要時に読み込みます。既存の本は再インポートするまで変わりません。削除された本文は自動復元されません。","开启":"有効にする","已开启。重新导入出版物后生效。":"有効にしました。出版物を再インポートすると適用されます。","已关闭。已清理的正文需要重新导入才能恢复。":"オフにしました。削除された本文は再インポートで復元できます。"});
 Object.assign(I18N.ko,{"以原始包为主（实验）":"원본 패키지 우선 (실험)","开启后，新导入的出版物只保留目录/元数据，正文从原始包按需读取；旧书不受影响，重新导入后才会切换。已清理的正文不会自动恢复。":"켜면 새로 가져온 출판물은 메타데이터만 보관하고 본문은 원본 패키지에서 필요할 때 읽습니다. 기존 책은 다시 가져오기 전까지 그대로입니다. 삭제된 본문은 자동으로 복원되지 않습니다.","开启":"켜기","已开启。重新导入出版物后生效。":"켜졌습니다. 출판물을 다시 가져오면 적용됩니다.","已关闭。已清理的正文需要重新导入才能恢复。":"껐습니다. 삭제된 본문은 다시 가져와야 복원됩니다."});
+Object.assign(I18N.en,{"按原始包清理现有书":"Clean existing books from original packages","会清空有原始包的书的解析正文、摘录、研究注释和圣经密文，之后从原始包读取。请先备份。继续？":"This clears parsed body, extracts, study notes and Bible ciphertext for books with an original package, then reads from the package. Back up first. Continue?","清理":"Clean","已处理":"Processed"});
+Object.assign(I18N.ja,{"按原始包清理现有书":"既存の本を元パッケージから整理","会清空有原始包的书的解析正文、摘录、研究注释和圣经密文，之后从原始包读取。请先备份。继续？":"元パッケージのある本の解析本文、抜粋、研究注釈、聖書の暗号文を消去し、以後は元パッケージから読み込みます。先にバックアップしてください。続行しますか？","清理":"整理","已处理":"処理済み"});
+Object.assign(I18N.ko,{"按原始包清理现有书":"기존 책을 원본 패키지 기준으로 정리","会清空有原始包的书的解析正文、摘录、研究注释和圣经密文，之后从原始包读取。请先备份。继续？":"원본 패키지가 있는 책의 분석 본문, 발췌, 연구 주석, 성경 암호문을 지우고 이후 원본 패키지에서 읽습니다. 먼저 백업하십시오. 계속하시겠습니까?","清理":"정리","已处理":"처리됨"});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
@@ -1068,6 +1071,18 @@ async function stripBibleContent(bookId){
   if(changed)await reqP(tx('bookAux','readwrite').put(aux));
   bookLoadCache.delete(String(bookId));
   return changed;
+}
+async function stripAllSourceBooks(){
+  const metas=await allBooks();let books=0,docs=0,aux=0,bible=0;
+  for(const m of metas){
+    if(!m.hasSource)continue;
+    books++;
+    docs+=await stripBookDocHtml(m.id);
+    aux+=await stripBookAuxHtml(m.id);
+    bible+=await stripBibleContent(m.id);
+  }
+  closeSourceDbs();
+  return {books,docs,aux,bible};
 }
 async function sourceBibleRangeHtml(bookId,first,last){
   const {db,ki}=await openBookSourceDb(bookId);
