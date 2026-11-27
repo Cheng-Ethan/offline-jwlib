@@ -8447,7 +8447,7 @@ function lockNow(){
   try{publicationSearchCache.clear();bibleSearchCache.clear();readerLangCache={key:'',at:0,list:[]}}catch(e){}
   annotationState=null;noteEditorState=null;contextActionState=null;verseActionState=null;blockActionState=null;
   try{clearUrls()}catch(e){}
-  try{$('article').innerHTML='';$('annotationsList').innerHTML='';$('historyList').innerHTML='';$('readerSearchResults').innerHTML='';$('readerSearchRecent').innerHTML=''}catch(e){}
+  try{$('article').innerHTML='';$('annotationsList').innerHTML='';$('historyList').innerHTML='';$('readerSearchResults').innerHTML='';$('readerSearchRecent').innerHTML='';$('readerSearchInput').value='';$('annotationText').value='';$('annotationTitle').value='';$('annotationQuote').textContent=''}catch(e){}
   try{$('reader').style.display='none';$('home').style.display='block';$('bottomNav').style.display='grid'}catch(e){}
   showLockScreen();
 }
