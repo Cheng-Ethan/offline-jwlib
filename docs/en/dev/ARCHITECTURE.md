@@ -73,7 +73,7 @@ Failure shows "local storage unavailable". DB name/version come from `project.js
 
 When `sourceReadEnabled()` is on, `showDoc()` calls `sourceDocHtml()`: it opens the original JWPUB from `OfflineJwLibrarySources`, extracts the inner ZIP and SQLite, queries the current document by `DocumentId`, and decrypts it. Bible chapters use `sourceBibleChapterHtml()` against `BibleChapter` / `BibleVerse`. On failure both fall back to parsed data in `bookDocs` / `bibleData`. `sourceDbCache` / `sourceDocCache` are LRU caches; `closeSourceDbs()` releases them on `pagehide`.
 
-When `sourceFirstEnabled()` is on, a successful import with a saved original package calls `stripBookDocHtml()`, clearing ordinary body HTML in `bookDocs` while keeping document metadata. `showDoc()`, `ensureDocHtml()`, search, meetings and link previews fetch bodies from the original package on demand. Existing books and parsed daily-text/Bible data are unaffected.
+When `sourceFirstEnabled()` is on, a successful import with a saved original package calls `stripBookDocHtml()` and `stripBookAuxHtml()`, clearing ordinary body HTML in `bookDocs` plus extract/commentary/daily-text HTML in `bookAux` while keeping metadata. `showDoc()`, `ensureDocHtml()`, search, meetings, link previews and note popovers fetch bodies from the original package on demand. Existing books and parsed Bible `bibleData` are unchanged for now.
 
 ### 4.2 Metadata + split stores + generations
 

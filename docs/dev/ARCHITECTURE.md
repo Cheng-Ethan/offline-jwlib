@@ -75,7 +75,7 @@ applyI18n()
 
 `sourceReadEnabled()` 开启后，`showDoc()` 调用 `sourceDocHtml()`：从 `OfflineJwLibrarySources` 取出原始 JWPUB，解出内层 ZIP 和 SQLite，按 `DocumentId` 查询并解密当前文档；圣经章节由 `sourceBibleChapterHtml()` 查询 `BibleChapter` / `BibleVerse`；失败时回退到 `bookDocs` / `bibleData` 的解析数据。`sourceDbCache` / `sourceDocCache` 做 LRU，`pagehide` 时 `closeSourceDbs()` 释放。
 
-`sourceFirstEnabled()` 开启后，导入成功并保存原始包后调用 `stripBookDocHtml()`，把 `bookDocs` 里的普通正文 HTML 置空，只保留文档元数据；`showDoc()`、`ensureDocHtml()`、搜索、聚会和链接预览按需从原始包取正文。旧书和每日经文/圣经的解析数据不受影响。
+`sourceFirstEnabled()` 开启后，导入成功并保存原始包后调用 `stripBookDocHtml()` 和 `stripBookAuxHtml()`，把 `bookDocs` 里的普通正文以及 `bookAux` 里的摘录/研究注释/每日经文 HTML 置空，只保留元数据；`showDoc()`、`ensureDocHtml()`、搜索、聚会、链接预览和注释浮窗按需从原始包取正文。旧书和圣经 `bibleData` 的解析数据暂不受影响。
 
 ### 4.2 元数据 + 分表 + generation
 

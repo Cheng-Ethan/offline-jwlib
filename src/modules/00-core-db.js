@@ -1012,6 +1012,51 @@ async function sourceDocHtml(bookId,docId){
   while(sourceDocCache.size>SOURCE_DOC_CACHE_MAX)sourceDocCache.delete(sourceDocCache.keys().next().value);
   return decoded.html;
 }
+async function sourceExtractHtml(bookId,extractId){
+  const id=normId(extractId);
+  const cacheKey=`extract:${bookId}:${id}`;
+  if(sourceDocCache.has(cacheKey)){
+    const v=sourceDocCache.get(cacheKey);sourceDocCache.delete(cacheKey);sourceDocCache.set(cacheKey,v);return v;
+  }
+  const {db,ki}=await openBookSourceDb(bookId);
+  const row=rows(db,'Extract').find(r=>normId(pick(r,['ExtractId','Id'],''))===id);
+  if(!row)return '';
+  const blob=bytes(pick(row,['Content'],null));
+  if(!blob)return '';
+  const html=(await decryptContentAny(blob,ki)).html;
+  sourceDocCache.set(cacheKey,html);
+  while(sourceDocCache.size>SOURCE_DOC_CACHE_MAX)sourceDocCache.delete(sourceDocCache.keys().next().value);
+  return html;
+}
+async function sourceCommentaryHtml(bookId,commentary){
+  const id=normId(commentary&&commentary.id);
+  const kind=commentary&&commentary.kind==='verse'?'verse':'paragraph';
+  const cacheKey=`commentary:${bookId}:${kind}:${id}`;
+  if(sourceDocCache.has(cacheKey)){
+    const v=sourceDocCache.get(cacheKey);sourceDocCache.delete(cacheKey);sourceDocCache.set(cacheKey,v);return v;
+  }
+  const {db,ki}=await openBookSourceDb(bookId);
+  const table=kind==='verse'?'VerseCommentary':'ParagraphCommentary';
+  const idNames=kind==='verse'?['VerseCommentaryId','Id']:['ParagraphCommentaryId','Id'];
+  const row=rows(db,table).find(r=>normId(pick(r,idNames,''))===id);
+  if(!row)return '';
+  const blob=bytes(pick(row,['Content'],null));
+  if(!blob)return '';
+  const html=(await decryptContentAny(blob,ki)).html;
+  sourceDocCache.set(cacheKey,html);
+  while(sourceDocCache.size>SOURCE_DOC_CACHE_MAX)sourceDocCache.delete(sourceDocCache.keys().next().value);
+  return html;
+}
+async function stripBookAuxHtml(bookId){
+  const aux=await reqP(tx('bookAux').get(bookId));if(!aux)return 0;
+  let changed=0;
+  for(const e of aux.extracts||[]){if(e.html){e.html='';changed++}}
+  for(const c of aux.commentaries||[]){if(c.html){c.html='';changed++}}
+  for(const d of aux.datedTexts||[]){if(d.html){d.html='';changed++}}
+  if(changed)await reqP(tx('bookAux','readwrite').put(aux));
+  bookLoadCache.delete(String(bookId));
+  return changed;
+}
 async function sourceBibleChapterHtml(bookId,bookNum,chapter){
   const cacheKey=`bible:${bookId}:${bookNum}:${chapter}`;
   if(sourceDocCache.has(cacheKey)){

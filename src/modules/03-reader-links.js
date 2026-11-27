@@ -1821,10 +1821,17 @@ async function openPublicationReference(href,anchorEl,opts={}){
   // Without an excerpt it still jumps into the real document below.
   if(!wholeDoc){
     const exact=await findExactExtract(pub,href,currentDocId,anchorPid);
-    if(exact&&exact.extract.html){
-      const targetLang=Number((exact.meta&&exact.meta.lang)||(exact.book&&exact.book.lang)||0)||0;
-      await openExtractInReader(exact.book,exact.extract,anchorEl,languageFallbackNotice(sourceLang,targetLang),{linkHref:href});
-      return true;
+    if(exact){
+      let html=exact.extract.html;
+      if(!html&&(sourceFirstEnabled()||sourceReadEnabled())){
+        const targetBook=exact.book||exact.meta;
+        try{html=await sourceExtractHtml(targetBook&&targetBook.id,exact.extract.extractId||String(exact.extract.id||'').split(':')[0])}catch(e){}
+      }
+      if(html){
+        const targetLang=Number((exact.meta&&exact.meta.lang)||(exact.book&&exact.book.lang)||0)||0;
+        await openExtractInReader(exact.book||exact.meta,{...exact.extract,html},anchorEl,languageFallbackNotice(sourceLang,targetLang),{linkHref:href});
+        return true;
+      }
     }
   }
   // Whole-document links, and citations whose excerpt is not packaged, open the
@@ -1856,11 +1863,15 @@ async function openExtractInReader(book,extract,anchorEl,notice='',opts={}){
     if(!ok)say(t('相关链接'),t('本地没有这篇相关文章的正文。'));
   }:null;
   const popupOpts={onTitleClick:titleAction,titleDisabled:publicationLink&&!available};
-  if(!extract.html){
+  let html=extract.html;
+  if(!html&&(sourceFirstEnabled()||sourceReadEnabled())){
+    try{html=await sourceExtractHtml(book.id,extract.extractId||String(extract.id||'').split(':')[0])}catch(e){}
+  }
+  if(!html){
     await showLinkPopover(title,'<p>'+t('这条相关文章的正文没有保存在本机。')+'</p><p>'+t('它很可能是在旧版（0.5.1 及更早）导入的；旧版只保存了链接和标题，没有保存 Extract 正文。请重新导入这份 PUB，或从包含正文的备份恢复后再试。')+'</p>',book,anchorEl,'',popupOpts);
     return;
   }
-  await showLinkPopover(title,(notice||'')+extract.html,book,anchorEl,'',popupOpts);
+  await showLinkPopover(title,(notice||'')+html,book,anchorEl,'',popupOpts);
 }
 async function openDocInPopover(book,doc,anchorEl,anchor='',notice=''){
   const titleAction=async()=>{await openDocInBook(book,doc.id)};
@@ -1922,7 +1933,11 @@ async function routeCommentaryLink(href,anchorEl){
   const aux=await getBookAux(m.id,m.gen);const rows=(aux&&aux.commentaries)||[];if(!rows.length)continue;
   let found=rows.find(x=>nums.includes(Number(x.id))||nums.includes(Number(x.commentaryMepsDocumentId)));
   if(!found&&rows.length===1)found=rows[0];
-  if(found){await showLinkPopover(found.label||t('研究注释'),languageFallbackNotice(sourceLang,m.lang)+(found.html||'<p>'+t('这条注释没有可显示的正文。')+'</p>'),{...m,...(aux||{})},anchorEl);return;}
+  if(found){
+   let html=found.html;
+   if(!html&&(sourceFirstEnabled()||sourceReadEnabled())){try{html=await sourceCommentaryHtml(m.id,found)}catch(e){}}
+   await showLinkPopover(found.label||t('研究注释'),languageFallbackNotice(sourceLang,m.lang)+(html||'<p>'+t('这条注释没有可显示的正文。')+'</p>'),{...m,...(aux||{})},anchorEl);return;
+  }
  }
  for(const m of ordered){
   if(!m.hasExtracts)continue;
