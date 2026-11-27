@@ -389,7 +389,7 @@ function showExportPanel(blob,name,book,exact){
       const fileObj=new File([blob],name,{type:'application/octet-stream'});
       let can=false;try{can=!!(navigator.canShare&&navigator.share&&navigator.canShare({files:[fileObj]}))}catch(e){}
       if(can){
-        const p=navigator.share({files:[fileObj],title:name});
+        const p=navigator.share({files:[fileObj]});
         closeExportPanel();
         try{await p;logDiag('info','分享原始 JWPUB',{id:book.id,size:blob.size,name,exact:!!exact})}
         catch(e){if(e&&e.name!=='AbortError')say(t('无法直接分享'),t('当前容器无法分享文件，请改用桌面浏览器保存，或从文件 App 分享。'))}
