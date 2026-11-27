@@ -35,10 +35,16 @@ async function importFiles(files,opts={}){
      if(/quota/i.test(msg)){await new Promise(r=>setTimeout(r,1800));await saveBook(b)}
      else throw saveErr;
    }
+   let sourceSaved=false;
    if(b.source&&keepSourceEnabled()){
-     try{await saveBookSource(b.id,b.source);logDiag('info','保存原始包',{id:b.id,size:b.source.size})}
+     try{await saveBookSource(b.id,b.source);sourceSaved=true;logDiag('info','保存原始包',{id:b.id,size:b.source.size})}
      catch(srcErr){logDiag('warn','保存原始包失败',{id:b.id,message:srcErr.message||String(srcErr)})}
    }
+   if(sourceFirstEnabled()&&sourceSaved){
+     try{const n=await stripBookDocHtml(b.id);logDiag('info','按原始包为主清理正文',{id:b.id,docs:n})}
+     catch(stripErr){logDiag('warn','清理解析正文失败',{id:b.id,message:stripErr.message||String(stripErr)})}
+   }
+   if(sourceSaved)closeSourceDbs();
    ok.push(`${b.displayTitle||b.title}（${f.name}）`);logDiag('info','导入成功',{file:f.name,id:b.id,docs:b.docs?.length,assets:b.assets?.length,report:b.importReport});
   }catch(err){console.error(err);bad.push(`${f.name}：${err.message||String(err)}`);logDiag('error','导入失败',{file:f.name,message:err.message||String(err),stack:err&&err.stack})}
   finally{b=null;}

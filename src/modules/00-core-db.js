@@ -261,6 +261,9 @@ Object.assign(I18N.ko,{"从原始包读取正文（实验）":"원본 패키지�
 Object.assign(I18N.en,{"当前出版物":"Current publication","当前分类":"Current category","所选出版物":"Selected publications","全部出版物":"All publications","还没有选择出版物。":"No publications selected yet.","已选择":"Selected","本出版物":"publications","选择出版物…":"Choose publications…","选择要搜索的出版物":"Choose publications to search","还没有导入出版物。":"No publications imported yet.","全选":"Select all","清空":"Clear","完成":"Done","共":"","条结果":"results","条":"hits","章":"chapters","展开其余":"Show remaining","结果较多，已显示前面的部分。可以缩小搜索范围。":"Many results; only the first part is shown. Narrow the search scope to see more."});
 Object.assign(I18N.ja,{"当前出版物":"現在の出版物","当前分类":"現在のカテゴリ","所选出版物":"選択した出版物","全部出版物":"すべての出版物","还没有选择出版物。":"出版物が選択されていません。","已选择":"選択済み","本出版物":"件","选择出版物…":"出版物を選択…","选择要搜索的出版物":"検索する出版物を選択","还没有导入出版物。":"出版物がまだありません。","全选":"すべて選択","清空":"クリア","完成":"完了","共":"","条结果":"件の結果","条":"件","章":"章","展开其余":"残りを表示","结果较多，已显示前面的部分。可以缩小搜索范围。":"結果が多いため、先頭のみ表示しています。検索範囲を狭めてください。"});
 Object.assign(I18N.ko,{"当前出版物":"현재 출판물","当前分类":"현재 분류","所选出版物":"선택한 출판물","全部出版物":"모든 출판물","还没有选择出版物。":"선택한 출판물이 없습니다.","已选择":"선택됨","本出版物":"개","选择出版物…":"출판물 선택…","选择要搜索的出版物":"검색할 출판물 선택","还没有导入出版物。":"아직 가져온 출판물이 없습니다.","全选":"모두 선택","清空":"지우기","完成":"완료","共":"","条结果":"개 결과","条":"개","章":"장","展开其余":"나머지 보기","结果较多，已显示前面的部分。可以缩小搜索范围。":"결과가 많아 앞부분만 표시합니다. 검색 범위를 좁혀 보십시오."});
+Object.assign(I18N.en,{"以原始包为主（实验）":"Use original package as primary (experimental)","开启后，新导入的出版物只保留目录/元数据，正文从原始包按需读取；旧书不受影响，重新导入后才会切换。已清理的正文不会自动恢复。":"When enabled, newly imported publications keep only metadata; bodies are read from the original package on demand. Existing books are unchanged until re-imported. Cleared bodies are not restored automatically.","开启":"Enable","已开启。重新导入出版物后生效。":"Enabled. Re-import publications to apply.","已关闭。已清理的正文需要重新导入才能恢复。":"Disabled. Cleared bodies require a re-import to restore."});
+Object.assign(I18N.ja,{"以原始包为主（实验）":"元パッケージを優先（実験）","开启后，新导入的出版物只保留目录/元数据，正文从原始包按需读取；旧书不受影响，重新导入后才会切换。已清理的正文不会自动恢复。":"有効にすると、新しくインポートした出版物はメタデータのみを保持し、本文は元パッケージから必要時に読み込みます。既存の本は再インポートするまで変わりません。削除された本文は自動復元されません。","开启":"有効にする","已开启。重新导入出版物后生效。":"有効にしました。出版物を再インポートすると適用されます。","已关闭。已清理的正文需要重新导入才能恢复。":"オフにしました。削除された本文は再インポートで復元できます。"});
+Object.assign(I18N.ko,{"以原始包为主（实验）":"원본 패키지 우선 (실험)","开启后，新导入的出版物只保留目录/元数据，正文从原始包按需读取；旧书不受影响，重新导入后才会切换。已清理的正文不会自动恢复。":"켜면 새로 가져온 출판물은 메타데이터만 보관하고 본문은 원본 패키지에서 필요할 때 읽습니다. 기존 책은 다시 가져오기 전까지 그대로입니다. 삭제된 본문은 자동으로 복원되지 않습니다.","开启":"켜기","已开启。重新导入出版物后生效。":"켜졌습니다. 출판물을 다시 가져오면 적용됩니다.","已关闭。已清理的正文需要重新导入才能恢复。":"껐습니다. 삭제된 본문은 다시 가져와야 복원됩니다."});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
@@ -916,6 +919,32 @@ const sourceDbCache=new Map(),sourceDocCache=new Map();
 const SOURCE_DB_CACHE_MAX=1,SOURCE_DOC_CACHE_MAX=8;
 function sourceReadEnabled(){try{return localStorage.getItem('offlineLibrarySourceRead')==='1'}catch(e){return false}}
 function setSourceRead(on){try{localStorage.setItem('offlineLibrarySourceRead',on?'1':'0')}catch(e){}}
+function sourceFirstEnabled(){try{return localStorage.getItem('offlineLibrarySourceFirst')==='1'}catch(e){return false}}
+function setSourceFirst(on){try{localStorage.setItem('offlineLibrarySourceFirst',on?'1':'0')}catch(e){}}
+// Source-first books keep only document metadata in IndexedDB. The body is
+// decrypted from the stored original package on demand and cached in memory.
+async function ensureDocHtml(book,doc){
+  if(!book||!doc)return '';
+  if(doc.html)return doc.html;
+  if(doc.datedText||doc.bibleChapter)return '';
+  try{const html=await sourceDocHtml(book.id,doc.id);if(html){doc.html=html;return html}}catch(e){}
+  return '';
+}
+async function stripBookDocHtml(bookId){
+  const meta=await getBookMeta(bookId);if(!meta)return 0;
+  let recs=[];try{recs=await reqP(tx('bookDocs').index('byBook').getAll(bookId))}catch(e){return 0}
+  const t=idb.transaction('bookDocs','readwrite'),store=t.objectStore('bookDocs');
+  let changed=0;
+  for(const rec of recs){
+    if(rec.datedText||rec.bibleChapter||!rec.html)continue;
+    const {key,bookId:_b,gen,...doc}=rec;
+    store.put({key,bookId:_b,gen,...doc,html:''});
+    changed++;
+  }
+  await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('清理正文事务被中止'))});
+  bookLoadCache.delete(String(bookId));
+  return changed;
+}
 function sourcePubMeta(db){
   const p=rows(db,'Publication')[0]||{};
   return {

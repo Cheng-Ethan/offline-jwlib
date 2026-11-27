@@ -521,10 +521,11 @@ async function showDoc(anchor=''){
   const kind=readerKind(currentBook);$('article').className='reader-kind-'+kind;$('article').dataset.publicationKind=kind;
   document.body.classList.toggle('daily-reader',kind==='daily');
   let html=d.html;
-  if(sourceReadEnabled()&&currentBook&&!d.bibleChapter&&!d.datedText){
+  if(currentBook&&!d.bibleChapter&&!d.datedText&&(sourceReadEnabled()||!html)){
     try{const fromSource=await sourceDocHtml(currentBook.id,d.id);if(fromSource)html=fromSource}
     catch(e){logDiag('warn','从原始包读取正文失败',{bookId:currentBook.id,docId:d.id,message:e&&e.message||String(e)})}
   }
+  if(!html)html=`<p class="reader-empty-body">${t('这篇正文没有保存在本机。请重新导入原始 PUB，或在设置中开启“从原始包读取正文”。')}</p>`;
   const map=await docAssetMap(currentBook,html);if(epoch!==tabEpoch)return false;
   const clean=cleanHtml(html,map),style=document.createElement('style');style.textContent=clean.styles||'';$('article').appendChild(style);
   const content=document.createElement('div');content.className='publication-content publication-content-'+kind;content.innerHTML=clean.body;
@@ -1176,8 +1177,11 @@ async function publicationSearchRecord(meta){
   if(!book)return null;
   const docs=[];
   for(const d of book.docs||[]){
-    const html=String(d&&d.html||''),blocks=[];
-    if(html){
+    let html=String(d&&d.html||'');
+    if(!html&&sourceFirstEnabled()&&!d.datedText){
+      try{html=await sourceDocHtml(meta.id,d.id)}catch(e){}
+    }
+    const blocks=[];
       const doc=new DOMParser().parseFromString(html,'text/html');
       doc.querySelectorAll('rt,rp,script,style').forEach(n=>n.remove());
       const hasPid=!!doc.querySelector('[data-pid]');
@@ -1186,7 +1190,6 @@ async function publicationSearchRecord(meta){
         const text=(node.textContent||'').replace(/[\s\u200b-\u200d]+/g,' ').trim();
         if(text)blocks.push({pid:node.getAttribute('data-pid')||'',text});
       }
-    }
     docs.push({docId:d.id,title:d.title||'',blocks});
   }
   rec={meta,docs};publicationSearchCache.set(key,rec);
@@ -1861,7 +1864,8 @@ async function openExtractInReader(book,extract,anchorEl,notice='',opts={}){
 }
 async function openDocInPopover(book,doc,anchorEl,anchor='',notice=''){
   const titleAction=async()=>{await openDocInBook(book,doc.id)};
-  await showLinkPopover(doc.title||t('文章章节'),(notice||'')+doc.html,book,anchorEl,anchor,{onTitleClick:titleAction});
+  const html=await ensureDocHtml(book,doc);
+  await showLinkPopover(doc.title||t('文章章节'),(notice||'')+html,book,anchorEl,anchor,{onTitleClick:titleAction});
 }
 async function routeBibleChapterLink(href,anchorEl){
   const m=String(href||'').match(/^jwpub:\/\/c\/([A-Za-z0-9_-]+):(\d+)\/(\d+):(\d+)(?:-(\d+):(\d+))?(?:\$p\/([A-Za-z0-9_-]+):(\d+)\/([^#?]*))?/i);
@@ -2211,7 +2215,8 @@ async function publicationLinkPreview(href){
     const hits=await findDocsByMeps(target.docId);if(!hits.length)continue;
     const hit=await preferredPublicationHit(hits);if(!hit)continue;
     const doc=await getBookDoc(hit.bookId,hit.docId);if(!doc)continue;
-    const html=publicationPreviewHtml(doc.html,target.paragraph);
+    const docHtml=await ensureDocHtml({id:hit.bookId},doc);
+    const html=publicationPreviewHtml(docHtml,target.paragraph);
     if(html)return {label:doc.title||'',html,text:plainTextFromHtml(html).slice(0,500)};
   }
   return null;
