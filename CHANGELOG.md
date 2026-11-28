@@ -3,6 +3,10 @@
 > 当前版本以 `project.json` 为准：**2.1.0**。0.5–0.13 的条目根据应用内 `APP_UPDATE_NOTES` 补全，详细任务见 [开发计划](docs/dev/DEVELOPMENT_PLAN.md)。
 
 ## 未发布
+- 修复：启用应用锁失败或选择“暂不启用”后不再静默继续；主页显示“应用锁未启用，数据仍为明文”横幅，并提供启用入口。
+- 修复：没有原始包、旧格式原始包或原始包丢失的出版物不再阻止启用；这些书保持明文、可正常阅读，主页黄色 `!` 显示数量，点开可逐本重新导入，导入后自动加密并从列表移除。
+- 修复：加密改为可续执行。先写锁元数据再逐条加密；中途失败、刷新或被系统回收，下次解锁时自动补齐未加密的记录，不需要回滚，也不会出现“要密码但书读不出”。
+- 修复：更改密码和重新生成恢复码必须验证当前密码，避免已解锁设备被他人改密码锁在外面；后台锁定时间可随时调整。
 - 安全：应用锁启用后，最近搜索词只保留在内存，不再以明文写入 `localStorage`；启动、锁定和启用锁时会清除旧记录。
 - 安全：原始文件名和来源文件名随用户数据一起加密；`sources` 记录内部的名称用记录 ID 作为 AAD 单独封存，导出与分享时再解密。已经启用应用锁的旧库会在升级后首次解锁时一次性补齐。
 - 安全：锁启用期间强制保持「保留原始包以便分享」和「以原始包为主」，避免新导入的出版物把解析正文写回明文；缺少原始包或原始包保存失败时，新书会取消导入并清理已写入记录，已有书则保留并提示重新导入。两个设置开关会提示且不生效。
@@ -13,7 +17,8 @@
 - 新增可选应用锁：首次设置密码，启动/刷新需要解锁，后台超过设定时间自动锁定。
 - 密码用 PBKDF2-SHA256 派生密钥，数据密钥用 AES-GCM 包裹；首次设置生成一次性恢复码。
 - 忘记密码可用恢复码解锁并保留数据；恢复码也丢失时只能清空全部数据，不提供远程管理员后门。
-- 启用应用锁要求所有出版物都有原始包并切换为 source-first；原始包、用户数据（笔记/标签/高亮/书签/历史/分类）和备份都会加密，目录/书名等元数据保持明文。
+- 启用应用锁允许存在没有原始包的书；这些书保持明文并可正常阅读，主页用黄色叹号列出，重新导入后自动加密。
+- 原始包、用户数据（笔记/标签/高亮/书签/历史/分类）和备份都会加密，目录/书名等元数据保持明文。
 - 完整备份和笔记备份在启用应用锁后输出加密的 `.olvault` 文件；恢复时需要密码或恢复码，并可在新设备上安装同一应用锁。
 - 应用锁只能更改密码/重生成恢复码，不提供关闭开关，避免误操作导致数据无法解密。
 
@@ -107,7 +112,7 @@
 
 The current version is defined by `project.json`: **2.1.0**. Entries for 0.5–0.13 were reconstructed from the in-app `APP_UPDATE_NOTES`.
 
-- **2.1.0** — optional app lock with PBKDF2/AES-GCM password protection, a one-time recovery code, background auto-lock, encrypted source packages, user-data fields and portable `.olvault` backups; enabling the lock requires source-first books and all publications to have an original package.
+- **2.1.0** — optional app lock with PBKDF2/AES-GCM password protection, a one-time recovery code, background auto-lock, encrypted source packages, user-data fields and portable `.olvault` backups. Books without an encryptable original package stay readable in plaintext, are listed behind a warning badge, and are encrypted once re-imported. Encryption is resumable after an interruption; changing the password or recovery code requires the current password.
 - **2.0.1** — security hardening for rich titles and highlight colours, a restrictive network CSP, source-package-first restore ordering, build checks via `npm test`, and removal of the extra `title` from file sharing.
 - **2.0.0** — optional exact original-package retention with byte-identical JWPUB sharing and identity-checked re-import; source-first reading from the original SQLite for articles, Bible text/ranges/search, daily text, extracts, commentaries and images; scoped and grouped search; backup v2 including original packages, system state and localStorage; reader menu icons, swipe chapter icons and reordered actions.
 - **1.0.0** — stable baseline for the current reader and UI work. Unified reader header (back, two-line publication/chapter title, three-dot menu) with table of contents, search, paging, bookmark, notes, language version, pronunciation and font size inside the menu; per-tab article, back history and exact paragraph position persisted across reloads and imports; navigable link-preview titles that open the target paragraph and join the tab history; warnings above link popovers with their own close button; footnotes and cross-references with resolved text in paragraph/verse info; pencil note markers; clear blue block highlight for the active verse/paragraph and one merged outline per highlighted line; a four-disc colour button with yellow front and green, blue and pink arcs layered behind it, opening four large colour discs; fuller 1:1 information, note and copy icons; previous/next-day labels for the daily text. Answer fields in publications are one line tall by default and grow as more text is typed.

@@ -61,9 +61,11 @@ Enable it in **More → Settings & diagnostics → App lock**:
 - Startup/reload requires the password; after the configured background time (5/15/30/60 minutes) the app locks again.
 - If you forget the password, unlock with the recovery code, then change the password in Settings.
 - If both are lost, the only option is **Erase all data**; there is no remote admin backdoor.
-- Enabling the lock requires every publication to have an original package and source-first mode; older books without one must be re-imported.
+- Books without an original package do not block enabling the lock: they stay plaintext and readable, and a yellow `!` on the home screen shows how many there are. Open the list to re-import them one by one; each is encrypted automatically and disappears from the list.
 - Original packages, notes/tags/highlights/bookmarks/history/categories, original file names and backups are encrypted; titles, table of contents and annotation positions remain plaintext.
 - While the lock is on, **Keep original package for sharing** and **source-first** stay forced on so new imports cannot write plaintext bodies; an import without a storable package, or whose package fails to save, is cancelled. Recent search terms stay in memory and are no longer stored locally.
+- Changing the password or regenerating the recovery code requires the current password; the background auto-lock time can be changed at any time.
+- An interrupted encryption does not leave a half-locked state: the next unlock finishes the remaining records. If enabling fails or you choose **Not now**, the home screen keeps warning that data is still plaintext.
 - The lock cannot be disabled; you can change the password or regenerate the recovery code.
 
 ## 6. Backup and restore

@@ -79,7 +79,7 @@ applyI18n()
 
 ### 4.1c 应用锁与加密层
 
-可选应用锁使用 PBKDF2-SHA256（310k 次）从密码派生 KEK，并用 AES-GCM 包裹随机 DEK；恢复码独立派生 KEK，包裹同一 DEK。锁元数据同时保存在 `localStorage` 和 `system` 的 `lockMeta`，任一存在即可在启动时恢复锁界面。启用锁时先要求所有书都有原始包并执行 `stripAllSourceBooks()`，随后 `encryptExistingSources()` 加密源包、`sealExistingUserData()` 加密用户数据字段；之后 `saveBookSource()`/`getBookSource()` 和 `saveOne()`/`getOne()`/`getAllUser()` 自动加解密。备份使用 `.olvault` 整文件加密；恢复时用头部 `lock` 解出 DEK。原始 JWPUB 包内容不修改，导出前解密回原始字节。
+可选应用锁使用 PBKDF2-SHA256（310k 次）从密码派生 KEK，并用 AES-GCM 包裹随机 DEK；恢复码独立派生 KEK，包裹同一 DEK。锁元数据同时保存在 `localStorage` 和 `system` 的 `lockMeta`，任一存在即可在启动时恢复锁界面。启用顺序为：写锁元数据 → `finishVaultEncryption()` 逐条加密源包和用户数据 → 只清理有可加密原始包的书的解析正文。加密是幂等的，`system.vaultMigrationFlag` 记录是否完成；中途失败或刷新后，下次解锁会继续补齐，不做回滚。没有原始包、旧格式原始包或原始包丢失的书保持明文并可正常阅读，`auditPlaintextBooks()` 把它们交给主页黄色叹号和设置列表，重新导入后 `saveBookSource()` 加密并自动移出列表。之后 `saveBookSource()`/`getBookSource()` 和 `saveOne()`/`getOne()`/`getAllUser()` 自动加解密。备份使用 `.olvault` 整文件加密；恢复时用头部 `lock` 解出 DEK。原始 JWPUB 包内容不修改，导出前解密回原始字节。
 
 加密范围补充：
 

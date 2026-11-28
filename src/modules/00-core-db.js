@@ -17,6 +17,8 @@ let sectionPageHistory={home:[],bible:[],library:[],meetings:[],study:[]};
 const READER_CACHE_ID='readerPanelCache';
 let readerCacheTimer=null,readerCacheLoaded=false,readerCacheTab='home';
 const LOCK_META_KEY='offlineLibraryLock';
+const LOCK_SKIP_KEY='offlineLibraryLockSkipped';
+const LOCK_ATTENTION_KEY='offlineLibraryLockAttention';
 let vaultKey=null,vaultRawKey=null,lockHiddenAt=0;
 function readerCachePayload(){return {id:READER_CACHE_ID,views:sectionViews,history:sectionPageHistory,tab:primarySection,updatedAt:Date.now()}}
 function scheduleReaderCacheSave(){
@@ -285,6 +287,29 @@ Object.assign(I18N.en,{"当前文件":"Current file","所选资料":"Selected pu
 Object.assign(I18N.ja,{"当前文件":"現在のファイル","所选资料":"選択した資料"});
 Object.assign(I18N.ko,{"当前文件":"현재 파일","所选资料":"선택한 자료"});
 Object.assign(I18N.en,{"应用已锁定":"App locked","输入密码继续":"Enter your password to continue","密码":"Password","解锁":"Unlock","使用恢复码":"Use recovery code","恢复码":"Recovery code","忘记密码":"Forgot password","密码或恢复码不正确":"Incorrect password or recovery code","输入恢复码继续":"Enter your recovery code to continue","以下出版物没有原始包，请先重新导入":"These publications have no original package; re-import them first","保存恢复码":"Save your recovery code","恢复码只显示一次，请离线保存。忘记密码时用它重置并保留数据。":"The recovery code is shown once. Keep it offline; it resets your password and preserves data.","复制":"Copy","我已保存":"I saved it","设置应用密码":"Set app password","密码至少 6 位。启用后数据会加密，请先导出备份。":"At least 6 characters. Data will be encrypted; export a backup first.","再次输入密码":"Confirm password","后台自动锁定":"Auto-lock after background","分钟":"minutes","启用应用锁":"Enable app lock","密码至少需要 6 位":"Password must be at least 6 characters","两次密码不一致":"Passwords do not match","应用锁":"App lock","更改密码":"Change password","重新生成恢复码":"Regenerate recovery code","立即锁定":"Lock now","新密码（至少 6 位）":"New password (at least 6 characters)","再次输入新密码":"Confirm new password","密码已更改。":"Password changed.","旧恢复码将立即失效。继续？":"The old recovery code will stop working. Continue?","清空":"Erase","清空全部数据":"Erase all data","没有恢复码时只能清空全部出版物、笔记和设置。请先确认已经备份。继续？":"Without the recovery code, all publications, notes and settings must be erased. Confirm you have a backup. Continue?","这会删除本机所有图书馆数据，无法撤销。":"This deletes all library data on this device and cannot be undone.","无法解锁":"Cannot unlock","恢复码已复制到剪贴板。":"Recovery code copied to the clipboard.","输入备份密码或恢复码":"Enter the backup password or recovery code","应用锁已启用，请先解锁":"The app lock is enabled; unlock it first","应用锁已启用。请用密码解锁后重新生成恢复码。":"The app lock is enabled. Unlock with your password, then regenerate the recovery code.","应用锁启用期间必须保留原始包。":"The original package is required while the app lock is on.","应用锁启用期间始终以原始包为主。":"Source-first stays on while the app lock is enabled.","应用锁已启用，但这份文件没有可保存的原始包，已取消导入。":"The app lock is on, but this file has no package that can be stored; import cancelled.","应用锁已启用，但原始包保存失败，已取消导入。":"The app lock is on and the package could not be saved; import cancelled.","原始包保存失败，这本书暂时仍以明文保存正文，请尽快重新导入。":"The package could not be saved, so this book's body is temporarily stored as plaintext. Re-import it as soon as possible."});
+Object.assign(I18N.en,{
+"未加密的出版物":"Unencrypted publications",
+"没有原始包":"No original package",
+"旧格式原始包":"Legacy original package",
+"原始包已丢失":"Original package missing",
+"尚未加密":"Not encrypted yet",
+"全部出版物都已加密。":"All publications are encrypted.",
+"这些书没有可加密的原始包，正文仍是明文。重新导入后会自动加密。":"These books have no encryptable original package, so their text stays plaintext. Re-importing encrypts them.",
+"应用锁未启用，数据仍为明文。":"App lock is off; data is still plaintext.",
+"启用":"Enable",
+"知道了":"Got it",
+"暂不启用":"Not now",
+"这些出版物没有可加密的原始包，启用后正文仍是明文，可正常阅读，但不受密码保护。":"These publications have no encryptable original package. After enabling, their text stays plaintext and readable, but is not protected by the password.",
+"我了解这些书不会被加密":"I understand these books will not be encrypted",
+"请先确认未加密的出版物":"Confirm the unencrypted publications first",
+"正在加密":"Encrypting",
+"数据已加密。密码和恢复码只保存在本机。":"Data is encrypted. The password and recovery code stay on this device.",
+"后台锁定时间已更新。":"Auto-lock time updated.",
+"当前密码":"Current password",
+"当前密码不正确":"Current password is incorrect",
+"正在完成加密…":"Finishing encryption…",
+"关闭":"Close"
+});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
@@ -609,6 +634,10 @@ function cleanInlineHtml(raw){try{return cleanHtml(String(raw||''),{}).body}catc
 // ---- optional application lock / vault ------------------------------------
 function lockMeta(){try{const v=JSON.parse(localStorage.getItem(LOCK_META_KEY)||'null');return v&&v.version===1?v:null}catch(e){return null}}
 function lockEnabled(){return !!lockMeta()}
+function lockSkipped(){try{return localStorage.getItem(LOCK_SKIP_KEY)==='1'}catch(e){return false}}
+function setLockSkipped(on){try{if(on)localStorage.setItem(LOCK_SKIP_KEY,'1');else localStorage.removeItem(LOCK_SKIP_KEY)}catch(e){}}
+function lockAttention(){try{return localStorage.getItem(LOCK_ATTENTION_KEY)==='1'}catch(e){return false}}
+function setLockAttention(on){try{if(on)localStorage.setItem(LOCK_ATTENTION_KEY,'1');else localStorage.removeItem(LOCK_ATTENTION_KEY)}catch(e){}}
 function saveLockMeta(meta){try{localStorage.setItem(LOCK_META_KEY,JSON.stringify(meta))}catch(e){}}
 async function persistLockMeta(meta){saveLockMeta(meta);try{await saveOne('system',{id:'lockMeta',meta})}catch(e){}}
 async function ensureLockMetaLoaded(){
@@ -656,20 +685,31 @@ async function unlockVaultWithRecovery(code){
   const kek=await deriveKek(normalizeRecovery(code),fromB64(meta.recoverySalt),meta.iterations);
   const raw=await unwrapRawKey(meta.recoveryWrapped,kek);await setVaultRaw(raw);return true;
 }
-async function changeVaultPassword(password){
+async function verifyVaultPassword(password,meta){
+  const m=meta||lockMeta();if(!m)throw new Error('应用锁未启用。');
+  const kek=await deriveKek(String(password||''),fromB64(m.salt),m.iterations);
+  try{return await unwrapRawKey(m.wrapped,kek)}catch(e){throw new Error('当前密码不正确')}
+}
+async function changeVaultPassword(currentPassword,password){
   if(!vaultRawKey)throw new Error('应用锁未解锁。');
   if(!password||String(password).length<6)throw new Error('密码至少需要 6 位。');
   const meta=lockMeta();if(!meta)throw new Error('应用锁未启用。');
+  await verifyVaultPassword(currentPassword,meta);
   const salt=randomBytes(16),kek=await deriveKek(password,salt,meta.iterations);
   meta.salt=toB64(salt);meta.wrapped=await wrapRawKey(vaultRawKey,kek);meta.changedAt=Date.now();await persistLockMeta(meta);
 }
-async function regenerateVaultRecovery(){
+async function regenerateVaultRecovery(currentPassword){
   if(!vaultRawKey)throw new Error('应用锁未解锁。');
   const meta=lockMeta();if(!meta)throw new Error('应用锁未启用。');
+  await verifyVaultPassword(currentPassword,meta);
   const recovery=generateRecovery(),salt=randomBytes(16);
   const kek=await deriveKek(normalizeRecovery(recovery),salt,meta.iterations);
   meta.recoverySalt=toB64(salt);meta.recoveryWrapped=await wrapRawKey(vaultRawKey,kek);meta.recoveryChangedAt=Date.now();await persistLockMeta(meta);
   return recovery;
+}
+async function setVaultTimeout(minutes){
+  const meta=lockMeta();if(!meta)throw new Error('应用锁未启用。');
+  meta.timeout=Math.max(1,Number(minutes)||5);await persistLockMeta(meta);
 }
 async function encryptBytesWithKey(bytes,key,aad){const iv=randomBytes(12);const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:aad?new TextEncoder().encode(aad):undefined},key,bytes);const out=new Uint8Array(12+cipher.byteLength);out.set(iv);out.set(new Uint8Array(cipher),12);return out}
 async function decryptBytesWithKey(data,key,aad){if(data.length<13)throw new Error('密文无效');const iv=data.subarray(0,12),cipher=data.subarray(12);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:aad?new TextEncoder().encode(aad):undefined},key,cipher))}
@@ -1285,11 +1325,14 @@ async function stripAssets(bookId){
   return recs.length;
 }
 async function stripAllSourceBooks(){
-  const metas=await allBooks();let books=0,docs=0,aux=0,bible=0,assets=0;
+  // Only books whose original package is (or will be) encrypted can lose their
+  // parsed body. Legacy packages without a full JWPUB stay readable as-is.
+  const metas=await allBooks();
+  const map=await sourceRecordsMap();
+  let books=0,docs=0,aux=0,bible=0,assets=0;
   for(const m of metas){
-    let has=!!m.hasSource;
-    if(!has){try{const src=await getBookSource(m.id);has=!!src}catch(e){}}
-    if(!has)continue;
+    const rec=map.get(String(m.id));
+    if(!rec||!(rec.jwpub||rec.jwpubEnc))continue;
     books++;
     docs+=await stripBookDocHtml(m.id);
     aux+=await stripBookAuxHtml(m.id);
@@ -1300,18 +1343,36 @@ async function stripAllSourceBooks(){
   closeSourceDbs();
   return {books,docs,aux,bible,assets};
 }
-async function encryptExistingSources(){
+async function encryptExistingSources(onProgress){
   const db=await openSourceDB();
   const rows=await reqP(db.transaction('sources','readonly').objectStore('sources').getAll());
-  const old=[];let n=0;
-  for(const rec of rows){
+  const skipped=[];let n=0;
+  for(let i=0;i<rows.length;i++){
+    const rec=rows[i];
     if(rec.jwpubEnc)continue;
-    if(!rec.jwpub){old.push(rec.name||rec.id);continue}
+    if(!rec.jwpub){skipped.push({id:rec.id,name:rec.name||rec.id});continue}
     await saveBookSource(rec.id,{...rec,jwpub:rec.jwpub});
     n++;
+    if(onProgress)await onProgress(n,rows.length);
   }
-  if(old.length)throw new Error(`以下原始包是旧格式，请重新导入后再启用应用锁：${old.slice(0,5).join('、')}${old.length>5?'…':''}`);
-  return n;
+  return {encrypted:n,total:rows.length,skipped};
+}
+async function vaultMigrationDoneFlag(){
+  try{const r=await reqP(tx('system').get('vaultMigrationFlag'));return !!(r&&r.done)}catch(e){return false}
+}
+async function setVaultMigrationDone(done){
+  try{await reqP(tx('system','readwrite').put({id:'vaultMigrationFlag',done:!!done,at:Date.now()}))}catch(e){}
+}
+// Resumable: the lock metadata is written first, then every record is sealed.
+// Running this again simply skips what is already encrypted.
+async function finishVaultEncryption(onProgress){
+  if(!vaultKey)throw new Error('应用锁未解锁。');
+  const sources=await encryptExistingSources(onProgress);
+  const user=await sealExistingUserData();
+  const strip=await stripAllSourceBooks();
+  try{await sealLockedNames()}catch(e){logDiag('warn','加密遗留文件名失败',{message:e&&e.message||String(e)})}
+  await setVaultMigrationDone(true);
+  return {sources,user,strip};
 }
 async function sealExistingUserData(){
   const stores=Object.keys(USER_ENC_FIELDS);let n=0;
@@ -1364,14 +1425,29 @@ async function sealLockedNames(){
   if(sealed)logDiag('info','已加密遗留的原始文件名',{sealed});
   return sealed;
 }
-async function auditPlaintextBooks(){
+async function sourceRecordsMap(){
+  try{
+    const db=await openSourceDB();
+    const rows=await reqP(db.transaction('sources','readonly').objectStore('sources').getAll());
+    return new Map(rows.map(r=>[String(r.id),r]));
+  }catch(e){return new Map()}
+}
+// Which books would still be readable in plaintext after the app lock is on.
+// `reason` drives the home warning list: no original package, legacy package
+// (inner zip only), package lost after a cleanup, or a plaintext package.
+async function auditPlaintextBooks(force){
+  if(!force&&!lockEnabled())return [];
   const metas=await allBooks();
-  const missing=[];
+  const map=await sourceRecordsMap();
+  const out=[];
   for(const m of metas){
-    if(!m.hasSource){missing.push(m.displayTitle||m.title||m.id);continue}
-    try{const src=await getBookSource(m.id);if(!src||!src.jwpub)missing.push(m.displayTitle||m.title||m.id)}catch(e){missing.push(m.displayTitle||m.title||m.id)}
+    const rec=map.get(String(m.id));
+    const title=m.displayTitle||m.title||m.id;
+    if(!rec){out.push({id:m.id,title,reason:m.hasSource?'lost':'no-source'});continue}
+    if(rec.jwpubEnc)continue;
+    out.push({id:m.id,title,reason:rec.jwpub?'plaintext':'legacy'});
   }
-  return missing;
+  return out;
 }
 async function sourceBibleRangeHtml(bookId,first,last){
   const {db,ki}=await openBookSourceDb(bookId);

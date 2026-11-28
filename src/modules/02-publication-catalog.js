@@ -221,6 +221,7 @@ function updatePublication(book){
       const fileNote=`${t('当前文件')}：${currentFile||'—'}\n${t('所选文件')}：${selectedFile||'—'}\n\n`;
       if(!(await askConfirm(t('重新导入'),`${nameNote}${fileNote}${t('将用所选文件重新导入')}《${targetTitle}》。${t('笔记、标签、划线、书签和阅读历史会保留。')}`,t('重新导入'))))return;
       await importFiles([f],{overwriteNames:new Set([f.name])});
+      invalidateLockPlainCache();updateLockIndicators(true);
       if($('reader').style.display==='block'&&currentBook&&String(currentBook.id)===String(book.id)){
         const oldDocId=currentBook.docs&&currentBook.docs[currentIndex]&&currentBook.docs[currentIndex].id;
         const fresh=await loadBook(book.id);
@@ -1167,7 +1168,7 @@ async function renderStudy(books){
   renderStudyNotes();
 }
 
-async function renderBooks(filter=''){return renderSection(filter)}
+async function renderBooks(filter=''){const r=await renderSection(filter);updateLockIndicators();return r}
 document.querySelectorAll('#bottomNav button[data-primary]').forEach(btn=>btn.onclick=()=>onNavTap(btn.dataset.primary));
 document.querySelectorAll('[data-reader-primary]').forEach(btn=>btn.onclick=()=>{
   const sourceTab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;

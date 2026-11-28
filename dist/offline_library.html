@@ -629,15 +629,33 @@ body.daily-reader .bottom-tools{display:none!important}
 .lock-box .btn{width:100%;padding:12px}
 .lock-recovery-code{font:700 18px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;word-break:break-all;background:#f4f6f8;border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0;user-select:text}
 #confirmModal,#modal{z-index:200010}
+.lock-warn{position:relative;color:#a9720b;background:#fff3d6}
+.lock-warn svg{display:block}
+.lock-warn-count{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#c9861a;color:#fff;font:700 10px/16px system-ui,sans-serif;text-align:center}
+.lock-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:10px 12px;border:1px solid #e6c97e;border-radius:10px;background:#fff7e2;color:#6b4a08;font-size:13px;line-height:1.45}
+.lock-banner[hidden]{display:none!important}
+.lock-banner-actions{display:flex;gap:8px;align-items:center}
+.lock-plain-warn{margin-top:10px;padding:10px 12px;border:1px solid #e6c97e;border-radius:10px;background:#fff7e2;color:#6b4a08;font-size:13px;line-height:1.45;max-height:190px;overflow:auto}
+.lock-plain-warn ul{margin:6px 0;padding-left:18px}
+.lock-plain-warn li{margin:2px 0}
+.lock-plain-warn small{color:#8a6a1f;margin-left:6px}
+.lock-ack{display:flex;gap:8px;align-items:flex-start;margin-top:8px;cursor:pointer}
+.lock-plain-list{list-style:none;margin:10px 0 0;padding:0;max-height:320px;overflow:auto}
+.lock-plain-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.lock-plain-item small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.lock-plain-item .btn{padding:6px 10px;font-size:12px}
+.lock-row{display:flex;gap:8px;align-items:center;margin-top:10px}
+.lock-full{width:100%;margin-top:10px}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
     <div class="brand"><div class="logo">书</div><span data-i18n="我的私人图书馆">我的私人图书馆</span></div>
-    <div class="top-actions"><button class="iconbtn" id="langBtn" data-i18n-title="界面语言" aria-label="界面语言" data-i18n-aria-label="界面语言">中</button><button class="iconbtn" id="historyBtn" data-i18n-title="阅读历史" aria-label="阅读历史" data-i18n-aria-label="阅读历史"><svg class="history-clock" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6.1"/><path d="M20.6 3.4v4.8h-4.8"/><path d="M12 7.6V12l3.1 1.9"/></svg></button><button class="iconbtn" id="moreBtn" data-i18n-title="更多" aria-label="更多" data-i18n-aria-label="更多"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button></div>
+    <div class="top-actions"><button class="iconbtn lock-warn" id="lockWarnBtn" hidden data-i18n-title="未加密的出版物" data-i18n-aria-label="未加密的出版物" aria-label="未加密的出版物"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.3 21.2 20H2.8z"/><path d="M12 9.6v4.6"/><path d="M12 17.4h.01"/></svg><span class="lock-warn-count" id="lockWarnCount"></span></button><button class="iconbtn" id="langBtn" data-i18n-title="界面语言" aria-label="界面语言" data-i18n-aria-label="界面语言">中</button><button class="iconbtn" id="historyBtn" data-i18n-title="阅读历史" aria-label="阅读历史" data-i18n-aria-label="阅读历史"><svg class="history-clock" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6.1"/><path d="M20.6 3.4v4.8h-4.8"/><path d="M12 7.6V12l3.1 1.9"/></svg></button><button class="iconbtn" id="moreBtn" data-i18n-title="更多" aria-label="更多" data-i18n-aria-label="更多"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button></div>
   </header>
   <main id="home">
+    <div class="lock-banner" id="lockBanner" role="status" hidden></div>
     <div class="eyebrow">PERSONAL LIBRARY</div>
     <h1 id="libraryTitle">首页</h1>
     <div class="sub" id="librarySubtitle">今日经文、收藏和最近导入。</div>
@@ -1310,6 +1328,8 @@ let sectionPageHistory={home:[],bible:[],library:[],meetings:[],study:[]};
 const READER_CACHE_ID='readerPanelCache';
 let readerCacheTimer=null,readerCacheLoaded=false,readerCacheTab='home';
 const LOCK_META_KEY='offlineLibraryLock';
+const LOCK_SKIP_KEY='offlineLibraryLockSkipped';
+const LOCK_ATTENTION_KEY='offlineLibraryLockAttention';
 let vaultKey=null,vaultRawKey=null,lockHiddenAt=0;
 function readerCachePayload(){return {id:READER_CACHE_ID,views:sectionViews,history:sectionPageHistory,tab:primarySection,updatedAt:Date.now()}}
 function scheduleReaderCacheSave(){
@@ -1578,6 +1598,29 @@ Object.assign(I18N.en,{"当前文件":"Current file","所选资料":"Selected pu
 Object.assign(I18N.ja,{"当前文件":"現在のファイル","所选资料":"選択した資料"});
 Object.assign(I18N.ko,{"当前文件":"현재 파일","所选资料":"선택한 자료"});
 Object.assign(I18N.en,{"应用已锁定":"App locked","输入密码继续":"Enter your password to continue","密码":"Password","解锁":"Unlock","使用恢复码":"Use recovery code","恢复码":"Recovery code","忘记密码":"Forgot password","密码或恢复码不正确":"Incorrect password or recovery code","输入恢复码继续":"Enter your recovery code to continue","以下出版物没有原始包，请先重新导入":"These publications have no original package; re-import them first","保存恢复码":"Save your recovery code","恢复码只显示一次，请离线保存。忘记密码时用它重置并保留数据。":"The recovery code is shown once. Keep it offline; it resets your password and preserves data.","复制":"Copy","我已保存":"I saved it","设置应用密码":"Set app password","密码至少 6 位。启用后数据会加密，请先导出备份。":"At least 6 characters. Data will be encrypted; export a backup first.","再次输入密码":"Confirm password","后台自动锁定":"Auto-lock after background","分钟":"minutes","启用应用锁":"Enable app lock","密码至少需要 6 位":"Password must be at least 6 characters","两次密码不一致":"Passwords do not match","应用锁":"App lock","更改密码":"Change password","重新生成恢复码":"Regenerate recovery code","立即锁定":"Lock now","新密码（至少 6 位）":"New password (at least 6 characters)","再次输入新密码":"Confirm new password","密码已更改。":"Password changed.","旧恢复码将立即失效。继续？":"The old recovery code will stop working. Continue?","清空":"Erase","清空全部数据":"Erase all data","没有恢复码时只能清空全部出版物、笔记和设置。请先确认已经备份。继续？":"Without the recovery code, all publications, notes and settings must be erased. Confirm you have a backup. Continue?","这会删除本机所有图书馆数据，无法撤销。":"This deletes all library data on this device and cannot be undone.","无法解锁":"Cannot unlock","恢复码已复制到剪贴板。":"Recovery code copied to the clipboard.","输入备份密码或恢复码":"Enter the backup password or recovery code","应用锁已启用，请先解锁":"The app lock is enabled; unlock it first","应用锁已启用。请用密码解锁后重新生成恢复码。":"The app lock is enabled. Unlock with your password, then regenerate the recovery code.","应用锁启用期间必须保留原始包。":"The original package is required while the app lock is on.","应用锁启用期间始终以原始包为主。":"Source-first stays on while the app lock is enabled.","应用锁已启用，但这份文件没有可保存的原始包，已取消导入。":"The app lock is on, but this file has no package that can be stored; import cancelled.","应用锁已启用，但原始包保存失败，已取消导入。":"The app lock is on and the package could not be saved; import cancelled.","原始包保存失败，这本书暂时仍以明文保存正文，请尽快重新导入。":"The package could not be saved, so this book's body is temporarily stored as plaintext. Re-import it as soon as possible."});
+Object.assign(I18N.en,{
+"未加密的出版物":"Unencrypted publications",
+"没有原始包":"No original package",
+"旧格式原始包":"Legacy original package",
+"原始包已丢失":"Original package missing",
+"尚未加密":"Not encrypted yet",
+"全部出版物都已加密。":"All publications are encrypted.",
+"这些书没有可加密的原始包，正文仍是明文。重新导入后会自动加密。":"These books have no encryptable original package, so their text stays plaintext. Re-importing encrypts them.",
+"应用锁未启用，数据仍为明文。":"App lock is off; data is still plaintext.",
+"启用":"Enable",
+"知道了":"Got it",
+"暂不启用":"Not now",
+"这些出版物没有可加密的原始包，启用后正文仍是明文，可正常阅读，但不受密码保护。":"These publications have no encryptable original package. After enabling, their text stays plaintext and readable, but is not protected by the password.",
+"我了解这些书不会被加密":"I understand these books will not be encrypted",
+"请先确认未加密的出版物":"Confirm the unencrypted publications first",
+"正在加密":"Encrypting",
+"数据已加密。密码和恢复码只保存在本机。":"Data is encrypted. The password and recovery code stay on this device.",
+"后台锁定时间已更新。":"Auto-lock time updated.",
+"当前密码":"Current password",
+"当前密码不正确":"Current password is incorrect",
+"正在完成加密…":"Finishing encryption…",
+"关闭":"Close"
+});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
@@ -1902,6 +1945,10 @@ function cleanInlineHtml(raw){try{return cleanHtml(String(raw||''),{}).body}catc
 // ---- optional application lock / vault ------------------------------------
 function lockMeta(){try{const v=JSON.parse(localStorage.getItem(LOCK_META_KEY)||'null');return v&&v.version===1?v:null}catch(e){return null}}
 function lockEnabled(){return !!lockMeta()}
+function lockSkipped(){try{return localStorage.getItem(LOCK_SKIP_KEY)==='1'}catch(e){return false}}
+function setLockSkipped(on){try{if(on)localStorage.setItem(LOCK_SKIP_KEY,'1');else localStorage.removeItem(LOCK_SKIP_KEY)}catch(e){}}
+function lockAttention(){try{return localStorage.getItem(LOCK_ATTENTION_KEY)==='1'}catch(e){return false}}
+function setLockAttention(on){try{if(on)localStorage.setItem(LOCK_ATTENTION_KEY,'1');else localStorage.removeItem(LOCK_ATTENTION_KEY)}catch(e){}}
 function saveLockMeta(meta){try{localStorage.setItem(LOCK_META_KEY,JSON.stringify(meta))}catch(e){}}
 async function persistLockMeta(meta){saveLockMeta(meta);try{await saveOne('system',{id:'lockMeta',meta})}catch(e){}}
 async function ensureLockMetaLoaded(){
@@ -1949,20 +1996,31 @@ async function unlockVaultWithRecovery(code){
   const kek=await deriveKek(normalizeRecovery(code),fromB64(meta.recoverySalt),meta.iterations);
   const raw=await unwrapRawKey(meta.recoveryWrapped,kek);await setVaultRaw(raw);return true;
 }
-async function changeVaultPassword(password){
+async function verifyVaultPassword(password,meta){
+  const m=meta||lockMeta();if(!m)throw new Error('应用锁未启用。');
+  const kek=await deriveKek(String(password||''),fromB64(m.salt),m.iterations);
+  try{return await unwrapRawKey(m.wrapped,kek)}catch(e){throw new Error('当前密码不正确')}
+}
+async function changeVaultPassword(currentPassword,password){
   if(!vaultRawKey)throw new Error('应用锁未解锁。');
   if(!password||String(password).length<6)throw new Error('密码至少需要 6 位。');
   const meta=lockMeta();if(!meta)throw new Error('应用锁未启用。');
+  await verifyVaultPassword(currentPassword,meta);
   const salt=randomBytes(16),kek=await deriveKek(password,salt,meta.iterations);
   meta.salt=toB64(salt);meta.wrapped=await wrapRawKey(vaultRawKey,kek);meta.changedAt=Date.now();await persistLockMeta(meta);
 }
-async function regenerateVaultRecovery(){
+async function regenerateVaultRecovery(currentPassword){
   if(!vaultRawKey)throw new Error('应用锁未解锁。');
   const meta=lockMeta();if(!meta)throw new Error('应用锁未启用。');
+  await verifyVaultPassword(currentPassword,meta);
   const recovery=generateRecovery(),salt=randomBytes(16);
   const kek=await deriveKek(normalizeRecovery(recovery),salt,meta.iterations);
   meta.recoverySalt=toB64(salt);meta.recoveryWrapped=await wrapRawKey(vaultRawKey,kek);meta.recoveryChangedAt=Date.now();await persistLockMeta(meta);
   return recovery;
+}
+async function setVaultTimeout(minutes){
+  const meta=lockMeta();if(!meta)throw new Error('应用锁未启用。');
+  meta.timeout=Math.max(1,Number(minutes)||5);await persistLockMeta(meta);
 }
 async function encryptBytesWithKey(bytes,key,aad){const iv=randomBytes(12);const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:aad?new TextEncoder().encode(aad):undefined},key,bytes);const out=new Uint8Array(12+cipher.byteLength);out.set(iv);out.set(new Uint8Array(cipher),12);return out}
 async function decryptBytesWithKey(data,key,aad){if(data.length<13)throw new Error('密文无效');const iv=data.subarray(0,12),cipher=data.subarray(12);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:aad?new TextEncoder().encode(aad):undefined},key,cipher))}
@@ -2578,11 +2636,14 @@ async function stripAssets(bookId){
   return recs.length;
 }
 async function stripAllSourceBooks(){
-  const metas=await allBooks();let books=0,docs=0,aux=0,bible=0,assets=0;
+  // Only books whose original package is (or will be) encrypted can lose their
+  // parsed body. Legacy packages without a full JWPUB stay readable as-is.
+  const metas=await allBooks();
+  const map=await sourceRecordsMap();
+  let books=0,docs=0,aux=0,bible=0,assets=0;
   for(const m of metas){
-    let has=!!m.hasSource;
-    if(!has){try{const src=await getBookSource(m.id);has=!!src}catch(e){}}
-    if(!has)continue;
+    const rec=map.get(String(m.id));
+    if(!rec||!(rec.jwpub||rec.jwpubEnc))continue;
     books++;
     docs+=await stripBookDocHtml(m.id);
     aux+=await stripBookAuxHtml(m.id);
@@ -2593,18 +2654,36 @@ async function stripAllSourceBooks(){
   closeSourceDbs();
   return {books,docs,aux,bible,assets};
 }
-async function encryptExistingSources(){
+async function encryptExistingSources(onProgress){
   const db=await openSourceDB();
   const rows=await reqP(db.transaction('sources','readonly').objectStore('sources').getAll());
-  const old=[];let n=0;
-  for(const rec of rows){
+  const skipped=[];let n=0;
+  for(let i=0;i<rows.length;i++){
+    const rec=rows[i];
     if(rec.jwpubEnc)continue;
-    if(!rec.jwpub){old.push(rec.name||rec.id);continue}
+    if(!rec.jwpub){skipped.push({id:rec.id,name:rec.name||rec.id});continue}
     await saveBookSource(rec.id,{...rec,jwpub:rec.jwpub});
     n++;
+    if(onProgress)await onProgress(n,rows.length);
   }
-  if(old.length)throw new Error(`以下原始包是旧格式，请重新导入后再启用应用锁：${old.slice(0,5).join('、')}${old.length>5?'…':''}`);
-  return n;
+  return {encrypted:n,total:rows.length,skipped};
+}
+async function vaultMigrationDoneFlag(){
+  try{const r=await reqP(tx('system').get('vaultMigrationFlag'));return !!(r&&r.done)}catch(e){return false}
+}
+async function setVaultMigrationDone(done){
+  try{await reqP(tx('system','readwrite').put({id:'vaultMigrationFlag',done:!!done,at:Date.now()}))}catch(e){}
+}
+// Resumable: the lock metadata is written first, then every record is sealed.
+// Running this again simply skips what is already encrypted.
+async function finishVaultEncryption(onProgress){
+  if(!vaultKey)throw new Error('应用锁未解锁。');
+  const sources=await encryptExistingSources(onProgress);
+  const user=await sealExistingUserData();
+  const strip=await stripAllSourceBooks();
+  try{await sealLockedNames()}catch(e){logDiag('warn','加密遗留文件名失败',{message:e&&e.message||String(e)})}
+  await setVaultMigrationDone(true);
+  return {sources,user,strip};
 }
 async function sealExistingUserData(){
   const stores=Object.keys(USER_ENC_FIELDS);let n=0;
@@ -2657,14 +2736,29 @@ async function sealLockedNames(){
   if(sealed)logDiag('info','已加密遗留的原始文件名',{sealed});
   return sealed;
 }
-async function auditPlaintextBooks(){
+async function sourceRecordsMap(){
+  try{
+    const db=await openSourceDB();
+    const rows=await reqP(db.transaction('sources','readonly').objectStore('sources').getAll());
+    return new Map(rows.map(r=>[String(r.id),r]));
+  }catch(e){return new Map()}
+}
+// Which books would still be readable in plaintext after the app lock is on.
+// `reason` drives the home warning list: no original package, legacy package
+// (inner zip only), package lost after a cleanup, or a plaintext package.
+async function auditPlaintextBooks(force){
+  if(!force&&!lockEnabled())return [];
   const metas=await allBooks();
-  const missing=[];
+  const map=await sourceRecordsMap();
+  const out=[];
   for(const m of metas){
-    if(!m.hasSource){missing.push(m.displayTitle||m.title||m.id);continue}
-    try{const src=await getBookSource(m.id);if(!src||!src.jwpub)missing.push(m.displayTitle||m.title||m.id)}catch(e){missing.push(m.displayTitle||m.title||m.id)}
+    const rec=map.get(String(m.id));
+    const title=m.displayTitle||m.title||m.id;
+    if(!rec){out.push({id:m.id,title,reason:m.hasSource?'lost':'no-source'});continue}
+    if(rec.jwpubEnc)continue;
+    out.push({id:m.id,title,reason:rec.jwpub?'plaintext':'legacy'});
   }
-  return missing;
+  return out;
 }
 async function sourceBibleRangeHtml(bookId,first,last){
   const {db,ki}=await openBookSourceDb(bookId);
@@ -3979,6 +4073,7 @@ function updatePublication(book){
       const fileNote=`${t('当前文件')}：${currentFile||'—'}\n${t('所选文件')}：${selectedFile||'—'}\n\n`;
       if(!(await askConfirm(t('重新导入'),`${nameNote}${fileNote}${t('将用所选文件重新导入')}《${targetTitle}》。${t('笔记、标签、划线、书签和阅读历史会保留。')}`,t('重新导入'))))return;
       await importFiles([f],{overwriteNames:new Set([f.name])});
+      invalidateLockPlainCache();updateLockIndicators(true);
       if($('reader').style.display==='block'&&currentBook&&String(currentBook.id)===String(book.id)){
         const oldDocId=currentBook.docs&&currentBook.docs[currentIndex]&&currentBook.docs[currentIndex].id;
         const fresh=await loadBook(book.id);
@@ -4925,7 +5020,7 @@ async function renderStudy(books){
   renderStudyNotes();
 }
 
-async function renderBooks(filter=''){return renderSection(filter)}
+async function renderBooks(filter=''){const r=await renderSection(filter);updateLockIndicators();return r}
 document.querySelectorAll('#bottomNav button[data-primary]').forEach(btn=>btn.onclick=()=>onNavTap(btn.dataset.primary));
 document.querySelectorAll('[data-reader-primary]').forEach(btn=>btn.onclick=()=>{
   const sourceTab=readerSessionTab||readerOriginSection||readerNavSection||primarySection;
@@ -8112,6 +8207,7 @@ async function installPendingVault(){
   const pending=pendingVaultInstall;pendingVaultInstall=null;
   await persistLockMeta(pending.lock);
   await setVaultRaw(pending.raw);
+  try{await setVaultMigrationDone(false)}catch(e){}
   logDiag('info','从加密备份安装应用锁',{format:'offline-library-vault-v1'});
 }
 async function isVaultBackup(file){try{return (await file.slice(0,VAULT_BACKUP_MAGIC.length).text())===VAULT_BACKUP_MAGIC}catch(e){return false}}
@@ -8143,10 +8239,11 @@ async function backupNotes(){
     logDiag('info','导出笔记备份',{notes:(notes||[]).length,tags:(tags||[]).length,highlights:(highlights||[]).length});
   }catch(err){say('备份失败',err.message||String(err));logDiag('error','导出笔记备份失败',{message:err.message||String(err)})}
 }
-const RESTORE_DERIVED_SYSTEM_IDS=new Set(['canonicalAnchorsV1','migratedV3','migratedStableIds','categoryIdsV1','lockMeta','lockedNamesSealedV1']);
+const RESTORE_DERIVED_SYSTEM_IDS=new Set(['canonicalAnchorsV1','migratedV3','migratedStableIds','categoryIdsV1','lockMeta','lockedNamesSealedV1','vaultMigrationFlag']);
 function snapshotLocalStorage(){
   const out={};
-  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('offlineLibrary')&&k!==LOCK_META_KEY)out[k]=localStorage.getItem(k)}}catch(e){}
+  const skip=new Set([LOCK_META_KEY,LOCK_SKIP_KEY,LOCK_ATTENTION_KEY]);
+  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('offlineLibrary')&&!skip.has(k))out[k]=localStorage.getItem(k)}}catch(e){}
   return out;
 }
 async function snapshotSystemStore(){
@@ -8374,6 +8471,7 @@ $('backupInput').onchange=async e=>{
     for(const rec of system)await saveOne('system',rec);
     for(const [k,v] of Object.entries(localData||{}))try{localStorage.setItem(k,String(v))}catch(e){}
     applyRestoredSettings();
+    if(lockEnabled()&&vaultKey){try{await finishVaultEncryption()}catch(e){logDiag('warn','恢复后补加密失败',{message:e&&e.message||String(e)})}}
     await loadReaderCache();
     await refreshCanonicalAnchorsAfterRestore();
     await renderBooks();
@@ -8551,9 +8649,24 @@ async function resetAllAppData(){
   location.reload();
 }
 async function enterAppFromLock(){
+  try{
+    await openDB();
+    if(!(await vaultMigrationDoneFlag())){
+      const hint=$('lockHint');if(hint)hint.textContent=t('正在完成加密…');
+      const err=$('lockError');if(err)err.textContent='';
+      const btn=$('lockUnlock');if(btn)btn.disabled=true;
+      await finishVaultEncryption();
+      invalidateLockPlainCache();
+    }
+  }catch(e){
+    const err=$('lockError');if(err)err.textContent=e.message||String(e);
+    const btn=$('lockUnlock');if(btn)btn.disabled=false;
+    return;
+  }
   hideLockScreen();
+  const btn=$('lockUnlock');if(btn)btn.disabled=false;
   if(!appBooted){await bootApp();return}
-  try{await loadReaderCache();await renderBooks();}catch(e){say(t('无法解锁'),e.message||String(e))}
+  try{await loadReaderCache();await renderBooks();updateLockIndicators(true)}catch(e){say(t('无法解锁'),e.message||String(e))}
 }
 function bindLockUI(){
   const unlock=$('lockUnlock'),recovery=$('lockUseRecovery'),reset=$('lockReset');
@@ -8582,29 +8695,28 @@ function bindLockUI(){
     await resetAllAppData();
   };
   for(const id of ['lockPassword','lockRecovery']){const el=$(id);if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')unlock.click()})}
+  const warnBtn=$('lockWarnBtn');if(warnBtn)warnBtn.onclick=()=>showPlaintextBooksPanel();
 }
-async function enableVault(password,timeout){
+async function enableVault(password,timeout,onProgress){
   if(lockEnabled()&&!vaultKey)throw new Error(t('应用锁已启用，请先解锁'));
-  const missing=await auditPlaintextBooks();
-  if(missing.length)throw new Error(`${t('以下出版物没有原始包，请先重新导入')}：${missing.slice(0,5).join('、')}${missing.length>5?'…':''}`);
-  await stripAllSourceBooks();
-  // The lock must keep protecting new imports too: with source-first on, the
-  // parsed body is never written back as plaintext.
-  setSourceFirst(true);setKeepSource(true);
+  // Capture what will stay plaintext *before* the lock exists. Books that
+  // already have a full package will be encrypted by `finishVaultEncryption`.
+  const plaintext=(await auditPlaintextBooks(true)).filter(b=>b.reason!=='plaintext');
   let recovery=null;
   if(!lockEnabled())recovery=await createVaultLock(password,timeout);
-  await encryptExistingSources();
-  await sealExistingUserData();
-  try{await sealLockedNames()}catch(e){}
+  await setVaultMigrationDone(false);
+  // Keep new imports sealed: source-first plus forced source retention.
+  setSourceFirst(true);setKeepSource(true);
+  await finishVaultEncryption(onProgress);
   clearRecentReaderSearches();
   closeSourceDbs();
-  return recovery;
+  return {recovery,plaintext};
 }
 function showVaultPanel(html,onReady){
   document.getElementById('vaultPanel')?.remove();
   const panel=document.createElement('div');panel.id='vaultPanel';
   panel.style.cssText='position:fixed;inset:0;z-index:200001;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;padding:20px';
-  panel.onclick=e=>{if(e.target===panel)panel.remove()};
+  panel.onclick=e=>{if(e.target===panel&&!panel.dataset.busy)panel.remove()};
   const box=document.createElement('div');box.style.cssText='background:#fff;color:#172026;border-radius:16px;padding:22px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.28);font:14px/1.55 system-ui,-apple-system,sans-serif';
   box.innerHTML=html;panel.appendChild(box);document.body.appendChild(panel);
   if(onReady)onReady(box,panel);
@@ -8615,36 +8727,107 @@ function showRecoveryCode(code){
     box.querySelector('#vaultDone').onclick=()=>panel.remove();
   });
 }
-function showLockSetup(firstRun=false){
-  showVaultPanel(`<h2 style="margin:0 0 8px">${t('设置应用密码')}</h2><div class="status">${t('密码至少 6 位。启用后数据会加密，请先导出备份。')}</div><input class="lock-input" id="vaultPw" type="password" autocomplete="new-password" placeholder="${t('密码')}" style="margin:8px 0"><input class="lock-input" id="vaultPw2" type="password" autocomplete="new-password" placeholder="${t('再次输入密码')}" style="margin:8px 0"><label class="sub" style="display:flex;gap:8px;align-items:center">${t('后台自动锁定')} <select id="vaultTimeout"><option value="5">5 ${t('分钟')}</option><option value="15">15 ${t('分钟')}</option><option value="30">30 ${t('分钟')}</option><option value="60">60 ${t('分钟')}</option></select></label><div class="lock-error" id="vaultErr" role="alert"></div><div class="modal-actions"><button class="btn secondary" id="vaultCancel">${t('取消')}</button><button class="btn" id="vaultCreate">${t('启用应用锁')}</button></div>`,(box,panel)=>{
-    box.querySelector('#vaultCancel').onclick=()=>{panel.remove();if(firstRun)localStorage.setItem('offlineLibraryLockPrompted','1')};
-    box.querySelector('#vaultCreate').onclick=async()=>{
-      const pw=box.querySelector('#vaultPw').value,pw2=box.querySelector('#vaultPw2').value,err=box.querySelector('#vaultErr'),btn=box.querySelector('#vaultCreate');
+function lockReasonLabel(reason){
+  if(reason==='no-source')return t('没有原始包');
+  if(reason==='legacy')return t('旧格式原始包');
+  if(reason==='lost')return t('原始包已丢失');
+  return t('尚未加密');
+}
+let lockPlainCache={at:0,list:[]};
+async function getPlaintextBooks(force){
+  if(!lockEnabled())return [];
+  if(!force&&Date.now()-lockPlainCache.at<5000)return lockPlainCache.list;
+  const list=await auditPlaintextBooks(true);
+  lockPlainCache={at:Date.now(),list};
+  return list;
+}
+function invalidateLockPlainCache(){lockPlainCache={at:0,list:[]}}
+async function showPlaintextBooksPanel(){
+  const list=await getPlaintextBooks(true);
+  const books=await allBooks();
+  const map=new Map(books.map(b=>[String(b.id),b]));
+  const rows=list.length
+    ?list.map(b=>`<li class="lock-plain-item"><span>${safeText(b.title)}<small>${safeText(lockReasonLabel(b.reason))}</small></span><button class="btn secondary" data-reimport="${safeText(b.id)}">${t('重新导入')}</button></li>`).join('')
+    :`<li class="sub">${t('全部出版物都已加密。')}</li>`;
+  showVaultPanel(`<h2 style="margin:0 0 8px">${t('未加密的出版物')}</h2><div class="status">${t('这些书没有可加密的原始包，正文仍是明文。重新导入后会自动加密。')}</div><ul class="lock-plain-list">${rows}</ul><div class="modal-actions"><button class="btn" id="lockPlainClose">${t('关闭')}</button></div>`,(box,panel)=>{
+    box.querySelector('#lockPlainClose').onclick=()=>panel.remove();
+    box.querySelectorAll('[data-reimport]').forEach(btn=>{
+      btn.onclick=()=>{
+        const book=map.get(btn.getAttribute('data-reimport'));if(!book)return;
+        panel.remove();updatePublication(book);
+      };
+    });
+  });
+}
+async function updateLockIndicators(force){
+  try{
+    const badge=$('lockWarnBtn'),countEl=$('lockWarnCount'),banner=$('lockBanner');
+    if(lockEnabled()){
+      const list=await getPlaintextBooks(force);
+      if(badge)badge.hidden=!list.length;
+      if(countEl)countEl.textContent=String(list.length);
+      if(banner)banner.hidden=true;
+      return;
+    }
+    if(badge)badge.hidden=true;
+    if(!banner)return;
+    const show=lockSkipped()||lockAttention();
+    banner.hidden=!show;
+    if(!show)return;
+    banner.innerHTML=`<span>${t('应用锁未启用，数据仍为明文。')}</span><span class="lock-banner-actions"><button class="btn secondary" id="lockBannerEnable">${t('启用')}</button><button class="btn ghost" id="lockBannerDismiss">${t('知道了')}</button></span>`;
+    const en=banner.querySelector('#lockBannerEnable');if(en)en.onclick=()=>showLockSetup(false);
+    const dis=banner.querySelector('#lockBannerDismiss');if(dis)dis.onclick=()=>{setLockAttention(false);setLockSkipped(true);banner.hidden=true};
+  }catch(e){}
+}
+async function showLockSetup(firstRun=false){
+  const all=await auditPlaintextBooks(true);
+  const plain=lockEnabled()?all:all.filter(b=>b.reason!=='plaintext');
+  const warn=plain.length?`<div class="lock-plain-warn"><div>${t('这些出版物没有可加密的原始包，启用后正文仍是明文，可正常阅读，但不受密码保护。')}</div><ul>${plain.slice(0,8).map(b=>`<li>${safeText(b.title)}<small>${safeText(lockReasonLabel(b.reason))}</small></li>`).join('')}${plain.length>8?`<li>…</li>`:''}</ul><label class="lock-ack"><input type="checkbox" id="vaultAck"> <span>${t('我了解这些书不会被加密')}</span></label></div>`:'';
+  showVaultPanel(`<h2 style="margin:0 0 8px">${t('设置应用密码')}</h2><div class="status">${t('密码至少 6 位。启用后数据会加密，请先导出备份。')}</div><input class="lock-input" id="vaultPw" type="password" autocomplete="new-password" placeholder="${t('密码')}" style="margin:8px 0"><input class="lock-input" id="vaultPw2" type="password" autocomplete="new-password" placeholder="${t('再次输入密码')}" style="margin:8px 0"><label class="sub" style="display:flex;gap:8px;align-items:center">${t('后台自动锁定')} <select id="vaultTimeout"><option value="5">5 ${t('分钟')}</option><option value="15">15 ${t('分钟')}</option><option value="30">30 ${t('分钟')}</option><option value="60">60 ${t('分钟')}</option></select></label>${warn}<div class="lock-error" id="vaultErr" role="alert"></div><div class="sub" id="vaultProgress"></div><div class="modal-actions"><button class="btn secondary" id="vaultCancel">${t('暂不启用')}</button><button class="btn" id="vaultCreate"${warn?' disabled':''}>${t('启用应用锁')}</button></div>`,(box,panel)=>{
+    const ack=box.querySelector('#vaultAck'),create=box.querySelector('#vaultCreate'),cancel=box.querySelector('#vaultCancel');
+    if(ack)ack.onchange=()=>{create.disabled=!ack.checked};
+    cancel.onclick=()=>{if(panel.dataset.busy)return;panel.remove();setLockSkipped(true);setLockAttention(false);updateLockIndicators(true)};
+    create.onclick=async()=>{
+      const pw=box.querySelector('#vaultPw').value,pw2=box.querySelector('#vaultPw2').value,err=box.querySelector('#vaultErr'),progress=box.querySelector('#vaultProgress');
       if(!pw||pw.length<6){err.textContent=t('密码至少需要 6 位');return}
       if(pw!==pw2){err.textContent=t('两次密码不一致');return}
-      btn.disabled=true;err.textContent='';
+      if(warn&&ack&&!ack.checked){err.textContent=t('请先确认未加密的出版物');return}
+      panel.dataset.busy='1';create.disabled=true;cancel.disabled=true;err.textContent='';
       try{
         const timeout=Number(box.querySelector('#vaultTimeout').value)||5;
-        const recovery=await enableVault(pw,timeout);
-        panel.remove();localStorage.setItem('offlineLibraryLockPrompted','1');
-        if(recovery)showRecoveryCode(recovery);else say(t('应用锁'),t('应用锁已启用。请用密码解锁后重新生成恢复码。'));
-        await renderBooks();
-      }catch(e){err.textContent=e.message||String(e);btn.disabled=false}
+        const result=await enableVault(pw,timeout,(n,total)=>{if(progress)progress.textContent=`${t('正在加密')} ${n}/${total}`});
+        panel.dataset.busy='';panel.remove();
+        setLockSkipped(false);setLockAttention(false);invalidateLockPlainCache();
+        if(result.recovery)showRecoveryCode(result.recovery);else say(t('应用锁'),t('应用锁已启用。请用密码解锁后重新生成恢复码。'));
+        updateLockIndicators(true);await renderBooks();
+      }catch(e){
+        panel.dataset.busy='';create.disabled=!!(warn&&ack&&!ack.checked);cancel.disabled=false;
+        err.textContent=e.message||String(e);setLockAttention(true);updateLockIndicators(true);
+      }
     };
   });
 }
-function showLockSettings(){
+async function showLockSettings(){
   if(!lockEnabled()){showLockSetup(false);return}
-  showVaultPanel(`<h2 style="margin:0 0 8px">${t('应用锁')}</h2><div class="modal-actions" style="flex-direction:column"><button class="btn secondary" id="vaultChangePw">${t('更改密码')}</button><button class="btn secondary" id="vaultNewRecovery">${t('重新生成恢复码')}</button><button class="btn secondary" id="vaultLockNow">${t('立即锁定')}</button><button class="btn ghost" id="vaultClose">${t('取消')}</button></div>`,(box,panel)=>{
+  const plain=await getPlaintextBooks(true);
+  const meta=lockMeta()||{};
+  const opts=[5,15,30,60].map(m=>`<option value="${m}"${Number(meta.timeout||5)===m?' selected':''}>${m} ${t('分钟')}</option>`).join('');
+  showVaultPanel(`<h2 style="margin:0 0 8px">${t('应用锁')}</h2><div class="status">${t('数据已加密。密码和恢复码只保存在本机。')}</div><label class="sub lock-row">${t('后台自动锁定')}<select id="vaultTimeout2">${opts}</select></label><button class="btn secondary lock-full" id="vaultPlainList">${t('未加密的出版物')}${plain.length?' ('+plain.length+')':''}</button><div class="modal-actions" style="flex-direction:column"><button class="btn secondary" id="vaultChangePw">${t('更改密码')}</button><button class="btn secondary" id="vaultNewRecovery">${t('重新生成恢复码')}</button><button class="btn secondary" id="vaultLockNow">${t('立即锁定')}</button><button class="btn ghost" id="vaultClose">${t('关闭')}</button></div>`,(box,panel)=>{
     box.querySelector('#vaultClose').onclick=()=>panel.remove();
+    const timeout=box.querySelector('#vaultTimeout2');
+    if(timeout)timeout.onchange=async()=>{try{await setVaultTimeout(Number(timeout.value));say(t('应用锁'),t('后台锁定时间已更新。'))}catch(e){say(t('应用锁'),e.message||String(e))}};
+    box.querySelector('#vaultPlainList').onclick=()=>showPlaintextBooksPanel();
     box.querySelector('#vaultLockNow').onclick=()=>{panel.remove();lockNow()};
     box.querySelector('#vaultChangePw').onclick=async()=>{
-      const pw=prompt(t('新密码（至少 6 位）'));if(!pw)return;const pw2=prompt(t('再次输入新密码'));if(pw!==pw2){say(t('更改密码'),t('两次密码不一致'));return}
-      try{await changeVaultPassword(pw);say(t('更改密码'),t('密码已更改。'))}catch(e){say(t('更改密码'),e.message||String(e))}
+      const cur=prompt(t('当前密码'));if(cur===null)return;
+      const pw=prompt(t('新密码（至少 6 位）'));if(!pw)return;
+      const pw2=prompt(t('再次输入新密码'));if(pw!==pw2){say(t('更改密码'),t('两次密码不一致'));return}
+      try{await changeVaultPassword(cur,pw);say(t('更改密码'),t('密码已更改。'))}catch(e){say(t('更改密码'),e.message||String(e))}
     };
     box.querySelector('#vaultNewRecovery').onclick=async()=>{
+      const cur=prompt(t('当前密码'));if(cur===null)return;
       if(!(await askConfirm(t('重新生成恢复码'),t('旧恢复码将立即失效。继续？'),t('继续'))))return;
-      try{const code=await regenerateVaultRecovery();panel.remove();showRecoveryCode(code)}catch(e){say(t('重新生成恢复码'),e.message||String(e))}
+      try{const code=await regenerateVaultRecovery(cur);panel.remove();showRecoveryCode(code)}catch(e){say(t('重新生成恢复码'),e.message||String(e))}
     };
   });
 }
@@ -8658,9 +8841,9 @@ async function bootApp(){
     if(startTab!=='home')await setPrimaryNav(startTab,{});
     else if(sectionViews.home)await activateTab('home',false,{});
     appBooted=true;
-    if(!lockEnabled()&&!localStorage.getItem('offlineLibraryLockPrompted')){
-      localStorage.setItem('offlineLibraryLockPrompted','1');
-      setTimeout(()=>{if(!lockEnabled())showLockSetup(true)},400);
+    updateLockIndicators(true);
+    if(!lockEnabled()&&!lockSkipped()){
+      setTimeout(()=>{if(!lockEnabled()&&!lockSkipped())showLockSetup(true)},400);
     }
   }catch(e){say('本地存储不可用','当前浏览器或容器未允许本地存储，无法保存图书：'+e.message)}
 }

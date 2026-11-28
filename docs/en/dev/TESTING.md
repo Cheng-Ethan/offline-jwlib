@@ -80,6 +80,16 @@ Prepare at least:
 4. highlight-colour style injection test;
 5. damaged ZIP does not hang or crash.
 
+### App lock
+
+1. Enable with books that have no original package: the dialog lists them; after confirming, the books stay readable, a yellow `!` on the home screen shows the count, and the list allows re-importing one by one.
+2. Choosing **Not now**, or a failed enable: the home banner says the app lock is off and data is still plaintext; the setup prompt returns on the next launch unless explicitly skipped.
+3. Reload or kill the app mid-encryption: the next unlock resumes encryption; no half-locked state or unreadable book.
+4. Change password: a wrong current password is rejected; after a correct one the old password stops working and no data is re-encrypted.
+5. Regenerate recovery code: requires the current password; the old code stops working.
+6. Changing the auto-lock time takes effect after the new interval.
+7. Backups export as `.olvault`; restoring on a device without the lock asks for the password or recovery code and installs the same lock.
+
 ## 6. Acceptance criteria
 
 - The built artifact works offline end-to-end: import → read → annotate → backup → restore;
