@@ -540,6 +540,7 @@ function lockNow(){
   clearVaultKey();
   try{closeSourceDbs()}catch(e){}
   try{document.getElementById('vaultPanel')?.remove();document.getElementById('exportPanel')?.remove()}catch(e){}
+  try{clearRecentReaderSearches()}catch(e){}
   bookLoadCache.clear();
   currentBook=null;currentIndex=0;
   studyState={books:[],tags:[],notes:[],query:'',tagFilter:new Set()};
@@ -599,10 +600,14 @@ async function enableVault(password,timeout){
   const missing=await auditPlaintextBooks();
   if(missing.length)throw new Error(`${t('以下出版物没有原始包，请先重新导入')}：${missing.slice(0,5).join('、')}${missing.length>5?'…':''}`);
   await stripAllSourceBooks();
+  // The lock must keep protecting new imports too: with source-first on, the
+  // parsed body is never written back as plaintext.
+  setSourceFirst(true);setKeepSource(true);
   let recovery=null;
   if(!lockEnabled())recovery=await createVaultLock(password,timeout);
   await encryptExistingSources();
   await sealExistingUserData();
+  clearRecentReaderSearches();
   closeSourceDbs();
   return recovery;
 }
@@ -693,6 +698,7 @@ document.addEventListener('visibilitychange',()=>{
 (async()=>{
   applyI18n();bindLockUI();
   if(!lockMeta())await ensureLockMetaLoaded();
+  if(lockEnabled())clearRecentReaderSearches();
   if(lockEnabled()&&!vaultKey){showLockScreen();return}
   await bootApp();
 })();

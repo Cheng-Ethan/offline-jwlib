@@ -79,6 +79,14 @@ When `sourceFirstEnabled()` is on, a successful import with a saved original pac
 
 The optional app lock derives a KEK from the password with PBKDF2-SHA256 (310k iterations) and uses AES-GCM to wrap a random DEK; the recovery code derives a separate KEK that wraps the same DEK. Lock metadata is stored both in `localStorage` and in the `system` `lockMeta` record, so either copy can restore the lock screen at startup. Enabling the lock first requires every book to have an original package, runs `stripAllSourceBooks()`, then `encryptExistingSources()` and `sealExistingUserData()`; afterwards `saveBookSource()`/`getBookSource()` and `saveOne()`/`getOne()`/`getAllUser()` encrypt/decrypt automatically. Backups are whole-file `.olvault` envelopes; restore unwraps the DEK from the header `lock`. The original JWPUB bytes are never modified and are decrypted back unchanged for export.
 
+Additional scope:
+
+- `USER_ENC_FIELDS` also covers `bookMeta.originalFilename`/`manifestName`/`sourceName`, and the `sources` record `name` is sealed separately with the `source:<id>` AAD. `allBooks()`/`getBookMeta()`/`saveBookMeta()` go through `openUserRecord()`/`sealUserRecord()`; do not read or write those stores directly.
+- While the lock is on, `sourceFirstEnabled()` and `keepSourceEnabled()` are always true and `setSourceFirst()`/`setKeepSource()` force `'1'`, so new imports cannot write parsed bodies back as plaintext; the two settings buttons explain this and do nothing.
+- Recent search terms (`offlineLibraryRecentSearches`) live in memory only once the lock exists; startup, locking and enabling the lock all remove the key, and it is never written again.
+- `lockNow()` zeroes the in-memory DEK buffer and calls `clearRecentReaderSearches()`.
+- Known gaps: titles, table of contents, reading positions and annotation timestamps remain plaintext; the AES-GCM AAD binds only the store (user data) or record ID (sources), so ciphertexts inside one store are theoretically swappable — an integrity, not confidentiality, issue.
+
 ### 4.2 Metadata + split stores + generations
 
 - `buildBookMeta()` builds light metadata;

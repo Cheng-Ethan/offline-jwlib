@@ -51,7 +51,7 @@ The Daily Text reader stays minimal: no bottom action bar; paging is labelled pr
 - Bookmarks save reading positions.
 - History keeps recent reads and scroll positions.
 
-> This data is stored unencrypted on your device. Backup JSON is unencrypted too; avoid exporting sensitive data on shared devices.
+> This data is stored unencrypted by default, and exported backups are unencrypted too. With the **app lock** on, notes, tags, highlights, bookmarks, history, categories, original file names, original packages and backups are encrypted; titles, table of contents and annotation positions remain plaintext. See section 5.
 
 ## 5. App lock and recovery code
 
@@ -62,7 +62,8 @@ Enable it in **More → Settings & diagnostics → App lock**:
 - If you forget the password, unlock with the recovery code, then change the password in Settings.
 - If both are lost, the only option is **Erase all data**; there is no remote admin backdoor.
 - Enabling the lock requires every publication to have an original package and source-first mode; older books without one must be re-imported.
-- Original packages, notes/tags/highlights/bookmarks/history/categories and backups are encrypted; titles and table-of-contents metadata remain plaintext.
+- Original packages, notes/tags/highlights/bookmarks/history/categories, original file names and backups are encrypted; titles, table of contents and annotation positions remain plaintext.
+- While the lock is on, **Keep original package for sharing** and **source-first** stay forced on so new imports cannot write plaintext bodies; an import without a storable package, or whose package fails to save, is cancelled. Recent search terms stay in memory and are no longer stored locally.
 - The lock cannot be disabled; you can change the password or regenerate the recovery code.
 
 ## 6. Backup and restore
@@ -86,7 +87,7 @@ On a publication card or in the reader top-right menu choose **Re-import**, then
 
 ### Share the original JWPUB
 
-1. **More → Settings & diagnostics → Keep original package for sharing** is on by default; you can turn it off.
+1. **More → Settings & diagnostics → Keep original package for sharing** is on by default; you can turn it off, except while the app lock is on (it stays on).
 2. New imports then keep a complete copy of the original file inside the app; the external `.jwpub` file can be deleted after import.
 3. On a publication card or in the reader top-right menu choose **Share → Export / share original JWPUB…** and pick **original filename** or **readable name**. The exported file is byte-for-byte identical to the imported JWPUB.
 

@@ -284,7 +284,7 @@ Object.assign(I18N.ko,{"上一章":"이전 장","下一章":"다음 장"});
 Object.assign(I18N.en,{"当前文件":"Current file","所选资料":"Selected publication"});
 Object.assign(I18N.ja,{"当前文件":"現在のファイル","所选资料":"選択した資料"});
 Object.assign(I18N.ko,{"当前文件":"현재 파일","所选资料":"선택한 자료"});
-Object.assign(I18N.en,{"应用已锁定":"App locked","输入密码继续":"Enter your password to continue","密码":"Password","解锁":"Unlock","使用恢复码":"Use recovery code","恢复码":"Recovery code","忘记密码":"Forgot password","密码或恢复码不正确":"Incorrect password or recovery code","输入恢复码继续":"Enter your recovery code to continue","以下出版物没有原始包，请先重新导入":"These publications have no original package; re-import them first","保存恢复码":"Save your recovery code","恢复码只显示一次，请离线保存。忘记密码时用它重置并保留数据。":"The recovery code is shown once. Keep it offline; it resets your password and preserves data.","复制":"Copy","我已保存":"I saved it","设置应用密码":"Set app password","密码至少 6 位。启用后数据会加密，请先导出备份。":"At least 6 characters. Data will be encrypted; export a backup first.","再次输入密码":"Confirm password","后台自动锁定":"Auto-lock after background","分钟":"minutes","启用应用锁":"Enable app lock","密码至少需要 6 位":"Password must be at least 6 characters","两次密码不一致":"Passwords do not match","应用锁":"App lock","更改密码":"Change password","重新生成恢复码":"Regenerate recovery code","立即锁定":"Lock now","新密码（至少 6 位）":"New password (at least 6 characters)","再次输入新密码":"Confirm new password","密码已更改。":"Password changed.","旧恢复码将立即失效。继续？":"The old recovery code will stop working. Continue?","清空":"Erase","清空全部数据":"Erase all data","没有恢复码时只能清空全部出版物、笔记和设置。请先确认已经备份。继续？":"Without the recovery code, all publications, notes and settings must be erased. Confirm you have a backup. Continue?","这会删除本机所有图书馆数据，无法撤销。":"This deletes all library data on this device and cannot be undone.","无法解锁":"Cannot unlock","恢复码已复制到剪贴板。":"Recovery code copied to the clipboard.","输入备份密码或恢复码":"Enter the backup password or recovery code","应用锁已启用，请先解锁":"The app lock is enabled; unlock it first","应用锁已启用。请用密码解锁后重新生成恢复码。":"The app lock is enabled. Unlock with your password, then regenerate the recovery code."});
+Object.assign(I18N.en,{"应用已锁定":"App locked","输入密码继续":"Enter your password to continue","密码":"Password","解锁":"Unlock","使用恢复码":"Use recovery code","恢复码":"Recovery code","忘记密码":"Forgot password","密码或恢复码不正确":"Incorrect password or recovery code","输入恢复码继续":"Enter your recovery code to continue","以下出版物没有原始包，请先重新导入":"These publications have no original package; re-import them first","保存恢复码":"Save your recovery code","恢复码只显示一次，请离线保存。忘记密码时用它重置并保留数据。":"The recovery code is shown once. Keep it offline; it resets your password and preserves data.","复制":"Copy","我已保存":"I saved it","设置应用密码":"Set app password","密码至少 6 位。启用后数据会加密，请先导出备份。":"At least 6 characters. Data will be encrypted; export a backup first.","再次输入密码":"Confirm password","后台自动锁定":"Auto-lock after background","分钟":"minutes","启用应用锁":"Enable app lock","密码至少需要 6 位":"Password must be at least 6 characters","两次密码不一致":"Passwords do not match","应用锁":"App lock","更改密码":"Change password","重新生成恢复码":"Regenerate recovery code","立即锁定":"Lock now","新密码（至少 6 位）":"New password (at least 6 characters)","再次输入新密码":"Confirm new password","密码已更改。":"Password changed.","旧恢复码将立即失效。继续？":"The old recovery code will stop working. Continue?","清空":"Erase","清空全部数据":"Erase all data","没有恢复码时只能清空全部出版物、笔记和设置。请先确认已经备份。继续？":"Without the recovery code, all publications, notes and settings must be erased. Confirm you have a backup. Continue?","这会删除本机所有图书馆数据，无法撤销。":"This deletes all library data on this device and cannot be undone.","无法解锁":"Cannot unlock","恢复码已复制到剪贴板。":"Recovery code copied to the clipboard.","输入备份密码或恢复码":"Enter the backup password or recovery code","应用锁已启用，请先解锁":"The app lock is enabled; unlock it first","应用锁已启用。请用密码解锁后重新生成恢复码。":"The app lock is enabled. Unlock with your password, then regenerate the recovery code.","应用锁启用期间必须保留原始包。":"The original package is required while the app lock is on.","应用锁启用期间始终以原始包为主。":"Source-first stays on while the app lock is enabled.","应用锁已启用，但这份文件没有可保存的原始包，已取消导入。":"The app lock is on, but this file has no package that can be stored; import cancelled.","应用锁已启用，但原始包保存失败，已取消导入。":"The app lock is on and the package could not be saved; import cancelled.","原始包保存失败，这本书暂时仍以明文保存正文，请尽快重新导入。":"The package could not be saved, so this book's body is temporarily stored as plaintext. Re-import it as soon as possible."});
 const UI_ICONS={
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2" stroke-linecap="round"/>',
@@ -542,7 +542,10 @@ const USER_ENC_FIELDS={
   highlights:['quote'],
   bookmarks:['title','bookTitle'],
   history:['title','bookTitle','originalFilename'],
-  categories:['name']
+  categories:['name'],
+  // File names can contain personal data (sender, meeting, date), so they are
+  // sealed together with the user data instead of staying in book metadata.
+  bookMeta:['originalFilename','manifestName','sourceName']
 };
 async function sealUserRecord(store,rec){
   if(!vaultKey||!rec||!USER_ENC_FIELDS[store])return rec;
@@ -630,7 +633,7 @@ async function wrapRawKey(raw,kek){const iv=randomBytes(12);const cipher=await c
 async function unwrapRawKey(wrapped,kek){const all=fromB64(wrapped);const iv=all.subarray(0,12),cipher=all.subarray(12);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv},kek,cipher))}
 async function importVaultKey(raw){return crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['encrypt','decrypt'])}
 async function setVaultRaw(raw){vaultRawKey=new Uint8Array(raw);vaultKey=await importVaultKey(vaultRawKey)}
-function clearVaultKey(){vaultKey=null;vaultRawKey=null}
+function clearVaultKey(){if(vaultRawKey)vaultRawKey.fill(0);vaultKey=null;vaultRawKey=null}
 function normalizeRecovery(code){return String(code||'').toUpperCase().replace(/[^A-Z2-9]/g,'')}
 function generateRecovery(){const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';const raw=randomBytes(48);let out='';for(let i=0;i<48;i++){out+=alphabet[raw[i]%alphabet.length];if(i%4===3&&i<47)out+='-'}return out}
 async function createVaultLock(password,timeout=5){
@@ -958,7 +961,7 @@ async function deleteTagCascade(id){
 // catalog rendering and every chapter navigation clone the whole publication.
 // v3 keeps a small metadata record and stores documents/assets separately;
 // the old `books` store is retained as a lightweight compatibility mirror.
-async function getBookMeta(id){return reqP(tx('bookMeta').get(id))}
+async function getBookMeta(id){return openUserRecord('bookMeta',await reqP(tx('bookMeta').get(id)))}
 async function allBooks(){
   await ensureMigrated();
   const metas=await reqP(tx('bookMeta').getAll());
@@ -966,12 +969,13 @@ async function allBooks(){
   // open it instead of it silently disappearing from the library.
   const map=new Map(metas.map(m=>[m.id,m]));
   try{const legacy=await reqP(tx('books').getAll());for(const b of legacy)if(!map.has(b.id))map.set(b.id,b)}catch(e){}
-  return [...map.values()];
+  return Promise.all([...map.values()].map(m=>openUserRecord('bookMeta',m)));
 }
 async function saveBookMeta(meta){
   if(!meta||meta.id===undefined)return;
+  const sealed=await sealUserRecord('bookMeta',meta);
   const t=idb.transaction(['bookMeta','books'],'readwrite');
-  t.objectStore('bookMeta').put(meta);t.objectStore('books').put(meta);
+  t.objectStore('bookMeta').put(sealed);t.objectStore('books').put(sealed);
   await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('数据库事务被中止'))});
 }
 async function getBookAux(id,gen){
@@ -984,8 +988,8 @@ async function getBookAux(id,gen){
 // Optional original-package storage. This keeps the original SQLite and the
 // inner files so a JWPUB can be rebuilt without re-parsing or re-encrypting.
 // It is off by default; the setting is read in the import path.
-function keepSourceEnabled(){try{const v=localStorage.getItem('offlineLibraryKeepSource');return v===null?true:v==='1'}catch(e){return true}}
-function setKeepSource(on){try{localStorage.setItem('offlineLibraryKeepSource',on?'1':'0')}catch(e){}}
+function keepSourceEnabled(){try{if(lockEnabled())return true;const v=localStorage.getItem('offlineLibraryKeepSource');return v===null?true:v==='1'}catch(e){return true}}
+function setKeepSource(on){try{localStorage.setItem('offlineLibraryKeepSource',lockEnabled()?'1':(on?'1':'0'))}catch(e){}}
 // Original packages live in a separate IndexedDB so the main library stays at
 // DB v5 and a 1.0.0 HTML can still open it after a 2.0 alpha test.
 const SOURCE_DB_NAME='OfflineJwLibrarySources',SOURCE_DB_VERSION=1;
@@ -1004,14 +1008,15 @@ async function getBookSource(id){
   const db=await openSourceDB();
   const rec=await reqP(db.transaction('sources','readonly').objectStore('sources').get(id));
   if(!rec)return null;
+  const name=typeof rec.name==='string'?await openVaultString(rec.name,'source:'+id):rec.name;
   if(rec.jwpubEnc){
     if(!vaultKey)throw new Error('应用锁未解锁，无法读取原始包。');
     const bytes=await decryptVaultBytes(rec.jwpubEnc,'source:'+id);
-    const out={...rec,jwpub:new Blob([bytes],{type:'application/octet-stream'}),importedAt:rec.importedAt||Date.now()};
+    const out={...rec,name,jwpub:new Blob([bytes],{type:'application/octet-stream'}),importedAt:rec.importedAt||Date.now()};
     delete out.jwpubEnc;
     return out;
   }
-  return rec;
+  return name===rec.name?rec:{...rec,name};
 }
 async function saveBookSource(id,source){
   if(!id||!source)return null;
@@ -1020,11 +1025,12 @@ async function saveBookSource(id,source){
   const jwpub=source.jwpub instanceof Blob?source.jwpub:(source.file instanceof Blob?source.file:(source.bytes?new Blob([source.bytes]):null));
   if(!jwpub&&!source.innerZip&&!source.db)return null;
   let rec=null;
+  const name=source.name||`${id}.jwpub`;
   if(jwpub){
-    const base={id,name:source.name||`${id}.jwpub`,size:Number(source.size||0)||jwpub.size,importedAt:source.importedAt||Date.now()};
+    const base={id,name,size:Number(source.size||0)||jwpub.size,importedAt:source.importedAt||Date.now()};
     if(vaultKey){
       const bytes=new Uint8Array(await jwpub.arrayBuffer());
-      rec={...base,jwpubEnc:await encryptVaultBytes(bytes,'source:'+id)};
+      rec={...base,name:await sealVaultString(name,'source:'+id),jwpubEnc:await encryptVaultBytes(bytes,'source:'+id)};
     }else{
       rec={...base,jwpub};
     }
@@ -1036,7 +1042,7 @@ async function saveBookSource(id,source){
     const files=(source.files||[]).map(f=>({name:f.name,blob:f.blob instanceof Blob?f.blob:new Blob([f.blob])}));
     const payloadSize=innerZipBlob?innerZipBlob.size:(dbBlob?dbBlob.size:0)+files.reduce((n,f)=>n+Number(f.blob&&f.blob.size||0),0);
     const size=Number(source.size||0)||payloadSize+Number(manifestBytes&&manifestBytes.byteLength||0);
-    rec={id,name:source.name||`${id}.jwpub`,size,dbName:source.dbName||'publication.db',innerZip:innerZipBlob,manifestBytes,outerFiles:source.outerFiles||[],importedAt:source.importedAt||Date.now()};
+    rec={id,name,size,dbName:source.dbName||'publication.db',innerZip:innerZipBlob,manifestBytes,outerFiles:source.outerFiles||[],importedAt:source.importedAt||Date.now()};
     if(!innerZipBlob){if(dbBlob)rec.db=dbBlob;rec.files=files}
   }
   const db=await openSourceDB();
@@ -1045,7 +1051,8 @@ async function saveBookSource(id,source){
     t.objectStore('sources').put(rec);
     t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('原始包保存事务被中止'));
   });
-  await markBookSource(id,rec);
+  // Metadata stores the readable file name; the sources store keeps the sealed one.
+  await markBookSource(id,{name,size:rec.size});
   return rec;
 }
 async function markBookSource(id,source){
@@ -1077,8 +1084,8 @@ const sourceDbCache=new Map(),sourceDocCache=new Map(),sourceAssetCache=new Map(
 const SOURCE_DB_CACHE_MAX=1,SOURCE_DOC_CACHE_MAX=8,SOURCE_ASSET_CACHE_MAX=16;
 function sourceReadEnabled(){try{return localStorage.getItem('offlineLibrarySourceRead')==='1'}catch(e){return false}}
 function setSourceRead(on){try{localStorage.setItem('offlineLibrarySourceRead',on?'1':'0')}catch(e){}}
-function sourceFirstEnabled(){try{return localStorage.getItem('offlineLibrarySourceFirst')==='1'}catch(e){return false}}
-function setSourceFirst(on){try{localStorage.setItem('offlineLibrarySourceFirst',on?'1':'0')}catch(e){}}
+function sourceFirstEnabled(){try{return lockEnabled()||localStorage.getItem('offlineLibrarySourceFirst')==='1'}catch(e){return false}}
+function setSourceFirst(on){try{localStorage.setItem('offlineLibrarySourceFirst',lockEnabled()?'1':(on?'1':'0'))}catch(e){}}
 // Source-first books keep only document metadata in IndexedDB. The body is
 // decrypted from the stored original package on demand and cached in memory.
 async function ensureDocHtml(book,doc){
@@ -1472,9 +1479,10 @@ async function persistBook(book){
   if(docs)stores.push('bookDocs');
   if(assets)stores.push('bookAssets');
   if(hasAux)stores.push('bookAux');
+  const sealedMeta=await sealUserRecord('bookMeta',meta);
   const t=idb.transaction(stores,'readwrite');
-  t.objectStore('bookMeta').put(meta);
-  t.objectStore('books').put(meta);
+  t.objectStore('bookMeta').put(sealedMeta);
+  t.objectStore('books').put(sealedMeta);
   if(docs)docs.forEach((d,ord)=>{const docId=String(d.id);t.objectStore('bookDocs').put({key:`${id}:${gen}:${docId}`,bookId:id,gen,docId,mepsId:Number(d.mepsId||0),ord,...d});});
   if(assets)for(const a of assets){const name=String(a.name);t.objectStore('bookAssets').put({key:`${id}:${gen}:${name}`,bookId:id,gen,name,blob:a.blob});}
   if(hasAux)t.objectStore('bookAux').put(aux);
@@ -1624,6 +1632,17 @@ function deleteBookData(bookId){
     t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('删除事务被中止'));
   });
 }
+// Remove a publication that failed to import completely (books, metadata and
+// split stores) so a locked library never keeps a body without its package.
+async function deleteBookRecord(bookId){
+  try{await deleteBookData(bookId)}catch(e){}
+  await new Promise((res,rej)=>{
+    const t=idb.transaction(['books','bookMeta','bookAux'],'readwrite');
+    t.objectStore('books').delete(bookId);t.objectStore('bookMeta').delete(bookId);t.objectStore('bookAux').delete(bookId);
+    t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('删除事务被中止'));
+  });
+  bookLoadCache.delete(String(bookId));
+}
 // Re-importing a publication creates a new generation. Remove older document
 // and asset generations only after the new transaction has committed.
 function purgeOldGenerations(bookId,keepGen){
@@ -1704,6 +1723,32 @@ async function ensureStableIds(){
       const docs=await reqP(tx('bookDocs').index('byBook').getAll(oldId));
       const assets=await reqP(tx('bookAssets').index('byBook').getAll(oldId));
       let aux=null;try{aux=await reqP(tx('bookAux').get(oldId))}catch(e){}
+      // getAllUser() returns decrypted records; seal them again before the
+      // synchronous ID migration transaction writes them back, so a locked
+      // library never gets plaintext notes from a migration.
+      const noteIdMap=new Map(),noteWrites=[],hlWrites=[],markWrites=[],histWrites=[];
+      for(const n of notes){
+        if(String(n.bookId)!==oldId)continue;
+        const nid=remapId(n.id,oldId,newId);
+        if(nid!==String(n.id))noteIdMap.set(String(n.id),nid);
+        noteWrites.push({del:n.id,rec:await sealUserRecord('notes',{...n,id:nid,bookId:newId})});
+      }
+      for(const h of highlights){
+        if(String(h.bookId)!==oldId)continue;
+        const patch={...h,bookId:newId};
+        if(patch.noteId&&noteIdMap.has(String(patch.noteId)))patch.noteId=noteIdMap.get(String(patch.noteId));
+        hlWrites.push(await sealUserRecord('highlights',patch));
+      }
+      for(const m of marks){
+        if(String(m.bookId)!==oldId)continue;
+        const mid=remapId(m.id,oldId,newId);
+        markWrites.push({del:mid!==String(m.id)?m.id:null,rec:await sealUserRecord('bookmarks',{...m,id:mid,bookId:newId})});
+      }
+      for(const h of history){
+        if(String(h.bookId)!==oldId)continue;
+        const hid=remapId(h.id,oldId,newId);
+        histWrites.push({del:hid!==String(h.id)?h.id:null,rec:await sealUserRecord('history',{...h,id:hid,bookId:newId})});
+      }
       const stores=['books','bookMeta','bookDocs','bookAssets','bookAux','notes','highlights','bookmarks','history'];
       const t=idb.transaction(stores,'readwrite');
       if(!targetExists){
@@ -1729,31 +1774,10 @@ async function ensureStableIds(){
         if(!targetExists)t.objectStore('bookAux').put({...aux,id:newId});
         t.objectStore('bookAux').delete(oldId);
       }
-      const noteIdMap=new Map();
-      for(const n of notes){
-        if(String(n.bookId)!==oldId)continue;
-        const nid=remapId(n.id,oldId,newId);
-        if(nid!==String(n.id)){noteIdMap.set(String(n.id),nid);t.objectStore('notes').delete(n.id)}
-        t.objectStore('notes').put({...n,id:nid,bookId:newId});
-      }
-      for(const h of highlights){
-        if(String(h.bookId)!==oldId)continue;
-        const patch={...h,bookId:newId};
-        if(patch.noteId&&noteIdMap.has(String(patch.noteId)))patch.noteId=noteIdMap.get(String(patch.noteId));
-        t.objectStore('highlights').put(patch);
-      }
-      for(const m of marks){
-        if(String(m.bookId)!==oldId)continue;
-        const mid=remapId(m.id,oldId,newId);
-        if(mid!==String(m.id))t.objectStore('bookmarks').delete(m.id);
-        t.objectStore('bookmarks').put({...m,id:mid,bookId:newId});
-      }
-      for(const h of history){
-        if(String(h.bookId)!==oldId)continue;
-        const hid=remapId(h.id,oldId,newId);
-        if(hid!==String(h.id))t.objectStore('history').delete(h.id);
-        t.objectStore('history').put({...h,id:hid,bookId:newId});
-      }
+      for(const w of noteWrites){if(w.del!==null&&w.del!==undefined&&String(w.del)!==String(w.rec.id))t.objectStore('notes').delete(w.del);t.objectStore('notes').put(w.rec)}
+      for(const rec of hlWrites)t.objectStore('highlights').put(rec);
+      for(const w of markWrites){if(w.del!==null&&w.del!==undefined)t.objectStore('bookmarks').delete(w.del);t.objectStore('bookmarks').put(w.rec)}
+      for(const w of histWrites){if(w.del!==null&&w.del!==undefined)t.objectStore('history').delete(w.del);t.objectStore('history').put(w.rec)}
       await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('稳定 ID 迁移事务被中止'))});
       targets.delete(oldId);targets.add(newId);migrated++;
     }catch(e){failed.push({id:oldId,error:String(e&&e.message||e)});console.warn('稳定 ID 迁移失败',oldId,e)}

@@ -134,7 +134,7 @@ Legacy book IDs may be `lang_symbol_year[_issue]`. During restore:
 
 ## 7. User notes
 
-- Backup JSON is **not encrypted**; it contains book titles, notes, possibly import reports and (v2) the original PUB packages.
+- Without the app lock, backup JSON is **not encrypted**; it contains book titles, notes, possibly import reports and (v2) the original PUB packages. With the lock on, full and notes backups are encrypted `.olvault` files.
 - v2 backups restore into 2.0 and later; 1.0.0 can only restore v1 backups and ignores `__source`.
 - Large exports show progress; above 150 MB a confirmation is required. Backups with original packages approach twice the library size.
 - Base64 makes the file roughly one third larger than the stored data.

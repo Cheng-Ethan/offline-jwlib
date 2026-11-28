@@ -81,6 +81,14 @@ applyI18n()
 
 可选应用锁使用 PBKDF2-SHA256（310k 次）从密码派生 KEK，并用 AES-GCM 包裹随机 DEK；恢复码独立派生 KEK，包裹同一 DEK。锁元数据同时保存在 `localStorage` 和 `system` 的 `lockMeta`，任一存在即可在启动时恢复锁界面。启用锁时先要求所有书都有原始包并执行 `stripAllSourceBooks()`，随后 `encryptExistingSources()` 加密源包、`sealExistingUserData()` 加密用户数据字段；之后 `saveBookSource()`/`getBookSource()` 和 `saveOne()`/`getOne()`/`getAllUser()` 自动加解密。备份使用 `.olvault` 整文件加密；恢复时用头部 `lock` 解出 DEK。原始 JWPUB 包内容不修改，导出前解密回原始字节。
 
+加密范围补充：
+
+- `USER_ENC_FIELDS` 现在也包含 `bookMeta` 的 `originalFilename`/`manifestName`/`sourceName`，`sources` 记录的 `name` 用 `source:<id>` AAD 单独封存；`allBooks()`/`getBookMeta()`/`saveBookMeta()` 统一走 `openUserRecord()`/`sealUserRecord()`，不要再直接读写这两个 store 的明文。
+- 锁启用期间 `sourceFirstEnabled()` 与 `keepSourceEnabled()` 恒为真，`setSourceFirst()`/`setKeepSource()` 也会强制写 `'1'`，防止新导入的书把解析正文写回明文；设置面板里的两个开关会提示且不生效。
+- 最近搜索词（`offlineLibraryRecentSearches`）在锁启用后只存内存，启动、锁定和启用锁时都会清除该 key；开锁后不再写入 `localStorage`。
+- `lockNow()` 会清零内存中的 DEK 缓冲并调用 `clearRecentReaderSearches()`。
+- 已知未覆盖：书名/目录/阅读进度/标注位置与时间仍是明文；AES-GCM AAD 目前只绑定 store（用户数据）或记录 ID（源包），同一 store 内的密文理论上可互换，影响完整性而非机密性。
+
 ### 4.2 元数据 + 分表 + generation
 
 - `buildBookMeta()` 生成轻量元数据；

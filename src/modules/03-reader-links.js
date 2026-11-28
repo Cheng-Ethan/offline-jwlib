@@ -938,14 +938,29 @@ async function applyCrossLanguageNotes(book,doc){
   }
 }
 
+// With the app lock on, recent searches stay in memory only: localStorage is
+// readable without the password, and search terms often quote private notes.
+let readerSearchMemory=[];
 function recentReaderSearches(){
+  if(lockEnabled())return readerSearchMemory.slice(0,5);
   try{const list=JSON.parse(localStorage.getItem(READER_SEARCH_KEY)||'[]');return Array.isArray(list)?list.filter(x=>typeof x==='string'&&x.trim()).slice(0,5):[]}catch(e){return[]}
 }
 function rememberReaderSearch(q){
   q=String(q||'').trim().slice(0,80);if(!q)return;
+  if(lockEnabled()){
+    readerSearchMemory=[q,...readerSearchMemory.filter(x=>x!==q)].slice(0,5);
+    try{localStorage.removeItem(READER_SEARCH_KEY)}catch(e){}
+    renderReaderSearchRecent();
+    return;
+  }
   const list=[q,...recentReaderSearches().filter(x=>x!==q)].slice(0,5);
   try{localStorage.setItem(READER_SEARCH_KEY,JSON.stringify(list))}catch(e){}
   renderReaderSearchRecent();
+}
+function clearRecentReaderSearches(){
+  readerSearchMemory=[];
+  try{localStorage.removeItem(READER_SEARCH_KEY)}catch(e){}
+  try{const box=$('readerSearchRecent');if(box){box.innerHTML='';box.style.display='none'}}catch(e){}
 }
 function renderReaderSearchRecent(){
   const box=$('readerSearchRecent');if(!box)return;

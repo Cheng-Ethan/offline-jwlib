@@ -41,7 +41,7 @@ Yes. Use a publication card's ⋯ menu to create categories or move books. Custo
 
 ## Is the backup secure?
 
-Backup JSON is **not encrypted** and contains book titles and your notes. Avoid exporting or storing backups on shared computers. Always back up before upgrading or switching devices.
+Backups are JSON and **not encrypted** by default; they contain book titles and your notes. With the **app lock** on, full and notes backups are written as encrypted `.olvault` files that need your password or recovery code to restore. Without the lock, avoid exporting or storing backups on shared computers. Always back up before upgrading or switching devices.
 
 ## What is the licence?
 

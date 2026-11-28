@@ -44,7 +44,7 @@
 - 初始基线 `0.13.0`；当前版本以 `project.json` 为准。
 - 开发提交先进 `develop`；`master` 由用户定期发布，agent 不直接 push。
 - 用户自定义语言 JSON 称为**用户语言包（插件 v0）**：只能换界面语言，不是代码插件系统。
-- 数据只留在本机 IndexedDB / localStorage；备份 JSON 未加密。
+- 数据只留在本机 IndexedDB / localStorage；未启用应用锁时备份 JSON 未加密，启用后备份为加密的 `.olvault`。
 - 旧文档 [`README_使用说明.md`](README_使用说明.md)、[`验证记录.md`](验证记录.md)、[`rollback/README_回滚说明.md`](rollback/README_回滚说明.md) 仅作历史参考。
 
 ## 许可证

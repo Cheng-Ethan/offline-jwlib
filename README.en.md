@@ -44,7 +44,7 @@ Additional docs: [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [
 - Initial baseline `0.13.0`; the current version is defined by `project.json`.
 - Commits go to `develop`; `master` is published periodically by the user; agents do not push it.
 - User language JSON is a **user language pack (plugin v0)**: UI strings only, not a code plugin API.
-- Data stays in local IndexedDB / localStorage; backup JSON is unencrypted.
+- Data stays in local IndexedDB / localStorage; backups are unencrypted JSON unless the app lock is on, in which case they are encrypted `.olvault` files.
 - Legacy docs [`README_使用说明.md`](README_使用说明.md), [`验证记录.md`](验证记录.md) and [`rollback/README_回滚说明.md`](rollback/README_回滚说明.md) are historical references only.
 
 ## Licence

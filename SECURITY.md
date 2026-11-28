@@ -7,7 +7,7 @@
 
 ### 支持范围
 
-当前仅对最新发布的 `0.13.x` 提供安全修复。旧版本请升级后再报告。
+当前仅对最新发布的 `2.1.x` 提供安全修复。旧版本请升级后再报告。
 
 ### 如何报告
 
@@ -28,8 +28,8 @@
 ### 隐私说明
 
 - 应用不联网、不上传、不遥测；
-- 笔记、高亮、书签、历史以明文存于本地 IndexedDB；
-- 导出的备份 JSON 未加密，含书目与笔记，请妥善保存；
+- 默认情况下，笔记、高亮、书签、历史以明文存于本地 IndexedDB；启用「应用锁」后这些字段、原始文件名、原始包和备份都会加密，但书名、目录、标注位置等元数据仍是明文；
+- 未启用应用锁时，导出的备份 JSON 未加密，含书目与笔记，请妥善保存；启用后输出加密的 `.olvault`；
 - `diagnostics()` 输出会包含存储用量、出版物标题与最近事件，分享前请脱敏。
 
 ### 已知关注面（持续修复中）
@@ -46,7 +46,7 @@
 
 ### Supported versions
 
-Security fixes are provided for the latest `0.13.x` release only. Please upgrade before reporting issues against older versions.
+Security fixes are provided for the latest `2.1.x` release only. Please upgrade before reporting issues against older versions.
 
 ### Reporting
 
@@ -67,8 +67,8 @@ Target response: acknowledgement within 3 business days, fix plan within 7 busin
 ### Privacy notes
 
 - The app makes no network calls, uploads or telemetry;
-- notes, highlights, bookmarks and history are stored unencrypted in local IndexedDB;
-- exported backup JSON is unencrypted and contains titles and notes — store it carefully;
+- by default notes, highlights, bookmarks and history are stored unencrypted in local IndexedDB; with the **app lock** on, those fields, original file names, original packages and backups are encrypted, while titles, table of contents and annotation positions remain plaintext;
+- without the lock, exported backup JSON is unencrypted and contains titles and notes — store it carefully; with the lock, backups are encrypted `.olvault` files;
 - `diagnostics()` includes storage usage, book titles and recent events; redact before sharing.
 
 ### Known areas under active work

@@ -30,6 +30,7 @@ async function importFiles(files,opts={}){
    if(old&&!overwriteNames.has(f.name)&&!(await askConfirm(t('导入 PUB'),`《${b.displayTitle||b.title}》已经导入。是否用这个文件覆盖正文和图片？笔记、标签、划线、书签和阅读历史会保留。`))){
      skipped.push(`${b.displayTitle||b.title}（${f.name}）`);continue;
    }
+   if(lockEnabled()&&!b.source)throw new Error(t('应用锁已启用，但这份文件没有可保存的原始包，已取消导入。'));
    try{await saveBook(b)}catch(saveErr){
      const msg=String(saveErr&&(saveErr.name||saveErr.message)||saveErr);
      if(/quota/i.test(msg)){await new Promise(r=>setTimeout(r,1800));await saveBook(b)}
@@ -37,8 +38,17 @@ async function importFiles(files,opts={}){
    }
    let sourceSaved=false;
    if(b.source&&keepSourceEnabled()){
-     try{await saveBookSource(b.id,b.source);sourceSaved=true;logDiag('info','保存原始包',{id:b.id,size:b.source.size})}
+     try{const savedRec=await saveBookSource(b.id,b.source);if(savedRec){sourceSaved=true;logDiag('info','保存原始包',{id:b.id,size:b.source.size})}}
      catch(srcErr){logDiag('warn','保存原始包失败',{id:b.id,message:srcErr.message||String(srcErr)})}
+   }
+   if(lockEnabled()&&!sourceSaved){
+     // Never delete a book that already existed: a failed re-import must not
+     // destroy the copy the user had before.
+     if(old){logDiag('warn','应用锁启用时原始包保存失败，保留本次导入的正文',{id:b.id});say(t('应用锁'),t('原始包保存失败，这本书暂时仍以明文保存正文，请尽快重新导入。'))}
+     else{
+       try{await deleteBookRecord(b.id)}catch(cleanupErr){}
+       throw new Error(t('应用锁已启用，但原始包保存失败，已取消导入。'));
+     }
    }
    if(sourceFirstEnabled()&&sourceSaved){
      try{const n=await stripBookDocHtml(b.id);logDiag('info','按原始包为主清理正文',{id:b.id,docs:n})}
