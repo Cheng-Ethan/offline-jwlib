@@ -82,6 +82,7 @@ The optional app lock derives a KEK from the password with PBKDF2-SHA256 (310k i
 Additional scope:
 
 - `USER_ENC_FIELDS` also covers `bookMeta.originalFilename`/`manifestName`/`sourceName`, and the `sources` record `name` is sealed separately with the `source:<id>` AAD. `allBooks()`/`getBookMeta()`/`saveBookMeta()` go through `openUserRecord()`/`sealUserRecord()`; do not read or write those stores directly.
+- Libraries that were already locked run `sealLockedNames()` once after unlock (marked by `system.lockedNamesSealedV1`) to seal leftover plaintext names; a failure skips the marker and retries on the next start.
 - While the lock is on, `sourceFirstEnabled()` and `keepSourceEnabled()` are always true and `setSourceFirst()`/`setKeepSource()` force `'1'`, so new imports cannot write parsed bodies back as plaintext; the two settings buttons explain this and do nothing.
 - Recent search terms (`offlineLibraryRecentSearches`) live in memory only once the lock exists; startup, locking and enabling the lock all remove the key, and it is never written again.
 - `lockNow()` zeroes the in-memory DEK buffer and calls `clearRecentReaderSearches()`.

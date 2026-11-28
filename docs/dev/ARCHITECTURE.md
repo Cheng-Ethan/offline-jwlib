@@ -84,6 +84,7 @@ applyI18n()
 加密范围补充：
 
 - `USER_ENC_FIELDS` 现在也包含 `bookMeta` 的 `originalFilename`/`manifestName`/`sourceName`，`sources` 记录的 `name` 用 `source:<id>` AAD 单独封存；`allBooks()`/`getBookMeta()`/`saveBookMeta()` 统一走 `openUserRecord()`/`sealUserRecord()`，不要再直接读写这两个 store 的明文。
+- 已锁定的旧库由 `sealLockedNames()` 在解锁后补做一次（`system.lockedNamesSealedV1` 标记），把遗留的明文文件名补齐；失败不会写入标记，下次启动重试。
 - 锁启用期间 `sourceFirstEnabled()` 与 `keepSourceEnabled()` 恒为真，`setSourceFirst()`/`setKeepSource()` 也会强制写 `'1'`，防止新导入的书把解析正文写回明文；设置面板里的两个开关会提示且不生效。
 - 最近搜索词（`offlineLibraryRecentSearches`）在锁启用后只存内存，启动、锁定和启用锁时都会清除该 key；开锁后不再写入 `localStorage`。
 - `lockNow()` 会清零内存中的 DEK 缓冲并调用 `clearRecentReaderSearches()`。

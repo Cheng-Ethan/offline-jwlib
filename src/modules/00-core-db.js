@@ -1325,6 +1325,45 @@ async function sealExistingUserData(){
   }
   return n;
 }
+// Libraries locked by an earlier build still have readable file names in
+// bookMeta and in the sources store. Seal them once after the first unlock.
+async function sealLockedNames(){
+  if(!vaultKey)return 0;
+  let flag=null;try{flag=await reqP(tx('system').get('lockedNamesSealedV1'))}catch(e){}
+  if(flag&&flag.done)return 0;
+  let sealed=0,failed=false;
+  const metas=await reqP(tx('bookMeta').getAll());
+  const writes=[];
+  for(const m of metas){
+    const next=await sealUserRecord('bookMeta',m);
+    if(USER_ENC_FIELDS.bookMeta.some(f=>next[f]!==m[f]))writes.push(next);
+  }
+  if(writes.length){
+    await new Promise((res,rej)=>{
+      const t=idb.transaction('bookMeta','readwrite');
+      for(const rec of writes)t.objectStore('bookMeta').put(rec);
+      t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('加密文件名事务被中止'));
+    });
+    sealed+=writes.length;
+  }
+  try{
+    const db=await openSourceDB();
+    const rows=await reqP(db.transaction('sources','readonly').objectStore('sources').getAll());
+    for(const rec of rows){
+      if(typeof rec.name!=='string'||!rec.name||rec.name.startsWith('enc:v1:'))continue;
+      const name=await sealVaultString(rec.name,'source:'+rec.id);
+      await new Promise((res,rej)=>{
+        const t=db.transaction('sources','readwrite');
+        t.objectStore('sources').put({...rec,name});
+        t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('加密原始包名称事务被中止'));
+      });
+      sealed++;
+    }
+  }catch(e){failed=true;logDiag('warn','加密原始文件名失败',{message:e&&e.message||String(e)})}
+  if(!failed){try{await reqP(tx('system','readwrite').put({id:'lockedNamesSealedV1',done:true,at:Date.now(),sealed}))}catch(e){}}
+  if(sealed)logDiag('info','已加密遗留的原始文件名',{sealed});
+  return sealed;
+}
 async function auditPlaintextBooks(){
   const metas=await allBooks();
   const missing=[];

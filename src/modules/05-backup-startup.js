@@ -155,7 +155,7 @@ async function backupNotes(){
     logDiag('info','导出笔记备份',{notes:(notes||[]).length,tags:(tags||[]).length,highlights:(highlights||[]).length});
   }catch(err){say('备份失败',err.message||String(err));logDiag('error','导出笔记备份失败',{message:err.message||String(err)})}
 }
-const RESTORE_DERIVED_SYSTEM_IDS=new Set(['canonicalAnchorsV1','migratedV3','migratedStableIds','categoryIdsV1','lockMeta']);
+const RESTORE_DERIVED_SYSTEM_IDS=new Set(['canonicalAnchorsV1','migratedV3','migratedStableIds','categoryIdsV1','lockMeta','lockedNamesSealedV1']);
 function snapshotLocalStorage(){
   const out={};
   try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('offlineLibrary')&&k!==LOCK_META_KEY)out[k]=localStorage.getItem(k)}}catch(e){}
@@ -607,6 +607,7 @@ async function enableVault(password,timeout){
   if(!lockEnabled())recovery=await createVaultLock(password,timeout);
   await encryptExistingSources();
   await sealExistingUserData();
+  try{await sealLockedNames()}catch(e){}
   clearRecentReaderSearches();
   closeSourceDbs();
   return recovery;
@@ -662,6 +663,7 @@ function showLockSettings(){
 async function bootApp(){
   try{
     applyI18n();await openDB();await ensureMigrated();await ensureCategoryIds();
+    if(lockEnabled()&&vaultKey){try{await sealLockedNames()}catch(e){logDiag('warn','加密遗留文件名失败',{message:e&&e.message||String(e)})}}
     await loadReaderCache();
     await renderBooks();
     const startTab=readerCacheTab||'home';
